@@ -10,13 +10,13 @@ Mantiene el mismo protocolo y motor de transferencia (`WDRP v4 + Noise`).
 ## Ejecutar GUI Compose Desktop
 
 ```powershell
-.\gradlew.bat :laptop:run
+.\gradlew.bat :pc:run
 ```
 
 Tambien puedes lanzar GUI explicitamente:
 
 ```powershell
-.\gradlew.bat :laptop:run --args="--gui"
+.\gradlew.bat :pc:run --args="--gui"
 ```
 
 Desde la GUI puedes:
@@ -30,7 +30,7 @@ Desde la GUI puedes:
 ## Ejecutar CLI interactivo
 
 ```powershell
-.\gradlew.bat :laptop:run --args="--no-gui --token ABCD1234 --pin 123456"
+.\gradlew.bat :pc:run --args="--no-gui --token ABCD1234 --pin 123456"
 ```
 
 Comandos interactivos:
@@ -47,7 +47,7 @@ Comandos interactivos:
 ## Envio one-shot Qetara PC -> Android/PC
 
 ```powershell
-.\gradlew.bat :laptop:run --args="--no-gui --token ABCD1234 --pin 123456 --send-host 192.168.1.20 --send-file C:\Temp\foto.jpg --no-interactive"
+.\gradlew.bat :pc:run --args="--no-gui --token ABCD1234 --pin 123456 --send-host 192.168.1.20 --send-file C:\Temp\foto.jpg --no-interactive"
 ```
 
 ## Envio PC -> PC
@@ -71,19 +71,19 @@ En la PC emisora:
 Tambien puedes hacerlo por CLI:
 
 ```powershell
-.\gradlew.bat :laptop:run --args="--no-gui --token ABCD1234 --pin 123456 --send-host 192.168.1.50 --send-file C:\Temp\documento.pdf --no-interactive"
+.\gradlew.bat :pc:run --args="--no-gui --token ABCD1234 --pin 123456 --send-host 192.168.1.50 --send-file C:\Temp\documento.pdf --no-interactive"
 ```
 
 ## Solo receptor (sin shell interactivo)
 
 ```powershell
-.\gradlew.bat :laptop:run --args="--no-gui --token ABCD1234 --pin 123456 --no-interactive"
+.\gradlew.bat :pc:run --args="--no-gui --token ABCD1234 --pin 123456 --no-interactive"
 ```
 
 ## Self-test E2E local
 
 ```powershell
-.\gradlew.bat :laptop:run --args="--no-gui --token ABCD1234 --pin 123456 --self-test --no-receiver --no-interactive"
+.\gradlew.bat :pc:run --args="--no-gui --token ABCD1234 --pin 123456 --self-test --no-receiver --no-interactive"
 ```
 
 El self-test valida:

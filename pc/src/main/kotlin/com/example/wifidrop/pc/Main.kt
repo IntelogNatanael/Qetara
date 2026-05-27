@@ -1,4 +1,4 @@
-package com.example.wifidrop.laptop
+package com.example.wifidrop.pc
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
@@ -372,7 +372,7 @@ private object DesktopIdentityStore {
     }
 }
 
-private class LaptopReceiverServer(
+private class PcReceiverServer(
     private val config: ReceiverConfig,
     private val localNoiseIdentity: NoiseStaticIdentity,
     private val isGlobalLanJoined: () -> Boolean = { false },
@@ -390,7 +390,7 @@ private class LaptopReceiverServer(
             server.bind(InetSocketAddress(config.port))
             server.soTimeout = 1_000
 
-            println("WifiDrop Laptop Receiver listo.")
+            println("Qetara PC Receiver listo.")
             println("Escuchando en puerto ${config.port}")
             println("Destino: ${config.outputDir.absolutePath}")
             println("Token: ${config.token} | PIN: ${config.pin}")
@@ -898,7 +898,7 @@ fun main(args: Array<String>) {
     runCatching {
         val token = requireValidToken(cli.token ?: "")
         val pin = requireValidPin(cli.pin ?: "")
-        val stateDir = File(System.getProperty("user.home"), ".wifidrop-laptop").apply { mkdirs() }
+        val stateDir = File(System.getProperty("user.home"), ".qetara-pc").apply { mkdirs() }
         val localPeerId = DesktopIdentityStore.getOrCreateDeviceId(stateDir)
         val noiseIdentity = DesktopIdentityStore.getOrCreateNoiseIdentity(stateDir)
 
@@ -926,7 +926,7 @@ fun main(args: Array<String>) {
         }
 
         val receiverServer = if (!cli.disableReceiver) {
-            LaptopReceiverServer(config, noiseIdentity)
+            PcReceiverServer(config, noiseIdentity)
         } else {
             null
         }
@@ -1074,8 +1074,8 @@ private fun printUsage() {
     println(
         """
         Uso:
-          .\gradlew.bat :laptop:run --args="--token ABCD1234 --pin 123456"
-          .\gradlew.bat :laptop:run --args="--token ABCD1234 --pin 123456 --send-host 192.168.1.20 --send-file C:\ruta\archivo.zip"
+          .\gradlew.bat :pc:run --args="--token ABCD1234 --pin 123456"
+          .\gradlew.bat :pc:run --args="--token ABCD1234 --pin 123456 --send-host 192.168.1.20 --send-file C:\ruta\archivo.zip"
         
         Opciones:
           --token <TOKEN>                  Token de sesion (o env WIFIDROP_TOKEN)
@@ -1102,7 +1102,7 @@ private fun printUsage() {
 private fun defaultDeviceLabel(): String {
     return runCatching {
         InetAddress.getLocalHost().hostName
-    }.getOrDefault("Laptop")
+    }.getOrDefault("PC")
 }
 
 private fun detectLocalNetworkEndpoints(): List<LocalNetworkEndpoint> {
@@ -1339,7 +1339,7 @@ private fun decodeDesktopChatPayload(messageRaw: String): Pair<DesktopChatScope,
 }
 
 private fun runDesktopGui(cli: CliArgs) {
-    val stateDir = File(System.getProperty("user.home"), ".wifidrop-laptop").apply { mkdirs() }
+    val stateDir = File(System.getProperty("user.home"), ".qetara-pc").apply { mkdirs() }
     val localPeerId = DesktopIdentityStore.getOrCreateDeviceId(stateDir)
     val noiseIdentity = DesktopIdentityStore.getOrCreateNoiseIdentity(stateDir)
 
@@ -1369,7 +1369,7 @@ private fun runDesktopGui(cli: CliArgs) {
         var lanDiscoveryPhase by remember { mutableStateOf(DesktopTaskPhase.IDLE) }
         var lanDiscoveryStatus by remember { mutableStateOf("LAN sin actualizar.") }
         var isFileDragActive by remember { mutableStateOf(false) }
-        var receiverServer by remember { mutableStateOf<LaptopReceiverServer?>(null) }
+        var receiverServer by remember { mutableStateOf<PcReceiverServer?>(null) }
         var receiverThread by remember { mutableStateOf<Thread?>(null) }
 
         val logs = remember { mutableStateListOf<DesktopLogEntry>() }
@@ -1620,7 +1620,7 @@ private fun runDesktopGui(cli: CliArgs) {
                 localPeerId = localPeerId
             )
 
-            val server = LaptopReceiverServer(
+            val server = PcReceiverServer(
                 config = config,
                 localNoiseIdentity = noiseIdentity,
                 isGlobalLanJoined = { globalLanJoinedFlag.get() },
@@ -3861,12 +3861,12 @@ private fun runLocalE2eSelfTest(
         pin = pin,
         outputDir = receiveDir,
         port = port,
-        deviceLabel = "SelfTestLaptop",
+        deviceLabel = "SelfTestPC",
         sessionDurationMs = 30 * 60_000L,
         allowCredentialsShare = false,
         localPeerId = localPeerId
     )
-    val receiver = LaptopReceiverServer(receiverConfig, localNoiseIdentity)
+    val receiver = PcReceiverServer(receiverConfig, localNoiseIdentity)
     val receiverThread = Thread {
         receiver.runBlocking()
     }.apply {

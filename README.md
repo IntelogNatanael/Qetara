@@ -5,7 +5,7 @@ Qetara es una app local-first para transferir archivos y mensajes sin cables ni 
 ## Modulos
 
 - `app`: aplicacion Android con Wi-Fi Direct, LAN, chat, canal Wi-Fi, descargas y flujo de envio.
-- `laptop`: Qetara PC, con interfaz Compose Desktop y modo CLI para automatizacion/debug.
+- `pc`: Qetara PC, con interfaz Compose Desktop y modo CLI para automatizacion/debug.
 - `protocol`: contrato y utilidades compartidas del protocolo WDRP.
 
 ## Estado local rapido
@@ -19,13 +19,13 @@ Compilar Android:
 Compilar Qetara PC:
 
 ```powershell
-.\gradlew.bat :laptop:classes --offline
+.\gradlew.bat :pc:classes --offline
 ```
 
 Ejecutar Qetara PC:
 
 ```powershell
-.\gradlew.bat :laptop:run --args="--gui"
+.\gradlew.bat :pc:run --args="--gui"
 ```
 
 Verificacion completa local:
@@ -47,5 +47,5 @@ Antes de subir:
 ## Documentacion
 
 - Arquitectura general: `ARCHITECTURE.md`
-- Qetara PC: `laptop/README.md`
+- Qetara PC: `pc/README.md`
 - Referencias de diseno: `design/penpot/README.md`

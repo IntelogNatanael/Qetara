@@ -15,12 +15,12 @@ if ($Offline) {
 
 New-Item -ItemType Directory -Force -Path $selfTestOut | Out-Null
 
-& $gradle :app:assembleDebug :app:lintDebug :app:testDebugUnitTest :laptop:classes @gradleMode
+& $gradle :app:assembleDebug :app:lintDebug :app:testDebugUnitTest :pc:classes @gradleMode
 if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
 }
 
-& $gradle :laptop:run @gradleMode --args="--no-gui --token ABCD1234 --pin 123456 --self-test --no-receiver --no-interactive --out $selfTestOut"
+& $gradle :pc:run @gradleMode --args="--no-gui --token ABCD1234 --pin 123456 --self-test --no-receiver --no-interactive --out $selfTestOut"
 if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
 }

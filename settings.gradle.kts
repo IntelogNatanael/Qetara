@@ -17,4 +17,4 @@ dependencyResolutionManagement {
 rootProject.name = "WifiDrop"
 include(":protocol")
 include(":app")
-include(":laptop")
+include(":pc")

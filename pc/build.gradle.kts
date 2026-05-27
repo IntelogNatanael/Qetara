@@ -12,6 +12,6 @@ dependencies {
 
 compose.desktop {
     application {
-        mainClass = "com.example.wifidrop.laptop.MainKt"
+        mainClass = "com.example.wifidrop.pc.MainKt"
     }
 }

@@ -433,7 +433,7 @@ internal fun deriveP2pExperienceState(state: P2pScreenState): P2pExperienceState
         ConnectionMode.LAN -> if (directReadyForExchange) {
             "Aunque estés viendo Wi-Fi normal, Directo ya quedó listo y se usará primero para enviar y chatear."
         } else if (state.lanConnected) {
-            "Usa la misma red Wi-Fi para descubrir equipos por IP y compartir con laptop u otros equipos."
+            "Usa la misma red Wi-Fi para descubrir equipos por IP y compartir con PC u otros equipos."
         } else {
             "Usa Wi-Fi normal cuando ambos equipos comparten la misma red local."
         }
