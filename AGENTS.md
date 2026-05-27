@@ -1,0 +1,1 @@
+Always use the Penpot MCP server when working on frontend UX, layout, design tokens, component structure, design review, or design-to-code alignment for this project. Prefer the active Penpot file over assumptions.

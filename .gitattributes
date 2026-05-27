@@ -1,0 +1,13 @@
+* text=auto eol=lf
+
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+*.sh text eol=lf
+
+*.jar binary
+*.png binary
+*.webp binary
+*.zip binary
+*.pdf binary
+*.penpot binary
+*.ttf binary

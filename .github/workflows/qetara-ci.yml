@@ -1,0 +1,29 @@
+name: Qetara CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build, lint, and unit test
+        run: .\gradlew.bat :app:assembleDebug :app:lintDebug :app:testDebugUnitTest :laptop:classes --no-daemon
+
+      - name: Laptop protocol self-test
+        run: .\gradlew.bat :laptop:run --no-daemon --args="--no-gui --token ABCD1234 --pin 123456 --self-test --no-receiver --no-interactive --out $env:RUNNER_TEMP\qetara-selftest"

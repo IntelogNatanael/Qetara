@@ -1,0 +1,159 @@
+package com.example.wifidrop
+
+import android.content.Context
+import androidx.core.content.edit
+
+enum class FocusStage(val title: String) {
+    OFF("Completo"),
+    CONNECT("Conectar"),
+    SEND("Enviar"),
+    CHAT("Chat");
+
+    companion object {
+        fun fromStored(raw: String?): FocusStage {
+            return entries.firstOrNull { it.name == raw } ?: OFF
+        }
+    }
+}
+
+enum class ConnectionMode(val title: String) {
+    WIFI_DIRECT("Wi-Fi Direct"),
+    LAN("Wi-Fi normal");
+
+    companion object {
+        fun fromStored(raw: String?): ConnectionMode {
+            return entries.firstOrNull { it.name == raw } ?: WIFI_DIRECT
+        }
+    }
+}
+
+enum class ConnectionViewMode(val title: String) {
+    WIFI_DIRECT("Wi‑Fi Direct"),
+    LAN("Wi‑Fi LAN"),
+    ADVANCED("Completo");
+
+    companion object {
+        fun fromStored(raw: String?): ConnectionViewMode {
+            return entries.firstOrNull { it.name == raw } ?: WIFI_DIRECT
+        }
+
+        fun fromConnectionMode(mode: ConnectionMode): ConnectionViewMode {
+            return when (mode) {
+                ConnectionMode.WIFI_DIRECT -> WIFI_DIRECT
+                ConnectionMode.LAN -> LAN
+            }
+        }
+    }
+}
+
+data class UxPreferences(
+    val fontScale: Float = 1.0f,
+    val compactMode: Boolean = false,
+    val vibrateOnConnect: Boolean = true,
+    val vibrateOnError: Boolean = true,
+    val silentSuccessFeedback: Boolean = false,
+    val lastFocusStage: FocusStage = FocusStage.OFF,
+    val activeConnectionMode: ConnectionMode = ConnectionMode.WIFI_DIRECT,
+    val connectionViewMode: ConnectionViewMode = ConnectionViewMode.WIFI_DIRECT,
+    val wifiDirectModeEnabled: Boolean = true,
+    val lanModeEnabled: Boolean = true,
+    val joinedGlobalLan: Boolean = false
+)
+
+object UxPreferencesStore {
+    private const val PREFS_NAME = "wifidrop_ux_preferences"
+    private const val KEY_FONT_SCALE = "font_scale"
+    private const val KEY_COMPACT_MODE = "compact_mode"
+    private const val KEY_VIBRATE_CONNECT = "vibrate_connect"
+    private const val KEY_VIBRATE_ERROR = "vibrate_error"
+    private const val KEY_SILENT_SUCCESS = "silent_success"
+    private const val KEY_LAST_FOCUS_STAGE = "last_focus_stage"
+    private const val KEY_ACTIVE_CONNECTION_MODE = "active_connection_mode"
+    private const val KEY_CONNECTION_VIEW_MODE = "connection_view_mode"
+    private const val KEY_WIFI_DIRECT_MODE_ENABLED = "wifi_direct_mode_enabled"
+    private const val KEY_LAN_MODE_ENABLED = "lan_mode_enabled"
+    private const val KEY_JOINED_GLOBAL_LAN = "joined_global_lan"
+
+    fun load(context: Context): UxPreferences {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return normalize(
+            UxPreferences(
+                fontScale = normalizeFontScale(prefs.getFloat(KEY_FONT_SCALE, 1.0f)),
+                compactMode = prefs.getBoolean(KEY_COMPACT_MODE, false),
+                vibrateOnConnect = prefs.getBoolean(KEY_VIBRATE_CONNECT, true),
+                vibrateOnError = prefs.getBoolean(KEY_VIBRATE_ERROR, true),
+                silentSuccessFeedback = prefs.getBoolean(KEY_SILENT_SUCCESS, false),
+                lastFocusStage = FocusStage.fromStored(
+                    prefs.getString(KEY_LAST_FOCUS_STAGE, FocusStage.OFF.name)
+                ),
+                activeConnectionMode = ConnectionMode.fromStored(
+                    prefs.getString(KEY_ACTIVE_CONNECTION_MODE, ConnectionMode.WIFI_DIRECT.name)
+                ),
+                connectionViewMode = ConnectionViewMode.fromStored(
+                    prefs.getString(KEY_CONNECTION_VIEW_MODE, ConnectionViewMode.WIFI_DIRECT.name)
+                ),
+                wifiDirectModeEnabled = prefs.getBoolean(KEY_WIFI_DIRECT_MODE_ENABLED, true),
+                lanModeEnabled = prefs.getBoolean(KEY_LAN_MODE_ENABLED, true),
+                joinedGlobalLan = prefs.getBoolean(KEY_JOINED_GLOBAL_LAN, false)
+            )
+        )
+    }
+
+    fun save(context: Context, preferences: UxPreferences): UxPreferences {
+        val normalized = normalize(preferences)
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit {
+                putFloat(KEY_FONT_SCALE, normalized.fontScale)
+                putBoolean(KEY_COMPACT_MODE, normalized.compactMode)
+                putBoolean(KEY_VIBRATE_CONNECT, normalized.vibrateOnConnect)
+                putBoolean(KEY_VIBRATE_ERROR, normalized.vibrateOnError)
+                putBoolean(KEY_SILENT_SUCCESS, normalized.silentSuccessFeedback)
+                putString(KEY_LAST_FOCUS_STAGE, normalized.lastFocusStage.name)
+                putString(KEY_ACTIVE_CONNECTION_MODE, normalized.activeConnectionMode.name)
+                putString(KEY_CONNECTION_VIEW_MODE, normalized.connectionViewMode.name)
+                putBoolean(KEY_WIFI_DIRECT_MODE_ENABLED, normalized.wifiDirectModeEnabled)
+                putBoolean(KEY_LAN_MODE_ENABLED, normalized.lanModeEnabled)
+                putBoolean(KEY_JOINED_GLOBAL_LAN, normalized.joinedGlobalLan)
+            }
+        return normalized
+    }
+
+    fun normalizeFontScale(raw: Float): Float {
+        return raw.coerceIn(0.85f, 1.25f)
+    }
+
+    private fun normalize(preferences: UxPreferences): UxPreferences {
+        var activeMode = preferences.activeConnectionMode
+        var viewMode = preferences.connectionViewMode
+        var wifiDirectEnabled = preferences.wifiDirectModeEnabled
+        var lanEnabled = preferences.lanModeEnabled
+
+        if (!wifiDirectEnabled && !lanEnabled) {
+            when (activeMode) {
+                ConnectionMode.WIFI_DIRECT -> wifiDirectEnabled = true
+                ConnectionMode.LAN -> lanEnabled = true
+            }
+        }
+
+        if (activeMode == ConnectionMode.WIFI_DIRECT && !wifiDirectEnabled) {
+            activeMode = if (lanEnabled) ConnectionMode.LAN else ConnectionMode.WIFI_DIRECT
+        } else if (activeMode == ConnectionMode.LAN && !lanEnabled) {
+            activeMode = if (wifiDirectEnabled) ConnectionMode.WIFI_DIRECT else ConnectionMode.LAN
+        }
+
+        if (viewMode == ConnectionViewMode.WIFI_DIRECT && !wifiDirectEnabled) {
+            viewMode = if (lanEnabled) ConnectionViewMode.LAN else ConnectionViewMode.ADVANCED
+        } else if (viewMode == ConnectionViewMode.LAN && !lanEnabled) {
+            viewMode = if (wifiDirectEnabled) ConnectionViewMode.WIFI_DIRECT else ConnectionViewMode.ADVANCED
+        }
+
+        return preferences.copy(
+            fontScale = normalizeFontScale(preferences.fontScale),
+            activeConnectionMode = activeMode,
+            connectionViewMode = viewMode,
+            wifiDirectModeEnabled = wifiDirectEnabled,
+            lanModeEnabled = lanEnabled,
+            joinedGlobalLan = preferences.joinedGlobalLan && lanEnabled
+        )
+    }
+}

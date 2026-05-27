@@ -1,0 +1,226 @@
+package com.example.wifidrop.presentation
+
+import android.content.Context
+import com.example.wifidrop.FileTransfer
+import com.example.wifidrop.NetworkUtils
+import com.example.wifidrop.TransferSecurity
+import com.example.wifidrop.WifiLanSnapshot
+import com.example.wifidrop.backend.P2pBackend
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
+
+data class P2pLanDiscoveryState(
+    val connected: Boolean,
+    val localIp: String?,
+    val scanStatus: String = "",
+    val scanning: Boolean = false
+)
+
+class P2pLanDiscoveryPresenter(
+    context: Context,
+    private val backend: P2pBackend,
+    private val localDeviceId: String
+) {
+    private val appContext = context.applicationContext
+    private val initialSnapshot = NetworkUtils.currentWifiLanSnapshot(appContext)
+    private val _state = MutableStateFlow(initialSnapshot.toDiscoveryState())
+    val state: StateFlow<P2pLanDiscoveryState> = _state.asStateFlow()
+
+    private var scanJob: Job? = null
+    private var lastLanScannedPrefix: String? = null
+
+    suspend fun runAutoRefreshLoop(
+        autoScanEnabled: Boolean,
+        sessionToken: String,
+        sessionPin: String,
+        sessionExpired: Boolean,
+        deviceLabelProvider: () -> String,
+        onSuggestedTarget: (String) -> Unit
+    ) {
+        while (currentCoroutineContext().isActive) {
+            val snapshot = refreshSnapshot()
+            val prefix = snapshot.ipv4?.substringBeforeLast(".", "")
+
+            if (!snapshot.connected) {
+                lastLanScannedPrefix = null
+            }
+
+            val shouldAutoScan = snapshot.connected &&
+                autoScanEnabled &&
+                !prefix.isNullOrBlank() &&
+                prefix != lastLanScannedPrefix &&
+                FileTransfer.isValidToken(sessionToken) &&
+                TransferSecurity.isValidPin(sessionPin) &&
+                !sessionExpired
+
+            if (shouldAutoScan) {
+                lastLanScannedPrefix = prefix
+                startScanInternal(
+                    manual = false,
+                    deviceLabel = deviceLabelProvider(),
+                    onSuggestedTarget = onSuggestedTarget
+                )
+            }
+
+            delay(2_500)
+        }
+    }
+
+    fun startScan(
+        scope: CoroutineScope,
+        manual: Boolean,
+        deviceLabel: String,
+        onSuggestedTarget: (String) -> Unit
+    ) {
+        if (scanJob?.isActive == true) return
+        scanJob = scope.launch {
+            try {
+                startScanInternal(
+                    manual = manual,
+                    deviceLabel = deviceLabel,
+                    onSuggestedTarget = onSuggestedTarget
+                )
+            } finally {
+                scanJob = null
+            }
+        }
+    }
+
+    fun cancelScan() {
+        val currentJob = scanJob ?: return
+        if (!currentJob.isActive) {
+            scanJob = null
+            return
+        }
+        _state.update {
+            it.copy(
+                scanStatus = "Búsqueda cancelada.",
+                scanning = false
+            )
+        }
+        scanJob = null
+        currentJob.cancel(CancellationException("cancelado por usuario"))
+    }
+
+    private suspend fun startScanInternal(
+        manual: Boolean,
+        deviceLabel: String,
+        onSuggestedTarget: (String) -> Unit
+    ): Int {
+        if (_state.value.scanning) return 0
+
+        val snapshot = refreshSnapshot()
+        val localIp = snapshot.ipv4
+        if (!snapshot.connected || localIp.isNullOrBlank()) {
+            _state.update {
+                it.copy(scanStatus = "Conecta este equipo a una misma Wi-Fi para buscar equipos.")
+            }
+            return 0
+        }
+
+        _state.update {
+            it.copy(
+                scanning = true,
+                scanStatus = if (manual) {
+                    "Buscando equipos en esta Wi-Fi..."
+                } else {
+                    "Escaneo automático en red Wi-Fi..."
+                }
+            )
+        }
+
+        return try {
+            val candidates = NetworkUtils.subnetCandidates(localIp)
+            if (candidates.isEmpty()) {
+                _state.update {
+                    it.copy(scanStatus = "No pude resolver el rango de red local.")
+                }
+                return 0
+            }
+
+            val semaphore = Semaphore(24)
+            val sanitizedLabel = deviceLabel.ifBlank { "cliente" }
+            val foundIps = mutableListOf<String>()
+            val foundLock = Any()
+            val found = coroutineScope {
+                candidates.map { ip ->
+                    async(Dispatchers.IO) {
+                        semaphore.withPermit {
+                            val result = backend.probePeer(
+                                hostAddress = ip,
+                                clientId = localDeviceId,
+                                deviceLabel = sanitizedLabel
+                            )
+                            result.getOrNull()?.let { payload ->
+                                backend.reportDiscoveredPeer(
+                                    peerId = payload.peerId,
+                                    peerLabel = payload.peerLabel,
+                                    peerIp = ip,
+                                    trusted = payload.trustedByHost,
+                                    globalLanJoined = payload.globalLanJoined
+                                )
+                                synchronized(foundLock) {
+                                    foundIps.add(ip)
+                                }
+                                1
+                            } ?: 0
+                        }
+                    }
+                }.awaitAll().sum()
+            }
+
+            foundIps.firstOrNull()?.let(onSuggestedTarget)
+
+            _state.update {
+                it.copy(
+                    scanStatus = if (found > 0) {
+                        "Equipos encontrados en esta Wi-Fi: $found"
+                    } else {
+                        "No se encontraron equipos en la red Wi-Fi actual."
+                    }
+                )
+            }
+            found
+        } catch (_: CancellationException) {
+            _state.update {
+                it.copy(scanStatus = "Búsqueda cancelada.")
+            }
+            0
+        } finally {
+            _state.update { it.copy(scanning = false) }
+        }
+    }
+
+    private fun refreshSnapshot(): WifiLanSnapshot {
+        val snapshot = NetworkUtils.currentWifiLanSnapshot(appContext)
+        _state.update { current ->
+            current.copy(
+                connected = snapshot.connected,
+                localIp = snapshot.ipv4
+            )
+        }
+        return snapshot
+    }
+}
+
+private fun WifiLanSnapshot.toDiscoveryState(): P2pLanDiscoveryState {
+    return P2pLanDiscoveryState(
+        connected = connected,
+        localIp = ipv4
+    )
+}

@@ -1,0 +1,40 @@
+# Android Studio / IntelliJ
+*.iml
+.idea/
+
+# Local machine configuration
+local.properties
+
+# Gradle / Kotlin
+.gradle/
+.kotlin/
+build/
+**/build/
+
+# Android native/build artifacts
+.externalNativeBuild/
+.cxx/
+captures/
+*.apk
+*.ap_
+*.aab
+*.hprof
+
+# Signing material
+*.jks
+*.keystore
+*.p12
+*.pem
+
+# Local screenshots and temporary captures
+/current_screen.png
+/design/penpot/exports/
+
+# Third-party reference bundles kept locally until licenses are reviewed
+/design/penpot/references/
+/design/brand/github-logos.zip
+/design/brand/github-logos/
+
+# OS files
+.DS_Store
+Thumbs.db
