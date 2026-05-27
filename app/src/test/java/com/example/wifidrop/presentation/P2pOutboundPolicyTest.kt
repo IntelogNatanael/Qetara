@@ -56,7 +56,7 @@ class P2pOutboundPolicyTest {
     }
 
     @Test
-    fun globalLanRejectsAttachments() {
+    fun globalLanAcceptsAttachmentsWhenPeersAreAvailable() {
         val decision = buildGlobalMessageSendPlan(
             context = connectedContext(lanConnected = true),
             draft = "hola",
@@ -65,7 +65,24 @@ class P2pOutboundPolicyTest {
             targetCount = 2
         )
 
-        assertBlocked(decision, "Los adjuntos solo están disponibles en chat directo.")
+        assertTrue(decision is P2pOutboundDecision.Ready)
+        val plan = (decision as P2pOutboundDecision.Ready).plan
+        assertEquals("hola", plan.message)
+        assertEquals(true, plan.includeFiles)
+        assertEquals("Mensaje publicado y 1 archivo en cola para el canal Wi‑Fi.", plan.feedbackMessage)
+    }
+
+    @Test
+    fun globalLanAttachmentsRequirePeers() {
+        val decision = buildGlobalMessageSendPlan(
+            context = connectedContext(lanConnected = true),
+            draft = "",
+            selectedFilesCount = 1,
+            globalLanJoined = true,
+            targetCount = 0
+        )
+
+        assertBlocked(decision, "No hay otros equipos en el canal para recibir archivos.")
     }
 
     private fun connectedContext(

@@ -65,7 +65,7 @@ class P2pRoutingPolicyTest {
             P2pRoutingInput(
                 wifiState = WifiDirectState(),
                 transferState = TransferRuntimeState(
-                    knownPeers = listOf(peer("lan", "Laptop", "192.168.1.20", trusted = true))
+                    knownPeers = listOf(peer("lan", "PC", "192.168.1.20", trusted = true))
                 ),
                 lanConnected = true,
                 activeConnectionMode = ConnectionMode.LAN,

@@ -23,7 +23,7 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
 
       - name: Build, lint, and unit test
-        run: .\gradlew.bat :app:assembleDebug :app:lintDebug :app:testDebugUnitTest :laptop:classes --no-daemon
+        run: .\gradlew.bat :app:assembleDebug :app:lintDebug :app:testDebugUnitTest :pc:classes --no-daemon
 
-      - name: Laptop protocol self-test
-        run: .\gradlew.bat :laptop:run --no-daemon --args="--no-gui --token ABCD1234 --pin 123456 --self-test --no-receiver --no-interactive --out $env:RUNNER_TEMP\qetara-selftest"
+      - name: PC protocol self-test
+        run: .\gradlew.bat :pc:run --no-daemon --args="--no-gui --token ABCD1234 --pin 123456 --self-test --no-receiver --no-interactive --out $env:RUNNER_TEMP\qetara-selftest"
