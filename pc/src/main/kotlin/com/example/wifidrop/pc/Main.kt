@@ -481,7 +481,7 @@ private class PcReceiverServer(
                     )
                     if (responseDigest != expectedDigest) {
                         writeResultPacket(output, false, "auth_invalida")
-                        throw SecurityException("autenticacion invalida de ${envelope.clientLabel} ($remoteIp)")
+                        throw SecurityException("autenticación inválida de ${envelope.clientLabel} ($remoteIp)")
                     }
 
                     establishSecureChannel(
@@ -497,7 +497,7 @@ private class PcReceiverServer(
                             PACKET_HELLO -> {
                                 val frame = channel.readFrameInput()
                                 val type = frame.readInt()
-                                require(type == SECURE_FRAME_HELLO) { "frame HELLO invalido" }
+                                require(type == SECURE_FRAME_HELLO) { "frame HELLO inválido" }
                                 frame.readLong()
                                 writeSecureResult(channel, true, "hello_ok")
                                 println("HELLO de ${envelope.clientLabel} @ $remoteIp")
@@ -523,7 +523,7 @@ private class PcReceiverServer(
                                 try {
                                     val frame = channel.readFrameInput()
                                     val type = frame.readInt()
-                                    require(type == SECURE_FRAME_MESSAGE) { "frame MESSAGE invalido" }
+                                    require(type == SECURE_FRAME_MESSAGE) { "frame MESSAGE inválido" }
                                     frame.readLong()
                                     val (scope, message) = decodeDesktopChatPayload(frame.readUTF())
                                     onMessageReceived(
@@ -569,13 +569,13 @@ private class PcReceiverServer(
     ): File {
         val metaFrame = channel.readFrameInput()
         val metaType = metaFrame.readInt()
-        require(metaType == SECURE_FRAME_FILE_META) { "frame FILE_META invalido" }
+        require(metaType == SECURE_FRAME_FILE_META) { "frame FILE_META inválido" }
 
         val incomingName = sanitizeFileName(metaFrame.readUTF())
         val total = metaFrame.readLong()
-        require(total >= 0L) { "tamano invalido para archivo" }
+        require(total >= 0L) { "tamaño inválido para archivo" }
         val expectedHash = metaFrame.readUTF().lowercase().take(64)
-        require(isSha256Hex(expectedHash)) { "hash de archivo invalido" }
+        require(isSha256Hex(expectedHash)) { "hash de archivo inválido" }
 
         val partialDir = File(receiveDir, ".partial").apply { mkdirs() }
         val partial = partialFileFor(partialDir, incomingName, total, expectedHash)
@@ -597,7 +597,7 @@ private class PcReceiverServer(
                     SECURE_FRAME_FILE_CHUNK -> {
                         val chunkLen = frame.readInt()
                         require(chunkLen in 0..MAX_SECURE_FILE_CHUNK_BYTES) {
-                            "chunk invalido: $chunkLen"
+                            "chunk inválido: $chunkLen"
                         }
                         if (chunkLen > 0) {
                             val chunk = ByteArray(chunkLen)
@@ -606,7 +606,7 @@ private class PcReceiverServer(
                             received += chunkLen
                         }
                         if (total > 0 && received > total) {
-                            throw EOFException("transferencia excede tamano esperado")
+                            throw EOFException("transferencia excede tamaño esperado")
                         }
                         if (total > 0) {
                             val percent = ((received * 100) / total).toInt()
@@ -631,7 +631,7 @@ private class PcReceiverServer(
         val actualHash = sha256OfFile(partial)
         if (actualHash != expectedHash) {
             partial.delete()
-            throw SecurityException("integridad SHA-256 invalida para $incomingName")
+            throw SecurityException("integridad SHA-256 inválida para $incomingName")
         }
 
         val target = uniqueDestination(receiveDir, incomingName)
@@ -860,7 +860,7 @@ private class SecureChannel(
     fun readFrameInput(): DataInputStream {
         val cipherLen = input.readInt()
         require(cipherLen in 0..(MAX_SECURE_FRAME_BYTES + 128)) {
-            "frame seguro invalido: $cipherLen"
+            "frame seguro inválido: $cipherLen"
         }
 
         val ciphertext = ByteArray(cipherLen)
@@ -870,9 +870,9 @@ private class SecureChannel(
         val plainLen = try {
             receiver.decryptWithAd(null, ciphertext, 0, plaintext, 0, cipherLen)
         } catch (e: BadPaddingException) {
-            throw SecurityException("MAC Noise invalida", e)
+            throw SecurityException("MAC Noise inválida", e)
         } catch (e: ShortBufferException) {
-            throw SecurityException("frame Noise invalido", e)
+            throw SecurityException("frame Noise inválido", e)
         }
 
         return DataInputStream(ByteArrayInputStream(plaintext, 0, plainLen))
@@ -1012,7 +1012,7 @@ private fun parseCliArgs(args: Array<String>): CliArgs {
             "--out" -> outputDir = File(requireArgValue(args, ++i, arg))
             "--port" -> {
                 val value = requireArgValue(args, ++i, arg).toIntOrNull()
-                    ?: throw IllegalArgumentException("Puerto invalido")
+                    ?: throw IllegalArgumentException("Puerto inválido")
                 require(value in 1..65535) { "Puerto fuera de rango" }
                 port = value
             }
@@ -1020,7 +1020,7 @@ private fun parseCliArgs(args: Array<String>): CliArgs {
             "--label" -> deviceLabel = requireArgValue(args, ++i, arg)
             "--session-minutes" -> {
                 val value = requireArgValue(args, ++i, arg).toLongOrNull()
-                    ?: throw IllegalArgumentException("session-minutes invalido")
+                    ?: throw IllegalArgumentException("session-minutes inválido")
                 require(value > 0) { "session-minutes debe ser > 0" }
                 sessionMinutes = value
             }
@@ -1033,7 +1033,7 @@ private fun parseCliArgs(args: Array<String>): CliArgs {
             "--send-file" -> sendFilePath = requireArgValue(args, ++i, arg)
             "--retries" -> {
                 val value = requireArgValue(args, ++i, arg).toIntOrNull()
-                    ?: throw IllegalArgumentException("retries invalido")
+                    ?: throw IllegalArgumentException("retries inválido")
                 require(value >= 1) { "retries debe ser >= 1" }
                 retries = value
             }
@@ -1078,17 +1078,17 @@ private fun printUsage() {
           .\gradlew.bat :pc:run --args="--token ABCD1234 --pin 123456 --send-host 192.168.1.20 --send-file C:\ruta\archivo.zip"
         
         Opciones:
-          --token <TOKEN>                  Token de sesion (o env WIFIDROP_TOKEN)
-          --pin <PIN6>                     PIN de 6 digitos (o env WIFIDROP_PIN)
+          --token <TOKEN>                  Token de sesión (o env WIFIDROP_TOKEN)
+          --pin <PIN6>                     PIN de 6 dígitos (o env WIFIDROP_PIN)
           --out <CARPETA>                  Carpeta destino (default ~/Downloads/WifiDrop)
           --port <PUERTO>                  Puerto TCP (default 8988)
           --label <NOMBRE>                 Nombre visible del receptor
-          --session-minutes <MIN>          TTL anunciado de sesion (default 720)
+          --session-minutes <MIN>          TTL anunciado de sesión (default 720)
           --allow-credentials-share        Permite responder PACKET_CREDENTIALS_REQUEST
-          --send-host <IP/HOST>            Envia un archivo al host indicado (PC, Android u otro Qetara)
+          --send-host <IP/HOST>            Envía un archivo al host indicado (PC, Android u otro Qetara)
           --send-file <RUTA_ARCHIVO>       Archivo a enviar en modo one-shot
-          --retries <N>                    Reintentos de envio (default 3)
-          --gui                            Inicia UI grafica Compose Desktop (default sin args)
+          --retries <N>                    Reintentos de envío (default 3)
+          --gui                            Inicia UI gráfica Compose Desktop (default sin args)
           --no-gui                         Fuerza modo CLI
           --interactive                    CLI interactivo (default activo)
           --no-interactive                 Desactiva CLI interactivo
@@ -1284,9 +1284,9 @@ private fun probeDesktopLanPeer(
 
 private fun readDiscoveryResponseOrFailure(input: DataInputStream): DesktopDiscoveryPayload {
     val magic = input.readInt()
-    require(magic == PROTOCOL_MAGIC) { "respuesta invalida (magic)" }
+    require(magic == PROTOCOL_MAGIC) { "respuesta inválida (magic)" }
     val version = input.readInt()
-    require(version == PROTOCOL_VERSION) { "respuesta invalida (version)" }
+    require(version == PROTOCOL_VERSION) { "respuesta inválida (version)" }
 
     return when (val packetType = input.readInt()) {
         PACKET_DISCOVERY_RESPONSE -> {
@@ -1315,7 +1315,7 @@ private fun readDiscoveryResponseOrFailure(input: DataInputStream): DesktopDisco
             throw IllegalStateException("respuesta inesperada")
         }
 
-        else -> throw IllegalStateException("respuesta invalida (packet=$packetType)")
+        else -> throw IllegalStateException("respuesta inválida (packet=$packetType)")
     }
 }
 
@@ -1355,6 +1355,7 @@ private fun runDesktopGui(cli: CliArgs) {
         var sessionMinutesText by remember { mutableStateOf(cli.sessionMinutes.toString()) }
         var allowCredentialsShare by remember { mutableStateOf(cli.allowCredentialsShare) }
         var chatDraftText by remember { mutableStateOf("") }
+        var chatAttachmentPathText by remember { mutableStateOf("") }
         var openChatScope by remember { mutableStateOf<DesktopChatScope?>(null) }
         var chatPanelOffset by remember { mutableStateOf(IntOffset.Zero) }
         var selectedDirectPeerIp by remember { mutableStateOf<String?>(null) }
@@ -1367,7 +1368,7 @@ private fun runDesktopGui(cli: CliArgs) {
         var messagePhase by remember { mutableStateOf(DesktopTaskPhase.IDLE) }
         var messageStatus by remember { mutableStateOf("Listo para mensajes cifrados.") }
         var lanDiscoveryPhase by remember { mutableStateOf(DesktopTaskPhase.IDLE) }
-        var lanDiscoveryStatus by remember { mutableStateOf("LAN sin actualizar.") }
+        var lanDiscoveryStatus by remember { mutableStateOf("Red sin actualizar.") }
         var isFileDragActive by remember { mutableStateOf(false) }
         var receiverServer by remember { mutableStateOf<PcReceiverServer?>(null) }
         var receiverThread by remember { mutableStateOf<Thread?>(null) }
@@ -1439,7 +1440,7 @@ private fun runDesktopGui(cli: CliArgs) {
         fun handleDroppedFiles(files: List<File>) {
             val file = files.firstOrNull { it.isFile }
             if (file == null) {
-                appendLog("No se encontro un archivo valido en el drop.", isError = true)
+                appendLog("No se encontró un archivo válido en el drop.", isError = true)
                 return
             }
             selectSendFile(file, "Archivo soltado")
@@ -1448,23 +1449,36 @@ private fun runDesktopGui(cli: CliArgs) {
             }
         }
 
+        fun selectChatAttachment(file: File, source: String) {
+            if (!file.exists() || !file.isFile) {
+                messagePhase = DesktopTaskPhase.ERROR
+                messageStatus = "Selecciona un archivo válido."
+                appendLog("Adjunto inválido para chat/canal.", isError = true)
+                return
+            }
+            chatAttachmentPathText = file.absolutePath
+            messagePhase = DesktopTaskPhase.IDLE
+            messageStatus = "Adjunto listo: ${file.name}"
+            appendLog("$source para chat/canal: ${file.name}")
+        }
+
         fun parsePort(): Int? = portText.trim().toIntOrNull()?.takeIf { it in 1..65535 }
         fun parseRetries(): Int? = retriesText.trim().toIntOrNull()?.takeIf { it >= 1 }
         fun parseSessionMinutes(): Long? = sessionMinutesText.trim().toLongOrNull()?.takeIf { it >= 1L }
 
         val tokenError = when {
             tokenText.isBlank() -> "Ingresa un token."
-            !isValidToken(tokenText) -> "Token invalido. Usa A-Z y 0-9, 4-32 caracteres."
+            !isValidToken(tokenText) -> "Token inválido. Usa A-Z y 0-9, 4-32 caracteres."
             else -> null
         }
         val pinError = when {
             pinText.isBlank() -> "Ingresa un PIN."
-            !isValidPin(pinText) -> "PIN invalido. Usa 6 digitos."
+            !isValidPin(pinText) -> "PIN inválido. Usa 6 dígitos."
             else -> null
         }
-        val portError = if (parsePort() == null) "Puerto invalido. Usa un valor entre 1 y 65535." else null
-        val retriesError = if (parseRetries() == null) "Reintentos invalidos. Usa un entero mayor o igual a 1." else null
-        val sessionError = if (parseSessionMinutes() == null) "TTL invalido. Usa minutos mayores o iguales a 1." else null
+        val portError = if (parsePort() == null) "Puerto inválido. Usa un valor entre 1 y 65535." else null
+        val retriesError = if (parseRetries() == null) "Reintentos inválidos. Usa un entero mayor o igual a 1." else null
+        val sessionError = if (parseSessionMinutes() == null) "TTL inválido. Usa minutos mayores o iguales a 1." else null
         val outputDirError = run {
             val dir = File(outputDirText.trim())
             when {
@@ -1496,13 +1510,13 @@ private fun runDesktopGui(cli: CliArgs) {
             if (lanDiscoveryPhase == DesktopTaskPhase.STARTING || lanDiscoveryPhase == DesktopTaskPhase.RUNNING) return
             val port = parsePort() ?: run {
                 lanDiscoveryPhase = DesktopTaskPhase.ERROR
-                lanDiscoveryStatus = portError ?: "Puerto invalido."
+                lanDiscoveryStatus = portError ?: "Puerto inválido."
                 appendLog(lanDiscoveryStatus, isError = true)
                 return
             }
 
             lanDiscoveryPhase = DesktopTaskPhase.STARTING
-            lanDiscoveryStatus = if (manual) "Buscando equipos Qetara en LAN..." else "Actualizando peers LAN..."
+            lanDiscoveryStatus = if (manual) "Buscando equipos Qetara en la red..." else "Actualizando equipos de red..."
             appendLog(lanDiscoveryStatus)
             thread(
                 start = true,
@@ -1523,15 +1537,15 @@ private fun runDesktopGui(cli: CliArgs) {
                 SwingUtilities.invokeLater {
                     lanDiscoveryPhase = DesktopTaskPhase.IDLE
                     if (endpoints.isEmpty()) {
-                        lanDiscoveryStatus = "No se detecto una IP LAN local."
+                        lanDiscoveryStatus = "No se detectó una IP local."
                         appendLog(lanDiscoveryStatus, isError = manual)
                         return@invokeLater
                     }
                     mergeLanPeers(found)
                     lanDiscoveryStatus = if (found.isEmpty()) {
-                        "No hay equipos Qetara visibles en esta LAN."
+                        "No hay equipos Qetara visibles en esta red."
                     } else {
-                        "Equipos LAN detectados: ${found.size}."
+                        "Equipos detectados: ${found.size}."
                     }
                     appendLog(lanDiscoveryStatus, isError = false)
                 }
@@ -1549,7 +1563,7 @@ private fun runDesktopGui(cli: CliArgs) {
         fun toggleChatScope(scope: DesktopChatScope) {
             if (scope == DesktopChatScope.GLOBAL_LAN && !isGlobalLanJoined) {
                 setGlobalLanMembership(true)
-                appendLog("Canal LAN activo en este equipo.")
+                appendLog("Canal Wi-Fi activo en este equipo.")
             }
             val nextScope = if (openChatScope == scope) null else scope
             if (openChatScope == null && nextScope != null) {
@@ -1572,26 +1586,26 @@ private fun runDesktopGui(cli: CliArgs) {
             val token = runCatching { requireValidToken(tokenText) }
                 .getOrElse {
                     receiverPhase = DesktopTaskPhase.ERROR
-                    receiverStatus = it.message ?: "Token invalido."
+                    receiverStatus = it.message ?: "Token inválido."
                     appendLog(receiverStatus, isError = true)
                     return
                 }
             val pin = runCatching { requireValidPin(pinText) }
                 .getOrElse {
                     receiverPhase = DesktopTaskPhase.ERROR
-                    receiverStatus = it.message ?: "PIN invalido."
+                    receiverStatus = it.message ?: "PIN inválido."
                     appendLog(receiverStatus, isError = true)
                     return
                 }
             val port = parsePort() ?: run {
                 receiverPhase = DesktopTaskPhase.ERROR
-                receiverStatus = portError ?: "Puerto invalido."
+                receiverStatus = portError ?: "Puerto inválido."
                 appendLog(receiverStatus, isError = true)
                 return
             }
             val ttlMinutes = parseSessionMinutes() ?: run {
                 receiverPhase = DesktopTaskPhase.ERROR
-                receiverStatus = sessionError ?: "TTL invalido."
+                receiverStatus = sessionError ?: "TTL inválido."
                 appendLog(receiverStatus, isError = true)
                 return
             }
@@ -1707,26 +1721,26 @@ private fun runDesktopGui(cli: CliArgs) {
             val token = runCatching { requireValidToken(tokenText) }
                 .getOrElse {
                     sendingPhase = DesktopTaskPhase.ERROR
-                    sendingStatus = it.message ?: "Token invalido."
+                    sendingStatus = it.message ?: "Token inválido."
                     appendLog(sendingStatus, isError = true)
                     return
                 }
             val pin = runCatching { requireValidPin(pinText) }
                 .getOrElse {
                     sendingPhase = DesktopTaskPhase.ERROR
-                    sendingStatus = it.message ?: "PIN invalido."
+                    sendingStatus = it.message ?: "PIN inválido."
                     appendLog(sendingStatus, isError = true)
                     return
                 }
             val port = parsePort() ?: run {
                 sendingPhase = DesktopTaskPhase.ERROR
-                sendingStatus = portError ?: "Puerto invalido."
+                sendingStatus = portError ?: "Puerto inválido."
                 appendLog(sendingStatus, isError = true)
                 return
             }
             val retries = parseRetries() ?: run {
                 sendingPhase = DesktopTaskPhase.ERROR
-                sendingStatus = retriesError ?: "Reintentos invalidos."
+                sendingStatus = retriesError ?: "Reintentos inválidos."
                 appendLog(sendingStatus, isError = true)
                 return
             }
@@ -1785,7 +1799,7 @@ private fun runDesktopGui(cli: CliArgs) {
                 } catch (error: Exception) {
                     SwingUtilities.invokeLater {
                         sendingPhase = DesktopTaskPhase.ERROR
-                        sendingStatus = "Fallo envio: ${error.message ?: error::class.java.simpleName}"
+                        sendingStatus = "Falló envío: ${error.message ?: error::class.java.simpleName}"
                         appendLog(sendingStatus, isError = true)
                     }
                 }
@@ -1799,36 +1813,50 @@ private fun runDesktopGui(cli: CliArgs) {
             val token = runCatching { requireValidToken(tokenText) }
                 .getOrElse {
                     messagePhase = DesktopTaskPhase.ERROR
-                    messageStatus = it.message ?: "Token invalido."
+                    messageStatus = it.message ?: "Token inválido."
                     appendLog(messageStatus, isError = true)
                     return
                 }
             val pin = runCatching { requireValidPin(pinText) }
                 .getOrElse {
                     messagePhase = DesktopTaskPhase.ERROR
-                    messageStatus = it.message ?: "PIN invalido."
+                    messageStatus = it.message ?: "PIN inválido."
                     appendLog(messageStatus, isError = true)
                     return
                 }
             val port = parsePort() ?: run {
                 messagePhase = DesktopTaskPhase.ERROR
-                messageStatus = portError ?: "Puerto invalido."
+                messageStatus = portError ?: "Puerto inválido."
                 appendLog(messageStatus, isError = true)
                 return
             }
             val retries = parseRetries() ?: run {
                 messagePhase = DesktopTaskPhase.ERROR
-                messageStatus = retriesError ?: "Reintentos invalidos."
+                messageStatus = retriesError ?: "Reintentos inválidos."
                 appendLog(messageStatus, isError = true)
                 return
             }
-            val message = runCatching { requireValidMessage(chatDraftText) }
-                .getOrElse {
+            val message = chatDraftText.trim().takeIf { it.isNotBlank() }?.let { rawMessage ->
+                runCatching { requireValidMessage(rawMessage) }.getOrElse {
                     messagePhase = DesktopTaskPhase.ERROR
                     messageStatus = "Escribe un mensaje."
                     appendLog(it.message ?: messageStatus, isError = true)
                     return
                 }
+            }
+            val attachment = chatAttachmentPathText.trim().takeIf { it.isNotBlank() }?.let(::File)
+            if (message == null && attachment == null) {
+                messagePhase = DesktopTaskPhase.ERROR
+                messageStatus = "Escribe un mensaje o adjunta un archivo."
+                appendLog(messageStatus, isError = true)
+                return
+            }
+            if (attachment != null && (!attachment.exists() || !attachment.isFile)) {
+                messagePhase = DesktopTaskPhase.ERROR
+                messageStatus = "El archivo adjunto no existe."
+                appendLog(messageStatus, isError = true)
+                return
+            }
             if (scope == DesktopChatScope.GLOBAL_LAN && !isGlobalLanJoined) {
                 setGlobalLanMembership(true)
             }
@@ -1850,8 +1878,8 @@ private fun runDesktopGui(cli: CliArgs) {
             if (targets.isEmpty()) {
                 messagePhase = DesktopTaskPhase.ERROR
                 messageStatus = when (scope) {
-                    DesktopChatScope.DIRECT -> "No hay un equipo LAN seleccionado para chat."
-                    DesktopChatScope.GLOBAL_LAN -> "No hay equipos Qetara visibles en Canal LAN."
+                    DesktopChatScope.DIRECT -> "No hay un equipo de red seleccionado para chat."
+                    DesktopChatScope.GLOBAL_LAN -> "No hay equipos Qetara visibles en Canal Wi-Fi."
                 }
                 appendLog(messageStatus, isError = true)
                 refreshLanPeers(manual = false)
@@ -1859,7 +1887,7 @@ private fun runDesktopGui(cli: CliArgs) {
             }
 
             val targetLabel = if (scope == DesktopChatScope.GLOBAL_LAN) {
-                "Canal LAN"
+                "Canal Wi-Fi"
             } else {
                 targets.first().label.ifBlank { targets.first().ip }
             }
@@ -1875,7 +1903,12 @@ private fun runDesktopGui(cli: CliArgs) {
             )
 
             messagePhase = DesktopTaskPhase.STARTING
-            messageStatus = "Enviando mensaje a ${if (targets.size == 1) targetLabel else "${targets.size} equipos"}..."
+            val payloadLabel = when {
+                message != null && attachment != null -> "mensaje y archivo"
+                attachment != null -> "archivo"
+                else -> "mensaje"
+            }
+            messageStatus = "Enviando $payloadLabel a ${if (targets.size == 1) targetLabel else "${targets.size} equipos"}..."
             appendLog(messageStatus)
             thread(
                 start = true,
@@ -1883,42 +1916,85 @@ private fun runDesktopGui(cli: CliArgs) {
                 name = "wifidrop-desktop-message"
             ) {
                 val failures = mutableListOf<String>()
+                val messageTargets = mutableListOf<DesktopLanPeer>()
+                val fileTargets = mutableListOf<DesktopLanPeer>()
                 targets.forEach { peer ->
-                    runCatching {
-                        sendMessageToPeer(
-                            messageRaw = message,
-                            scope = scope,
-                            config = baseConfig.copy(targetHost = peer.ip)
-                        )
-                    }.onFailure { error ->
-                        failures.add("${peer.ip}: ${error.message ?: error::class.java.simpleName}")
+                    val peerConfig = baseConfig.copy(targetHost = peer.ip)
+                    if (message != null) {
+                        runCatching {
+                            sendMessageToPeer(
+                                messageRaw = message,
+                                scope = scope,
+                                config = peerConfig
+                            )
+                        }.onSuccess {
+                            messageTargets.add(peer)
+                        }.onFailure { error ->
+                            failures.add("${peer.ip} mensaje: ${error.message ?: error::class.java.simpleName}")
+                        }
+                    }
+                    if (attachment != null) {
+                        runCatching {
+                            sendFileToPeer(attachment, peerConfig)
+                        }.onSuccess {
+                            fileTargets.add(peer)
+                        }.onFailure { error ->
+                            failures.add("${peer.ip} archivo: ${error.message ?: error::class.java.simpleName}")
+                        }
                     }
                 }
                 SwingUtilities.invokeLater {
-                    if (failures.size < targets.size) {
+                    if (message != null && messageTargets.isNotEmpty()) {
                         appendChat(
                             DesktopChatEntry(
                                 timestamp = LocalTime.now().format(uiLogTimeFormatter),
                                 scope = scope,
                                 direction = DesktopChatDirection.OUTGOING,
                                 peerLabel = targetLabel,
-                                peerAddress = targets.joinToString(", ") { it.ip },
+                                peerAddress = messageTargets.joinToString(", ") { it.ip },
                                 message = message
                             )
                         )
                         chatDraftText = ""
                     }
+                    if (attachment != null && fileTargets.isNotEmpty()) {
+                        appendChat(
+                            DesktopChatEntry(
+                                timestamp = LocalTime.now().format(uiLogTimeFormatter),
+                                scope = scope,
+                                direction = DesktopChatDirection.OUTGOING,
+                                peerLabel = targetLabel,
+                                peerAddress = fileTargets.joinToString(", ") { it.ip },
+                                message = "Archivo enviado: ${attachment.name}"
+                            )
+                        )
+                        chatAttachmentPathText = ""
+                    }
                     if (failures.isEmpty()) {
                         messagePhase = DesktopTaskPhase.IDLE
-                        messageStatus = if (scope == DesktopChatScope.GLOBAL_LAN) {
-                            "Mensaje publicado en Canal LAN (${targets.size} equipo(s))."
-                        } else {
-                            "Mensaje enviado a ${targets.first().label.ifBlank { targets.first().ip }}."
+                        messageStatus = when {
+                            message != null && attachment != null && scope == DesktopChatScope.GLOBAL_LAN ->
+                                "Mensaje y archivo publicados en Canal Wi-Fi (${targets.size} equipo(s))."
+                            message != null && attachment != null ->
+                                "Mensaje y archivo enviados a ${targets.first().label.ifBlank { targets.first().ip }}."
+                            attachment != null && scope == DesktopChatScope.GLOBAL_LAN ->
+                                "Archivo publicado en Canal Wi-Fi (${targets.size} equipo(s))."
+                            attachment != null ->
+                                "Archivo enviado a ${targets.first().label.ifBlank { targets.first().ip }}."
+                            scope == DesktopChatScope.GLOBAL_LAN ->
+                                "Mensaje publicado en Canal Wi-Fi (${targets.size} equipo(s))."
+                            else ->
+                                "Mensaje enviado a ${targets.first().label.ifBlank { targets.first().ip }}."
                         }
                         appendLog(messageStatus)
                     } else {
                         messagePhase = DesktopTaskPhase.ERROR
-                        messageStatus = "Mensaje enviado con ${failures.size} fallo(s)."
+                        val sentCount = messageTargets.size + fileTargets.size
+                        messageStatus = if (sentCount > 0) {
+                            "Envío parcial con ${failures.size} fallo(s)."
+                        } else {
+                            "No se pudo enviar."
+                        }
                         failures.forEach { appendLog(it, isError = true) }
                     }
                 }
@@ -2301,6 +2377,19 @@ private fun runDesktopGui(cli: CliArgs) {
                                         globalLanJoined = isGlobalLanJoined,
                                         draft = chatDraftText,
                                         onDraftChange = { chatDraftText = it.take(2_000) },
+                                        attachmentPath = chatAttachmentPathText,
+                                        onChooseAttachment = {
+                                            chooseFilePath(chatAttachmentPathText)?.let {
+                                                selectChatAttachment(File(it), "Archivo adjunto")
+                                            }
+                                        },
+                                        onClearAttachment = {
+                                            chatAttachmentPathText = ""
+                                            if (messagePhase == DesktopTaskPhase.ERROR) {
+                                                messagePhase = DesktopTaskPhase.IDLE
+                                            }
+                                            messageStatus = "Adjunto quitado."
+                                        },
                                         messages = chatMessages,
                                         status = messageStatus,
                                         messagePhase = messagePhase,
@@ -2401,6 +2490,9 @@ private fun DesktopChatFloatingSheet(
     globalLanJoined: Boolean,
     draft: String,
     onDraftChange: (String) -> Unit,
+    attachmentPath: String,
+    onChooseAttachment: () -> Unit,
+    onClearAttachment: () -> Unit,
     messages: List<DesktopChatEntry>,
     status: String,
     messagePhase: DesktopTaskPhase,
@@ -2446,7 +2538,7 @@ private fun DesktopChatFloatingSheet(
                     contentAlignment = Alignment.CenterStart
                 ) {
                     Text(
-                        if (scope == DesktopChatScope.GLOBAL_LAN) "Canal LAN" else "Chat directo",
+                        if (scope == DesktopChatScope.GLOBAL_LAN) "Canal Wi-Fi" else "Chat directo",
                         style = MaterialTheme.typography.subtitle1,
                         fontWeight = FontWeight.SemiBold,
                         color = qetaraInk
@@ -2464,6 +2556,9 @@ private fun DesktopChatFloatingSheet(
                 globalLanJoined = globalLanJoined,
                 draft = draft,
                 onDraftChange = onDraftChange,
+                attachmentPath = attachmentPath,
+                onChooseAttachment = onChooseAttachment,
+                onClearAttachment = onClearAttachment,
                 messages = messages,
                 status = status,
                 messagePhase = messagePhase,
@@ -2509,6 +2604,9 @@ private fun DesktopChatScopeContent(
     globalLanJoined: Boolean,
     draft: String,
     onDraftChange: (String) -> Unit,
+    attachmentPath: String,
+    onChooseAttachment: () -> Unit,
+    onClearAttachment: () -> Unit,
     messages: List<DesktopChatEntry>,
     status: String,
     messagePhase: DesktopTaskPhase,
@@ -2521,6 +2619,9 @@ private fun DesktopChatScopeContent(
     val selectedPeer = selectedDirectPeerIp
         ?.let { selectedIp -> activePeers.firstOrNull { it.ip == selectedIp } }
         ?: activePeers.firstOrNull()
+    val attachmentFile = attachmentPath.trim().takeIf { it.isNotBlank() }?.let(::File)
+    val validAttachment = attachmentFile?.takeIf { it.exists() && it.isFile }
+    val hasDraft = draft.trim().isNotBlank()
     val scopedMessages = messages.filter { it.scope == scope }.takeLast(5)
     val sendLabel = when (messagePhase) {
         DesktopTaskPhase.STARTING -> "Preparando..."
@@ -2530,13 +2631,14 @@ private fun DesktopChatScopeContent(
     val discoveryLabel = when (discoveryPhase) {
         DesktopTaskPhase.STARTING,
         DesktopTaskPhase.RUNNING -> "Buscando..."
-        else -> "Actualizar LAN"
+        else -> "Buscar equipos"
     }
     val hasTarget = when (scope) {
         DesktopChatScope.DIRECT -> selectedPeer != null
         DesktopChatScope.GLOBAL_LAN -> activePeers.isNotEmpty()
     }
     val canSend = hasTarget &&
+        (hasDraft || validAttachment != null) &&
         messagePhase != DesktopTaskPhase.STARTING &&
         messagePhase != DesktopTaskPhase.RUNNING
 
@@ -2550,7 +2652,7 @@ private fun DesktopChatScopeContent(
                 when (scope) {
                     DesktopChatScope.DIRECT -> selectedPeer?.let { peer ->
                         "Destino: ${peer.label.ifBlank { peer.ip }}"
-                    } ?: "Elige un equipo LAN detectado."
+                    } ?: "Elige un equipo detectado."
                     DesktopChatScope.GLOBAL_LAN -> {
                         val joinedLabel = if (globalLanJoined) "Canal activo" else "Canal inactivo"
                         "$joinedLabel · ${activePeers.size} equipo(s)"
@@ -2588,7 +2690,7 @@ private fun DesktopChatScopeContent(
                 if (scope == DesktopChatScope.DIRECT) {
                     if (activePeers.isEmpty()) {
                         DesktopChatEmptyTarget(
-                            title = "Sin equipos LAN conectados.",
+                            title = "Sin equipos conectados.",
                             detail = discoveryStatus
                         )
                     } else {
@@ -2603,14 +2705,14 @@ private fun DesktopChatScopeContent(
                 } else {
                     DesktopChatEmptyTarget(
                         title = if (activePeers.isEmpty()) {
-                            "Canal LAN sin destinatarios."
+                            "Canal Wi-Fi sin destinatarios."
                         } else {
-                            "Broadcast LAN preparado."
+                            "Canal Wi-Fi preparado."
                         },
                         detail = if (activePeers.isEmpty()) {
                             discoveryStatus
                         } else {
-                            "Se publicara a ${activePeers.size} equipo(s) Qetara visibles en esta LAN."
+                            "Se publicará a ${activePeers.size} equipo(s) Qetara visibles en esta red."
                         }
                     )
                     activePeers.take(4).forEach { peer ->
@@ -2642,16 +2744,16 @@ private fun DesktopChatScopeContent(
             ) {
                 if (scopedMessages.isEmpty()) {
                     Text(
-                        "Sin mensajes todavia.",
+                        "Sin mensajes todavía.",
                         style = MaterialTheme.typography.body2,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colors.onSurface.copy(alpha = 0.68f)
                     )
                     Text(
                         if (scope == DesktopChatScope.GLOBAL_LAN) {
-                            "Publica a los equipos Qetara detectados en la LAN."
+                            "Publica a los equipos Qetara detectados en la red."
                         } else {
-                            "Envia y recibe texto cifrado con un peer LAN."
+                            "Envía y recibe texto cifrado con un equipo de red."
                         },
                         style = MaterialTheme.typography.caption,
                         color = MaterialTheme.colors.onSurface.copy(alpha = 0.58f)
@@ -2670,7 +2772,7 @@ private fun DesktopChatScopeContent(
             label = {
                 Text(
                     if (scope == DesktopChatScope.GLOBAL_LAN) {
-                        "Mensaje para el canal LAN"
+                        "Mensaje para el canal Wi-Fi"
                     } else {
                         "Mensaje de chat"
                     }
@@ -2679,6 +2781,40 @@ private fun DesktopChatScopeContent(
             maxLines = 3,
             modifier = Modifier.fillMaxWidth()
         )
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            TextButton(
+                onClick = onChooseAttachment,
+                modifier = Modifier.width(142.dp)
+            ) {
+                Text(if (validAttachment != null) "Cambiar archivo" else "Adjuntar archivo")
+            }
+            Text(
+                when {
+                    validAttachment != null -> validAttachment.name
+                    attachmentFile != null -> "Adjunto no válido"
+                    else -> "Texto, archivo o ambos"
+                },
+                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.caption,
+                color = if (attachmentFile != null && validAttachment == null) {
+                    MaterialTheme.colors.error
+                } else {
+                    MaterialTheme.colors.onSurface.copy(alpha = 0.58f)
+                },
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            if (attachmentFile != null) {
+                TextButton(onClick = onClearAttachment) {
+                    Text("Quitar")
+                }
+            }
+        }
 
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -3415,13 +3551,13 @@ private fun DesktopEventsPanel(
                                 color = qetaraInk.copy(alpha = 0.18f)
                             )
                             Text(
-                                "Sin eventos aun.",
+                                "Sin eventos aún.",
                                 style = MaterialTheme.typography.body2,
                                 fontWeight = FontWeight.SemiBold,
                                 color = MaterialTheme.colors.onSurface.copy(alpha = 0.72f)
                             )
                             Text(
-                                "Inicia el receptor o envia un archivo para ver la actividad.",
+                                "Inicia el receptor o envía un archivo para ver la actividad.",
                                 style = MaterialTheme.typography.caption,
                                 color = MaterialTheme.colors.onSurface.copy(alpha = 0.56f),
                                 maxLines = 1,
@@ -3730,12 +3866,12 @@ private fun runInteractiveShell(
         when (parts.first().lowercase()) {
             "help" -> {
                 println("help                         Muestra comandos")
-                println("status                       Muestra configuracion activa")
+                println("status                       Muestra configuración activa")
                 println("host <ip>                    Fija host por defecto para send")
-                println("token <TOKEN>                Actualiza token para envios")
-                println("pin <PIN6>                   Actualiza PIN para envios")
-                println("send <ip> <archivo>          Envia archivo al host indicado")
-                println("send <archivo>               Envia al host por defecto")
+                println("token <TOKEN>                Actualiza token para envíos")
+                println("pin <PIN6>                   Actualiza PIN para envíos")
+                println("send <ip> <archivo>          Envía archivo al host indicado")
+                println("send <archivo>               Envía al host por defecto")
                 println("exit                         Cierra la app")
             }
 
@@ -3761,7 +3897,7 @@ private fun runInteractiveShell(
                             currentToken = it
                             println("Token actualizado.")
                         }
-                        .onFailure { println("Token invalido: ${it.message}") }
+                        .onFailure { println("Token inválido: ${it.message}") }
                 }
             }
 
@@ -3774,7 +3910,7 @@ private fun runInteractiveShell(
                             currentPin = it
                             println("PIN actualizado.")
                         }
-                        .onFailure { println("PIN invalido: ${it.message}") }
+                        .onFailure { println("PIN inválido: ${it.message}") }
                 }
             }
 
@@ -3802,7 +3938,7 @@ private fun runInteractiveShell(
                     println(it)
                     currentHost = resolved.first
                 }.onFailure {
-                    println("Fallo envio: ${it.message ?: it::class.java.simpleName}")
+                    println("Falló envío: ${it.message ?: it::class.java.simpleName}")
                 }
             }
 
@@ -3889,11 +4025,11 @@ private fun runLocalE2eSelfTest(
     )
 
     try {
-        println("[SelfTest] Caso 1: envio completo + validacion hash")
+        println("[SelfTest] Caso 1: envío completo + validación hash")
         sendFileToPeer(payload, senderConfig)
         val expectedHash = sha256OfFile(payload)
         val received1 = latestReceivedFile(receiveDir)
-            ?: error("Caso 1 fallido: no se encontro archivo recibido")
+            ?: error("Caso 1 fallido: no se encontró archivo recibido")
         check(sha256OfFile(received1) == expectedHash) {
             "Caso 1 fallido: hash no coincide"
         }
@@ -3912,7 +4048,7 @@ private fun runLocalE2eSelfTest(
 
         sendFileToPeer(payload, senderConfig)
         val received2 = latestReceivedFile(receiveDir)
-            ?: error("Caso 2 fallido: no se encontro archivo recibido")
+            ?: error("Caso 2 fallido: no se encontró archivo recibido")
         check(sha256OfFile(received2) == expectedHash) {
             "Caso 2 fallido: hash no coincide tras resume"
         }
@@ -4064,16 +4200,16 @@ private fun writeClientEnvelope(
 
 private fun readChallengeOrFailure(input: DataInputStream): Challenge {
     val magic = input.readInt()
-    require(magic == PROTOCOL_MAGIC) { "respuesta invalida (magic)" }
+    require(magic == PROTOCOL_MAGIC) { "respuesta inválida (magic)" }
     val version = input.readInt()
-    require(version == PROTOCOL_VERSION) { "respuesta invalida (version)" }
+    require(version == PROTOCOL_VERSION) { "respuesta inválida (version)" }
 
     return when (val packetType = input.readInt()) {
         PACKET_CHALLENGE -> {
             val nonce = input.readUTF()
             val expiresAt = input.readLong()
             if (System.currentTimeMillis() >= expiresAt) {
-                throw IllegalStateException("sesion expirada en host")
+                throw IllegalStateException("sesión expirada en host")
             }
             Challenge(serverNonce = nonce, expiresAtMs = expiresAt)
         }
@@ -4085,14 +4221,14 @@ private fun readChallengeOrFailure(input: DataInputStream): Challenge {
             throw IllegalStateException("respuesta inesperada")
         }
 
-        else -> throw IllegalStateException("respuesta invalida (packet=$packetType)")
+        else -> throw IllegalStateException("respuesta inválida (packet=$packetType)")
     }
 }
 
 private fun readSecureResult(channel: SecureChannel): Pair<Boolean, String> {
     val frame = channel.readFrameInput()
     val frameType = frame.readInt()
-    require(frameType == SECURE_FRAME_RESULT) { "frame RESULT invalido" }
+    require(frameType == SECURE_FRAME_RESULT) { "frame RESULT inválido" }
     val ok = frame.readBoolean()
     val message = frame.readUTF().take(200)
     return ok to message
@@ -4101,7 +4237,7 @@ private fun readSecureResult(channel: SecureChannel): Pair<Boolean, String> {
 private fun readResumeOffset(channel: SecureChannel, totalBytes: Long): Long {
     val frame = channel.readFrameInput()
     val frameType = frame.readInt()
-    require(frameType == SECURE_FRAME_FILE_RESUME) { "frame FILE_RESUME invalido" }
+    require(frameType == SECURE_FRAME_FILE_RESUME) { "frame FILE_RESUME inválido" }
     val requested = frame.readLong()
     return requested.coerceIn(0L, totalBytes.coerceAtLeast(0L))
 }
@@ -4241,14 +4377,14 @@ private fun establishSecureChannel(
                 HandshakeState.READ_MESSAGE -> {
                     val len = input.readInt()
                     require(len in 1..NOISE_HANDSHAKE_MAX_FRAME) {
-                        "frame handshake invalido: $len"
+                        "frame handshake inválido: $len"
                     }
                     val inMsg = ByteArray(len)
                     input.readFully(inMsg)
                     handshake.readMessage(inMsg, 0, len, emptyPayload, 0)
                 }
 
-                else -> throw SecurityException("estado Noise invalido: ${handshake.action}")
+                else -> throw SecurityException("estado Noise inválido: ${handshake.action}")
             }
         }
 
