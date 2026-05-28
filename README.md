@@ -1,14 +1,14 @@
 # Qetara
 
-Qetara es una app local-first para transferir archivos y mensajes sin cables ni cuentas externas. El proyecto incluye una aplicacion Android, una aplicacion de escritorio para PC y un modulo compartido de protocolo.
+Qetara es una app local-first para transferir archivos y mensajes sin cables ni cuentas externas. El proyecto incluye una aplicación Android, una aplicación de escritorio para PC y un módulo compartido de protocolo.
 
-## Modulos
+## Módulos
 
-- `app`: aplicacion Android con Wi-Fi Direct, LAN, chat, canal Wi-Fi, descargas y flujo de envio.
-- `pc`: Qetara PC, con interfaz Compose Desktop y modo CLI para automatizacion/debug.
+- `app`: aplicación Android con Wi-Fi Direct, LAN, chat, canal Wi-Fi, descargas y flujo de envío.
+- `pc`: Qetara PC, con interfaz Compose Desktop y modo CLI para automatización/debug.
 - `protocol`: contrato y utilidades compartidas del protocolo WDRP.
 
-## Estado local rapido
+## Estado local rápido
 
 Compilar Android:
 
@@ -36,7 +36,7 @@ Verificacion completa local:
 
 ## GitHub
 
-El repositorio incluye workflow en `.github/workflows/qetara-ci.yml` para compilar Android, ejecutar lint/tests unitarios y correr el self-test del modulo PC.
+El repositorio incluye workflow en `.github/workflows/qetara-ci.yml` para compilar Android, ejecutar lint/tests unitarios y correr el self-test del módulo PC.
 
 Antes de subir:
 
