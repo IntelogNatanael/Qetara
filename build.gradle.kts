@@ -7,5 +7,5 @@ plugins {
 
 allprojects {
     group = "org.qetara"
-    version = providers.gradleProperty("qetaraVersion").getOrElse("1.1.0")
+    version = providers.gradleProperty("qetaraVersion").getOrElse("1.2.0")
 }

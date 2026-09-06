@@ -24,7 +24,7 @@ La aprobación queda ligada al ID, clave Noise e instante mostrados. Olvidar un 
 
 Para Wi-Fi Direct, el anfitrión utiliza el contexto actual informado por Android y observaciones cifradas del endpoint local del grupo. La confianza histórica o el descubrimiento LAN no bastan para añadir destinatarios al grupo. Esta comprobación no demuestra la interfaz física de entrada en todos los sistemas ni reemplaza la validación con hardware real.
 
-La publicación de archivos evita reemplazar archivos previos y verifica SHA-256. Un cierre abrupto entre reservar el nombre y mover el archivo puede dejar una reserva vacía. Un cierre entre publicación y almacenamiento del recibo puede producir un duplicado al reintentar. No se garantiza entrega exactamente una vez ante fallos de proceso o energía.
+La publicación de archivos evita reemplazar archivos previos y verifica SHA-256. El recibo se prepara antes del movimiento y se valida contra el archivo real al reintentar, lo que permite recuperar un intento tras el cierre del proceso entre publicación y ACK. Un cierre abrupto antes de mover el archivo aún puede dejar una reserva vacía. No se garantiza entrega exactamente una vez ante cualquier fallo de almacenamiento o energía.
 
 El detalle y los casos de regresión están en [el protocolo](docs/PROTOCOL.md) y [la revisión defensiva de esta entrega](docs/SECURITY_REVIEW.md).
 

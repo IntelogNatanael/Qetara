@@ -1,4 +1,4 @@
-# Revisión defensiva de Qetara 1.1.0
+# Revisión defensiva de Qetara 1.2.0
 
 Fecha: 6 de septiembre de 2026. Alcance: cambios de transferencia Android, protocolo compartido y controles de ciclo de vida de escritorio realizados durante esta entrega. Esta revisión de implementación y regresiones no es una auditoría criptográfica independiente, una prueba de penetración completa ni una certificación de hardware.
 
@@ -24,12 +24,18 @@ La revisión acotada de escritorio no encontró un ciclo de bloqueo entre el cal
 
 La prueba de cerrar y activar con una pausa programada de 200 ms encontró una carrera del servicio. Se corrigió con una barrera que espera los Jobs cancelados y sus callbacks antes de publicar otra sesión, un ticket de generación ligado al startId original y `stopSelfResult`. Una solicitud posterior invalida el cierre anterior. La interfaz también observa la destrucción del servicio para reconciliar una activación vigente, sin recrear servicios para detenerlos cuando ya están parados. `SessionLifecycleFenceTest` cubre cuatro casos, incluido un callback final deliberadamente retenido y otro cierre durante la espera. La repetición de la secuencia en APK se registra en la validación final. La admisión de envíos y mensajes vuelve a comprobar el cierre bajo el lock de cada cola; registra el Job y su callback antes de liberar ese lock. STOP captura los hijos bajo el orden fijo sendLock → messageLock. `SessionWorkerAdmissionTest` fuerza el caller que pasó un chequeo anterior y el cierre durante la creación de un Job LAZY, para comprobar rechazo o drenaje completo sin iniciar su contenido.
 
+## Recuperación de publicación
+
+La reproducción con terminación de JVM propia en la base 1.1.0 encontró duplicación cuando el proceso terminaba entre mover el archivo y recordar el recibo. `CompletedTransferReceipts.publishVerified` conserva el formato existente y prepara el recibo antes del movimiento; un fallo de metadatos conserva los bytes parciales. `TransferPublicationRecoveryTest` cubre reinicio tras movimiento, fallo del recibo, cancelación fronteriza, reserva no completa, archivo vacío verificado, formato compatible, edición posterior y colisiones concurrentes. La ejecución y el resultado del harness contra el binario actualizado se registran en la validación de la entrega.
+
+Para 0 bytes, el helper se invoca después de DONE y SHA-256 correctos: la reserva vacía con recibo preparado representa el contenido completo aceptado. En la rama de cancelación o error normal la reserva se retira, y la ausencia del destino impide confirmarlo. Estas pruebas de proceso no simulan un corte eléctrico ni acreditan persistencia física de todas las entradas de directorio.
+
 ## Límites conservados
 
 - El primer contacto necesita comparar la huella con el equipo esperado. El nombre, ID anunciado y descubrimiento LAN no acreditan por sí solos identidad. El escritorio utiliza la sesión compartida y no dispone del directorio de confianza de Android.
 - Una conexión observada por el endpoint de Wi-Fi Direct no prueba por sí sola la interfaz física de ingreso en todos los kernels. Las pruebas loopback no equivalen a pruebas de dos radios Wi-Fi Direct.
 - Olvidar revoca autorizaciones futuras y rutas guardadas; una recepción ya autorizada requiere Cancelar para detenerse.
-- Un fallo abrupto entre reserva y movimiento puede dejar un archivo vacío; entre publicación y recibo puede causar duplicado al reintentar. No hay transacción conjunta ni garantía exactamente una vez ante corte de energía.
+- Un fallo abrupto entre reserva y movimiento puede dejar un archivo vacío. El recibo se prepara antes de mover los bytes, y la recuperación verifica el archivo; así se cubre el reinicio de proceso después del movimiento y antes del ACK. No hay transacción conjunta de datos y directorios ni garantía exactamente una vez ante corte de energía.
 - SHA-256 verifica integridad del contenido transferido, no que un archivo sea seguro para abrir. El compromiso del dispositivo o sus datos locales queda fuera de la protección del transporte.
 
 ## Runtime y procedencia

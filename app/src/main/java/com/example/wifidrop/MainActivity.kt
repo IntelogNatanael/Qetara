@@ -10,11 +10,15 @@ import androidx.core.view.WindowCompat
 
 class MainActivity : ComponentActivity() {
 
+    private var incomingShareEventId: Long? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
         applySystemBarContrast()
-        IncomingShareBus.publishFromIntent(intent)
+        incomingShareEventId = IncomingShareBus.publishFromIntent(
+            intent, savedInstanceState?.getLong(SHARE_DELIVERY_KEY)?.takeIf { it > 0L }
+        )
         setContent {
             QetaraAppShell()
         }
@@ -23,7 +27,16 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        IncomingShareBus.publishFromIntent(intent)
+        incomingShareEventId = IncomingShareBus.publishFromIntent(intent)
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        incomingShareEventId?.let { outState.putLong(SHARE_DELIVERY_KEY, it) }
+        super.onSaveInstanceState(outState)
+    }
+
+    private companion object {
+        const val SHARE_DELIVERY_KEY = "qetara.incomingShareDelivery"
     }
 
     private fun applySystemBarContrast() {

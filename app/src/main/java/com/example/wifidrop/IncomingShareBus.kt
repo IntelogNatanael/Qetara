@@ -14,21 +14,19 @@ data class IncomingSharePayload(
 )
 
 object IncomingShareBus {
-    private val nextId = AtomicLong(1)
+    private val nextId = AtomicLong(System.currentTimeMillis())
 
     private val _payload = MutableStateFlow<IncomingSharePayload?>(null)
     val payload: StateFlow<IncomingSharePayload?> = _payload.asStateFlow()
 
-    fun publishFromIntent(intent: Intent?) {
-        if (intent == null) return
-
+    fun publishFromIntent(intent: Intent?, restoredEventId: Long? = null): Long? {
+        if (intent == null) return null
         val uris = extractUris(intent)
-        if (uris.isEmpty()) return
-
-        _payload.value = IncomingSharePayload(
-            eventId = nextId.getAndIncrement(),
-            uris = uris.distinct()
-        )
+        if (uris.isEmpty()) return null
+        val eventId = restoredEventId?.takeIf { it > 0L } ?: nextId.incrementAndGet()
+        nextId.updateAndGet { maxOf(it, eventId) }
+        _payload.value = IncomingSharePayload(eventId, uris.distinct())
+        return eventId
     }
 
     fun consume(eventId: Long) {

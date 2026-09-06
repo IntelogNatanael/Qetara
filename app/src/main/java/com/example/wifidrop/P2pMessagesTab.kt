@@ -17,6 +17,8 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.Role
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.ui.semantics.contentDescription
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.FlowRow
@@ -849,6 +851,7 @@ internal fun P2pMessagesTab(
                     keyboardVisible = keyboardVisible,
                     selectedFileNames = state.selectedFileNames,
                     selectedFilesCount = state.selectedFilesCount,
+                    recoveryIncomplete = com.example.wifidrop.presentation.isIncompleteAttachmentRecovery(state.shareImportStatus),
                     placeholderText = composerPlaceholder,
                     sendButtonLabel = sendButtonLabel,
                     composerEnabled = if (isGlobalChat) {
@@ -1162,6 +1165,7 @@ private fun ChatComposerPanel(
     keyboardVisible: Boolean,
     selectedFileNames: List<String>,
     selectedFilesCount: Int,
+    recoveryIncomplete: Boolean,
     placeholderText: String,
     sendButtonLabel: String,
     composerEnabled: Boolean,
@@ -1189,16 +1193,24 @@ private fun ChatComposerPanel(
                 .padding(horizontal = UiSpaceS, vertical = 10.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            if (selectedFilesCount > 0 && !keyboardVisible) {
+            if ((selectedFilesCount > 0 || recoveryIncomplete) && !keyboardVisible) {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
-                        attachmentsLabel + selectedFileNames.firstOrNull()?.let { " · $it" }.orEmpty(),
+                        if (recoveryIncomplete) {
+                            if (selectedFilesCount > 0) "$selectedFilesCount disponibles; faltan otros. Elige de nuevo."
+                            else "No se recuperaron los adjuntos. Elige de nuevo."
+                        } else attachmentsLabel + selectedFileNames.firstOrNull()?.let { " · $it" }.orEmpty(),
                         modifier = Modifier.weight(1f),
                         style = MaterialTheme.typography.bodySmall,
-                        maxLines = 1,
+                        maxLines = if (recoveryIncomplete) 2 else 1,
+                        color = if (recoveryIncomplete) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
                         overflow = TextOverflow.Ellipsis
                     )
-                    TextButton(onClick = onClearSelectedFiles) { Text("Quitar") }
+                    if (recoveryIncomplete) {
+                        TextButton(onClick = onPickFile) { Text("Elegir") }
+                    } else {
+                        TextButton(onClick = onClearSelectedFiles) { Text("Quitar") }
+                    }
                 }
             }
 
@@ -1353,13 +1365,15 @@ private fun ChannelDownloadSettingsCard(
                 fontWeight = FontWeight.SemiBold
             )
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().toggleable(
+                    value = autoDownload, role = Role.Checkbox, onValueChange = onAutoDownloadChange
+                ),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 Checkbox(
                     checked = autoDownload,
-                    onCheckedChange = onAutoDownloadChange
+                    onCheckedChange = null
                 )
                 Text(
                     "Descargar automáticamente archivos del canal",

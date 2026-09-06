@@ -39,15 +39,16 @@ data class P2pSessionFeedback(
 class P2pSessionPresenter(
     context: Context,
     private val backend: P2pBackend,
-    private val localDeviceId: String
+    private val localDeviceId: String,
+    restoredSession: P2pRestoredSession? = null
 ) {
     private val appContext = context.applicationContext
     private val clipboard = appContext.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
     private val _state = MutableStateFlow(
         P2pSessionState(
-            token = generateSessionToken(),
-            pin = generateSessionPin(),
-            expiresAtMs = System.currentTimeMillis() + SESSION_DURATION_MS,
+            token = restoredSession?.token ?: generateSessionToken(),
+            pin = restoredSession?.pin ?: generateSessionPin(),
+            expiresAtMs = restoredSession?.expiresAtMs ?: (System.currentTimeMillis() + SESSION_DURATION_MS),
             localDeviceIdShort = LocalDeviceIdentity.short(localDeviceId)
         )
     )

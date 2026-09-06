@@ -381,10 +381,12 @@ fun buildP2pScreenEventWiring(
             if (input.uxPreferences.activeConnectionMode == ConnectionMode.WIFI_DIRECT) {
                 val normalized = ip.trim()
                 if (normalized.isNotBlank()) {
-                    val nextTargets = if (input.routeState.effectiveChatDirectWifiTargetIps.contains(normalized)) {
-                        input.routeState.effectiveChatDirectWifiTargetIps - normalized
+                    val availableIps = input.routeState.uiState.chatDirectAvailablePeers.map { it.ip }.toSet()
+                    val currentTargets = input.routeState.effectiveChatDirectWifiTargetIps.filter { it in availableIps }
+                    val nextTargets = if (currentTargets.contains(normalized)) {
+                        currentTargets - normalized
                     } else {
-                        (input.routeState.effectiveChatDirectWifiTargetIps + normalized).distinct()
+                        (currentTargets + normalized).distinct()
                     }
                     input.setChatDirectWifiTargetIps(nextTargets)
                     if (nextTargets.size == 1) {

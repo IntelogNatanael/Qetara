@@ -96,6 +96,44 @@ class DesktopReceiverTest {
     }
 
     @Test
+    fun interruptedFileSocketResumesAndCompletedAttemptStillHasOnlyOneCopy() {
+        val bytesArrived = CountDownLatch(1)
+        val chunk = MAX_SECURE_FILE_CHUNK_BYTES
+        withReceiver(onFileProgress = { _, received, _, _ ->
+            if (received >= chunk * 5L) bytesArrived.countDown()
+        }) { receiver ->
+            val payload = File(receiver.root, "reanudación real.bin").apply {
+                writeBytes(ByteArray(chunk * 20) { (it % 251).toByte() })
+            }
+            val attempt = "interrupted-wire-attempt"
+            val cancellation = DesktopTransferCancellation()
+            assertFails {
+                sendFileToPeer(payload, receiver.sender, cancellation, attemptId = attempt) { sent, total ->
+                    if (sent >= total / 2) {
+                        assertTrue(bytesArrived.await(3, TimeUnit.SECONDS), "The receiver must persist actual chunks before the cut")
+                        cancellation.cancel()
+                    }
+                }
+            }
+            assertTrue(receiver.receiveDirectory.listFiles().orEmpty().none { it.isFile })
+            var initialOffset: Long? = null
+            sendFileToPeer(payload, receiver.sender, attemptId = attempt) { sent, _ ->
+                if (initialOffset == null) initialOffset = sent
+            }
+            assertTrue(assertNotNull(initialOffset) in 1 until payload.length(), "The retry must resume actual partial bytes")
+            val published = receiver.receiveDirectory.listFiles().orEmpty().filter { it.isFile }
+            assertEquals(1, published.size)
+            assertContentEquals(payload.readBytes(), published.single().readBytes())
+            var receiptOffset: Long? = null
+            sendFileToPeer(payload, receiver.sender, attemptId = attempt) { sent, _ ->
+                if (receiptOffset == null) receiptOffset = sent
+            }
+            assertEquals(payload.length(), receiptOffset)
+            assertEquals(1, receiver.receiveDirectory.listFiles().orEmpty().count { it.isFile })
+        }
+    }
+
+    @Test
     fun receiverStopsAfterRealSessionExpiry() = withReceiver(sessionDurationMs = 50L) { receiver ->
         receiver.worker.join(2500)
         assertFalse(receiver.worker.isAlive, "Receiver must close after the session deadline")
@@ -175,6 +213,7 @@ class DesktopReceiverTest {
         allowCredentialsShare: Boolean = false,
         sessionDurationMs: Long = 60_000L,
         acceptMessage: (DesktopChatEntry) -> Unit = {},
+        onFileProgress: (String, Long, Long, String) -> Unit = { _, _, _, _ -> },
         block: (RunningReceiver) -> Unit
     ) {
         val root = Files.createTempDirectory("qetara-desktop-test-").toFile()
@@ -188,6 +227,7 @@ class DesktopReceiverTest {
             ReceiverConfig("QETARA24", "927461", destination, port, "Test receiver", sessionDurationMs, allowCredentialsShare, "test-receiver"),
             identity,
             onReady = { ready.countDown() },
+            onFileProgress = onFileProgress,
             onMessageReceived = { acceptMessage(it); messages.add(it) }
         )
         val worker = thread(name = "qetara-test-receiver", isDaemon = true) {

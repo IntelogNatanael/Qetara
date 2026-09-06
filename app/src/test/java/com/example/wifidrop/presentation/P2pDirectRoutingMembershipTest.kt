@@ -66,7 +66,7 @@ class P2pDirectRoutingMembershipTest {
     }
 
     @Test
-    fun chatCannotKeepAnOldLanRecipientAfterSwitchingToDirect() {
+    fun staleSelectionRemainsBlockedInsteadOfBeingRedirectedAfterSwitchingToDirect() {
         val direct = routing(isOwner = false).targets.chatDirectAvailablePeers
         val normalized = normalizeChatSelection(P2pChatSelectionInput(
             activeConnectionMode = ConnectionMode.WIFI_DIRECT,
@@ -79,11 +79,12 @@ class P2pDirectRoutingMembershipTest {
             directParticipants = direct
         ))
         assertNull(normalized.chatDirectLanTargetIp)
-        assertEquals(listOf(owner), normalized.chatDirectWifiTargetIps)
+        assertEquals(listOf(lanPeer.ip), normalized.chatDirectWifiTargetIps)
+        assertTrue(resolveExplicitDirectChatTargets(normalized.chatDirectWifiTargetIps, direct).isEmpty())
     }
 
     @Test
-    fun hostChatSelectionClearsWhenNoCurrentMembersAreAccredited() {
+    fun hostChatKeepsTheIntendedSelectionWhileNoMembersAreAccredited() {
         val normalized = normalizeChatSelection(P2pChatSelectionInput(
             activeConnectionMode = ConnectionMode.WIFI_DIRECT,
             lanConnected = true,
@@ -94,6 +95,45 @@ class P2pDirectRoutingMembershipTest {
             chatDirectWifiTargetIps = listOf(lanPeer.ip),
             directParticipants = emptyList()
         ))
-        assertTrue(normalized.chatDirectWifiTargetIps.isEmpty())
+        assertEquals(listOf(lanPeer.ip), normalized.chatDirectWifiTargetIps)
+        assertTrue(resolveExplicitDirectChatTargets(normalized.chatDirectWifiTargetIps, emptyList()).isEmpty())
+    }
+
+    @Test
+    fun aMissingSelectedMemberCannotBeReplacedByTheOnlyOtherAvailableMember() {
+        val other = KnownPeerSnapshot("b", "Other Android", "192.168.49.3", true, false, 10L)
+        val normalized = normalizeChatSelection(P2pChatSelectionInput(
+            activeConnectionMode = ConnectionMode.WIFI_DIRECT, lanConnected = false,
+            wifiState = WifiDirectState(connection = ConnectionSnapshot(true, true, owner)),
+            knownPeers = listOf(other), chatChannel = ChatChannel.DIRECT, chatDirectLanTargetIp = null,
+            chatDirectWifiTargetIps = listOf("192.168.49.2"), directParticipants = listOf(other)
+        ))
+        assertEquals(listOf("192.168.49.2"), normalized.chatDirectWifiTargetIps)
+        assertTrue(resolveExplicitDirectChatTargets(normalized.chatDirectWifiTargetIps, listOf(other)).isEmpty())
+    }
+
+    @Test
+    fun partiallyMissingRecipientsDoNotSilentlyBecomeASmallerAudience() {
+        val a = KnownPeerSnapshot("a", "A", "192.168.49.2", true, false, 10L)
+        val b = KnownPeerSnapshot("b", "B", "192.168.49.3", true, false, 10L)
+        assertTrue(resolveExplicitDirectChatTargets(listOf(a.ip, b.ip), listOf(b)).isEmpty())
+        assertEquals(listOf(a.ip, b.ip), resolveExplicitDirectChatTargets(listOf(a.ip, b.ip), listOf(a, b)).map { it.ip })
+    }
+
+    @Test
+    fun fileRecipientStaysSelectedEvenIfAnotherMemberBecomesTheMostRecent() {
+        val a = KnownPeerSnapshot("a", "A", "192.168.49.2", true, false, 1L)
+        val b = KnownPeerSnapshot("b", "B", "192.168.49.3", true, false, 999L)
+        assertEquals(a, resolveSelectedDirectFilePeer(a.ip, listOf(b, a)))
+        assertNull(resolveSelectedDirectFilePeer(a.ip, listOf(b)))
+    }
+
+    @Test
+    fun firstFileRecipientMayBeInferredOnlyForAnUnambiguousGroup() {
+        val a = KnownPeerSnapshot("a", "A", "192.168.49.2", true, false, 1L)
+        val b = KnownPeerSnapshot("b", "B", "192.168.49.3", true, false, 2L)
+        assertEquals(a, resolveSelectedDirectFilePeer(null, listOf(a)))
+        assertNull(resolveSelectedDirectFilePeer(null, listOf(a, b)))
+        assertNull(resolveSelectedDirectFilePeer(null, emptyList()))
     }
 }

@@ -17,6 +17,19 @@ internal class DesktopConversationDrafts(private val capacity: Int = 64) {
 
     fun restore(key: String): DesktopChatDraft = drafts[key] ?: DesktopChatDraft()
 
+    fun acknowledgeDelivery(
+        key: String, expectedRecipients: Set<String>,
+        textRecipients: Set<String>, attachmentRecipients: Set<String>,
+        sentText: String?, sentAttachmentPath: String?
+    ) {
+        if (expectedRecipients.isEmpty()) return
+        acknowledge(
+            key,
+            sentText = sentText?.takeIf { textRecipients.containsAll(expectedRecipients) },
+            sentAttachmentPath = sentAttachmentPath?.takeIf { attachmentRecipients.containsAll(expectedRecipients) }
+        )
+    }
+
     fun acknowledge(key: String, sentText: String?, sentAttachmentPath: String?) {
         val existing = restore(key)
         save(
@@ -51,4 +64,23 @@ internal fun desktopDirectTarget(peers: List<DesktopLanPeer>, selectedIp: String
     val active = peers.filter { it.sessionActive && it.ip.isNotBlank() }
     return if (selectedIp.isNullOrBlank()) active.firstOrNull()
         else active.firstOrNull { it.ip == selectedIp }
+}
+
+internal data class DesktopChatCompletionFeedback(
+    val phase: DesktopTaskPhase, val status: String, val notice: String? = null
+)
+
+/** A completed send belongs to its original conversation, even when another draft is visible. */
+internal fun desktopChatCompletionFeedback(
+    originKey: String, visibleKey: String, recipientLabel: String,
+    phase: DesktopTaskPhase, status: String
+): DesktopChatCompletionFeedback = if (originKey == visibleKey) {
+    DesktopChatCompletionFeedback(phase, status)
+} else {
+    DesktopChatCompletionFeedback(
+        DesktopTaskPhase.IDLE,
+        if (visibleKey == desktopConversationKey(DesktopChatScope.GLOBAL_LAN)) "Conversación del Canal Wi-Fi."
+        else "Escribe un mensaje para este equipo.",
+        "$recipientLabel: $status"
+    )
 }

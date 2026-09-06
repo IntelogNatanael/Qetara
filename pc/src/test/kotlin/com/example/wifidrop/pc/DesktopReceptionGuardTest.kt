@@ -30,7 +30,7 @@ class DesktopReceptionGuardTest {
 
     @Test
     fun cancellationBeforeWorkerStartsKeepsConcurrencyBoundUntilExit() {
-        val gate = DesktopChannelUploadGate()
+        val gate = DesktopTransferSlot()
         val first = assertNotNull(gate.tryAcquire())
         assertNull(gate.tryAcquire(), "Another request must not spawn a parallel upload")
         gate.cancel()
@@ -43,7 +43,7 @@ class DesktopReceptionGuardTest {
 
     @Test
     fun lateWorkerReleaseDoesNotReleaseTheNextUpload() {
-        val gate = DesktopChannelUploadGate()
+        val gate = DesktopTransferSlot()
         val first = assertNotNull(gate.tryAcquire())
         gate.release(first)
         val second = assertNotNull(gate.tryAcquire())
@@ -52,6 +52,20 @@ class DesktopReceptionGuardTest {
         gate.cancel()
         assertTrue(second.isCancelled)
         gate.release(second)
+    }
+
+    @Test
+    fun transferFeedbackQueuedBeforeExpiryCannotClaimTheReceiverIsAvailable() {
+        val first = DesktopMessageReception(7, true, 2000L, false)
+        var current = first
+        var availableNoticePublished = false
+        val queuedFeedback = {
+            if (current.isActiveFor(7, nowMs = 2001L)) availableNoticePublished = true
+        }
+        assertTrue(first.isActiveFor(7, nowMs = 1999L))
+        current = first.copy(receiving = false, expiresAtMs = null)
+        deliverDesktopMessageOnUi(queuedFeedback)
+        assertFalse(availableNoticePublished)
     }
 
     @Test

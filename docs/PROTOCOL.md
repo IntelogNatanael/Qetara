@@ -47,7 +47,11 @@ Cancellation closes active sockets instead of waiting for their normal network t
 
 ### Publication and process-failure limits
 
-Receive publication reserves a unique final filename and moves the verified staging file into it; it does not overwrite a pre-existing user file. Abrupt process or power loss between reserving the name and moving the file can leave an empty reserved file. Completion receipts suppress repeat publication after a lost acknowledgement when the receipt was persisted; publication and receipt storage are not one filesystem transaction. A crash between those steps can therefore produce a duplicate on retry. These mechanisms do not claim exactly-once delivery across process or power failure.
+Receive publication reserves a unique final filename and records that destination before moving the verified staging file into it; it does not overwrite a pre-existing user file. The receipt is flushed and synced through a temporary file before replacement. Its byte format remains compatible: UTF destination name, long byte count and UTF SHA-256. Recovery checks the actual destination size and SHA-256, so a prepared receipt alone cannot acknowledge missing or incomplete content. A restart after the payload move can therefore recover the same attempt even when the caller never sent its acknowledgement.
+
+The commit helper is reached only after FILE_DONE and successful verification of the complete payload. It checks cancellation around receipt preparation; an ordinary error or cancellation removes its reservation and retains the partial source. A process killed before moving a nonempty file may still leave an empty reservation, which recovery does not overwrite or automatically delete. For a verified zero-byte payload, an empty destination with its prepared receipt already contains the complete accepted file. Tests separately cover cancellation and receipt failure for zero-byte files.
+
+Receipt data and directory entries are not one filesystem transaction. Process-termination tests do not establish persistence after sudden power loss, and no exactly-once guarantee is claimed for every storage or hardware failure.
 
 ## Chat and channel boundaries
 

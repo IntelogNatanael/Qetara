@@ -53,11 +53,12 @@ internal data class DesktopWorkspaceState(
     val notice: String?,
     val sessionRemaining: String,
     val unreadMessages: Int = 0,
-    val identityFingerprint: String = ""
+    val identityFingerprint: String = "",
+    val messageSending: Boolean = false
 ) {
     val receiverBusy: Boolean get() = receiverPhase in listOf(DesktopTaskPhase.STARTING, DesktopTaskPhase.RUNNING, DesktopTaskPhase.STOPPING)
     val sendingBusy: Boolean get() = sendingPhase in listOf(DesktopTaskPhase.STARTING, DesktopTaskPhase.RUNNING, DesktopTaskPhase.STOPPING)
-    val settingsLocked: Boolean get() = receiverBusy || sendingBusy
+    val settingsLocked: Boolean get() = receiverBusy || sendingBusy || messageSending
 }
 
 internal data class DesktopWorkspaceActions(

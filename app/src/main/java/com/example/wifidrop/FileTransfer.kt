@@ -21,7 +21,6 @@ import com.example.wifidrop.protocol.digestMatches
 import com.example.wifidrop.protocol.requireValidFileChunk
 import com.example.wifidrop.protocol.requireValidFileHash
 import com.example.wifidrop.protocol.requireValidResumeOffset
-import com.example.wifidrop.protocol.publishReceivedFile
 import com.example.wifidrop.protocol.CompletedTransferReceipts
 import com.example.wifidrop.protocol.requireReceiveCapacity
 import com.example.wifidrop.protocol.PACKET_DISCOVERY_REQUEST
@@ -995,8 +994,9 @@ object FileTransfer {
             throw SecurityException("integridad SHA-256 invalida para $incomingName")
         }
 
-        val target = publishReceivedFile(partial, receiveDir, incomingName)
-        receipts.remember(peerId, attemptId, incomingName, total, expectedHash, target)
+        val target = receipts.publishVerified(
+            partial, peerId, attemptId, incomingName, total, expectedHash, ::checkActive
+        )
         onFileReceived(target)
         return target
     }

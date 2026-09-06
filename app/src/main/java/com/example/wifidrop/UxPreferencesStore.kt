@@ -162,10 +162,10 @@ object UxPreferencesStore {
             activeMode = if (wifiDirectEnabled) ConnectionMode.WIFI_DIRECT else ConnectionMode.LAN
         }
 
-        if (viewMode == ConnectionViewMode.WIFI_DIRECT && !wifiDirectEnabled) {
-            viewMode = if (lanEnabled) ConnectionViewMode.LAN else ConnectionViewMode.ADVANCED
-        } else if (viewMode == ConnectionViewMode.LAN && !lanEnabled) {
-            viewMode = if (wifiDirectEnabled) ConnectionViewMode.WIFI_DIRECT else ConnectionViewMode.ADVANCED
+        // Older preferences can name LAN while retaining the simple Direct view (or vice versa).
+        // Keep the visible transport and its routing policy aligned after applying availability fallbacks.
+        if (viewMode != ConnectionViewMode.ADVANCED) {
+            viewMode = ConnectionViewMode.fromConnectionMode(activeMode)
         }
 
         return preferences.copy(

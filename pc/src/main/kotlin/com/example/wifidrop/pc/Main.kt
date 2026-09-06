@@ -24,10 +24,12 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.Button
+import androidx.compose.material.OutlinedButton
 import androidx.compose.material.ButtonDefaults
 import androidx.compose.material.Colors
 import androidx.compose.material.Checkbox
@@ -88,7 +90,6 @@ import androidx.compose.ui.window.rememberWindowState
 import com.example.wifidrop.protocol.requireValidTransportMessage
 import com.example.wifidrop.protocol.ReceivedMessageReceipts
 import com.example.wifidrop.protocol.CompletedTransferReceipts
-import com.example.wifidrop.protocol.publishReceivedFile
 import com.example.wifidrop.protocol.requireReceiveCapacity
 import com.example.wifidrop.protocol.randomToken
 import com.example.wifidrop.protocol.randomPin
@@ -710,8 +711,11 @@ internal class PcReceiverServer(
             throw SecurityException("integridad SHA-256 inválida para $incomingName")
         }
 
-        val target = publishReceivedFile(partial, receiveDir, incomingName)
-        completedTransfers.remember(remotePeerId, attemptId, incomingName, total, expectedHash, target)
+        val target = completedTransfers.publishVerified(partial, remotePeerId, attemptId, incomingName, total, expectedHash) {
+            if (!running.get() || System.currentTimeMillis() >= expiresAtMs) {
+                throw java.util.concurrent.CancellationException("La recepción se detuvo antes de publicar el archivo")
+            }
+        }
         logProgress(incomingName, received, total, remoteLabel, remoteIp, force = true)
         onFileReceived(target, remoteLabel)
         return target
@@ -853,13 +857,17 @@ internal fun sendMessageToPeer(
     messageRaw: String,
     scope: DesktopChatScope,
     config: SenderConfig,
-    messageId: String = randomNonce()
+    messageId: String = randomNonce(),
+    cancellation: DesktopTransferCancellation = DesktopTransferCancellation()
 ): String {
+    cancellation.throwIfCancelled()
     val message = encodeDesktopChatPayload(messageRaw, scope)
     val clientNonce = messageId
 
     withRetry(attempts = config.retries.coerceAtLeast(1)) {
+        cancellation.throwIfCancelled()
         Socket().use { socket ->
+            cancellation.attach(socket)
             configureSocket(socket)
             socket.connect(InetSocketAddress(config.targetHost, config.port), 10_000)
             socket.soTimeout = 60_000
@@ -896,12 +904,14 @@ internal fun sendMessageToPeer(
                 purpose = "MESSAGE",
                 localIdentity = config.localNoiseIdentity
             ).use { channel ->
+                cancellation.throwIfCancelled()
                 channel.writeFrame { frame ->
                     frame.writeInt(SECURE_FRAME_MESSAGE)
                     frame.writeLong(System.currentTimeMillis())
                     frame.writeUTF(message)
                 }
                 val (ok, ack) = readSecureResult(channel)
+                cancellation.throwIfCancelled()
                 check(ok) { "Receptor rechazo mensaje: $ack" }
             }
         }
@@ -1615,7 +1625,11 @@ private fun runDesktopGui(cli: CliArgs) {
         var isGlobalLanJoined by remember { mutableStateOf(false) }
         var autoDownloadChannelFiles by remember { mutableStateOf(false) }
         val channelFileOffers = remember { ConcurrentHashMap<String, DesktopLocalChannelFileOffer>() }
-        val channelUploads = remember { DesktopChannelUploadGate() }
+        val channelUploads = remember { DesktopTransferSlot() }
+        val chatSends = remember { DesktopTransferSlot() }
+        val channelRequests = remember { DesktopTransferSlot() }
+        var activeChatCancellation by remember { mutableStateOf<DesktopTransferCancellation?>(null) }
+        var activeChatScope by remember { mutableStateOf<DesktopChatScope?>(null) }
         var localNetworkEndpoints by remember { mutableStateOf(detectLocalNetworkEndpoints()) }
         var sendingProgress by remember { mutableStateOf<Float?>(null) }
         var receivingProgress by remember { mutableStateOf<Float?>(null) }
@@ -1769,14 +1783,20 @@ private fun runDesktopGui(cli: CliArgs) {
 
         fun selectChatAttachment(file: File, source: String) {
             if (!file.exists() || !file.isFile) {
-                messagePhase = DesktopTaskPhase.ERROR
-                messageStatus = "Selecciona un archivo válido."
+                if (activeChatCancellation == null) {
+                    messagePhase = DesktopTaskPhase.ERROR
+                    messageStatus = "Selecciona un archivo válido."
+                } else notice = "El adjunto elegido no es válido. El envío actual continúa."
                 appendLog("Adjunto inválido para chat/canal.", isError = true)
                 return
             }
             chatAttachmentPathText = file.absolutePath
-            messagePhase = DesktopTaskPhase.IDLE
-            messageStatus = "Adjunto listo: ${file.name}"
+            if (activeChatCancellation == null) {
+                messagePhase = DesktopTaskPhase.IDLE
+                messageStatus = "Adjunto listo: ${file.name}"
+            } else {
+                notice = "${file.name} preparado para el próximo envío. El envío actual continúa."
+            }
             appendLog("$source para chat/canal: ${file.name}")
         }
 
@@ -1836,6 +1856,12 @@ private fun runDesktopGui(cli: CliArgs) {
         fun revokeChannelFileOffers() {
             channelFileOffers.clear()
             channelUploads.cancel()
+            channelRequests.cancel()
+            if (activeChatScope == DesktopChatScope.GLOBAL_LAN) {
+                messagePhase = DesktopTaskPhase.STOPPING
+                messageStatus = "Deteniendo el envío del canal…"
+                chatSends.cancel()
+            }
         }
 
         fun setGlobalLanMembership(joined: Boolean) {
@@ -1851,6 +1877,7 @@ private fun runDesktopGui(cli: CliArgs) {
             receiverExpiresAt = null
             setGlobalLanMembership(false)
             activeSendCancellation?.cancel()
+            chatSends.cancel()
             receiverServer?.stop()
         }
 
@@ -1908,27 +1935,36 @@ private fun runDesktopGui(cli: CliArgs) {
                 retries = retries,
                 localNoiseIdentity = noiseIdentity
             )
+            val cancellation = channelRequests.tryAcquire() ?: run {
+                notice = "Ya hay una solicitud de descarga en curso. Espera a que termine."
+                return
+            }
+            val requestGeneration = receiverGeneration
             messageStatus = "Solicitando ${offer.fileName}..."
             thread(
                 start = true,
                 isDaemon = true,
                 name = "qetara-channel-file-request"
             ) {
-                runCatching {
+                val result = runCatching {
                     sendMessageToPeer(
                         messageRaw = encodeDesktopChannelFileRequest(request),
                         scope = DesktopChatScope.GLOBAL_LAN,
-                        config = config
+                        config = config,
+                        cancellation = cancellation
                     )
-                }.onSuccess {
-                    SwingUtilities.invokeLater {
+                }
+                SwingUtilities.invokeLater {
+                    if (!channelRequests.isCurrent(cancellation)) return@invokeLater
+                    channelRequests.release(cancellation)
+                    if (receiverGeneration != requestGeneration || receiverPhase != DesktopTaskPhase.RUNNING ||
+                        !isGlobalLanJoined || cancellation.isCancelled) return@invokeLater
+                    result.onSuccess {
                         messageStatus = "Descarga solicitada a ${offer.senderLabel}."
                         appendLog(messageStatus)
-                    }
-                }.onFailure { error ->
-                    SwingUtilities.invokeLater {
+                    }.onFailure { error ->
                         messageStatus = "No se pudo solicitar la descarga."
-                        appendLog("${messageStatus} ${error.message ?: error::class.java.simpleName}", isError = true)
+                        appendLog("${messageStatus} ${actionableDesktopError(error)}", isError = true)
                     }
                 }
             }
@@ -2159,7 +2195,8 @@ private fun runDesktopGui(cli: CliArgs) {
                 },
                 onTransferError = { error ->
                     SwingUtilities.invokeLater {
-                        if (receiverGeneration == generation) {
+                        if (DesktopMessageReception(receiverGeneration, receiverPhase == DesktopTaskPhase.RUNNING,
+                                receiverExpiresAt, isGlobalLanJoined).isActiveFor(generation)) {
                             receivingProgress = null
                             receiverStatus = "No se completó el archivo. El receptor sigue disponible."
                             notice = actionableDesktopError(error)
@@ -2386,7 +2423,7 @@ private fun runDesktopGui(cli: CliArgs) {
         }
 
         fun sendChatMessage(scope: DesktopChatScope) {
-            if (messagePhase == DesktopTaskPhase.STARTING || messagePhase == DesktopTaskPhase.RUNNING) return
+            if (activeChatCancellation != null) return
 
             val token = runCatching { requireValidToken(tokenText) }
                 .getOrElse {
@@ -2462,6 +2499,9 @@ private fun runDesktopGui(cli: CliArgs) {
                 return
             }
 
+            val cancellation = chatSends.tryAcquire() ?: return
+            activeChatCancellation = cancellation
+            activeChatScope = scope
             rememberCurrentDraft()
             val sendingConversationKey = desktopConversationKey(scope, targets.firstOrNull()?.ip)
             val targetLabel = if (scope == DesktopChatScope.GLOBAL_LAN) {
@@ -2518,43 +2558,52 @@ private fun runDesktopGui(cli: CliArgs) {
                 val fileTargets = mutableListOf<DesktopLanPeer>()
                 val offerTargets = mutableListOf<DesktopLanPeer>()
                 targets.forEach { peer ->
+                    if (cancellation.isCancelled) return@forEach
                     val peerConfig = baseConfig.copy(targetHost = peer.ip)
                     if (message != null) {
                         runCatching {
                             sendMessageToPeer(
                                 messageRaw = message,
                                 scope = scope,
-                                config = peerConfig
+                                config = peerConfig,
+                                cancellation = cancellation
                             )
                         }.onSuccess {
                             messageTargets.add(peer)
                         }.onFailure { error ->
-                            failures.add("${peer.ip} mensaje: ${actionableDesktopError(error)}")
+                            if (!cancellation.isCancelled) failures.add("${peer.ip} mensaje: ${actionableDesktopError(error)}")
                         }
                     }
+                    if (cancellation.isCancelled) return@forEach
                     if (channelFileOfferPayload != null) {
                         runCatching {
                             sendMessageToPeer(
                                 messageRaw = channelFileOfferPayload,
                                 scope = DesktopChatScope.GLOBAL_LAN,
-                                config = peerConfig
+                                config = peerConfig,
+                                cancellation = cancellation
                             )
                         }.onSuccess {
                             offerTargets.add(peer)
                         }.onFailure { error ->
-                            failures.add("${peer.ip} archivo: ${actionableDesktopError(error)}")
+                            if (!cancellation.isCancelled) failures.add("${peer.ip} archivo: ${actionableDesktopError(error)}")
                         }
                     } else if (attachment != null) {
                         runCatching {
-                            sendFileToPeer(attachment, peerConfig)
+                            sendFileToPeer(attachment, peerConfig, cancellation)
                         }.onSuccess {
                             fileTargets.add(peer)
                         }.onFailure { error ->
-                            failures.add("${peer.ip} archivo: ${actionableDesktopError(error)}")
+                            if (!cancellation.isCancelled) failures.add("${peer.ip} archivo: ${actionableDesktopError(error)}")
                         }
                     }
                 }
                 SwingUtilities.invokeLater {
+                    if (activeChatCancellation !== cancellation || !chatSends.isCurrent(cancellation)) return@invokeLater
+                    chatSends.release(cancellation)
+                    activeChatCancellation = null
+                    activeChatScope = null
+                    if (channelFileOffer != null && offerTargets.isEmpty()) channelFileOffers.remove(channelFileOffer.id)
                     if (message != null && messageTargets.isNotEmpty()) {
                         appendChat(
                             DesktopChatEntry(
@@ -2580,17 +2629,24 @@ private fun runDesktopGui(cli: CliArgs) {
                         )
                     }
                     rememberCurrentDraft()
-                    conversationDrafts.acknowledge(
+                    conversationDrafts.acknowledgeDelivery(
                         sendingConversationKey,
-                        sentText = if (messageTargets.isNotEmpty()) message else null,
-                        sentAttachmentPath = if (fileTargets.isNotEmpty() || offerTargets.isNotEmpty()) attachment?.absolutePath else null
+                        expectedRecipients = targets.map { it.ip }.toSet(),
+                        textRecipients = messageTargets.map { it.ip }.toSet(),
+                        attachmentRecipients = (fileTargets + offerTargets).map { it.ip }.toSet(),
+                        sentText = message,
+                        sentAttachmentPath = attachment?.absolutePath
                     )
                     if (currentConversationKey() == sendingConversationKey) {
                         val remainingDraft = conversationDrafts.restore(sendingConversationKey)
                         chatDraftText = remainingDraft.text
                         chatAttachmentPathText = remainingDraft.attachmentPath
                     }
-                    if (failures.isEmpty()) {
+                    if (cancellation.isCancelled) {
+                        messagePhase = DesktopTaskPhase.IDLE
+                        messageStatus = "Envío detenido. Conservamos el contenido que no tiene confirmación; comprueba el otro equipo antes de repetirlo."
+                        appendLog(messageStatus)
+                    } else if (failures.isEmpty()) {
                         messagePhase = DesktopTaskPhase.IDLE
                         messageStatus = when {
                             message != null && attachment != null && scope == DesktopChatScope.GLOBAL_LAN ->
@@ -2611,12 +2667,23 @@ private fun runDesktopGui(cli: CliArgs) {
                         messagePhase = DesktopTaskPhase.ERROR
                         val sentCount = messageTargets.size + fileTargets.size + offerTargets.size
                         messageStatus = if (sentCount > 0) {
-                            "Envío parcial con ${failures.size} fallo(s)."
+                            val deliveredParts = buildList {
+                                if (message != null) add("mensaje ${messageTargets.size}/${targets.size}")
+                                if (attachment != null) add("archivo ${fileTargets.size + offerTargets.size}/${targets.size}")
+                            }.joinToString(", ")
+                            "Envío parcial: $deliveredParts. Conservamos lo pendiente en el borrador." +
+                                if (scope == DesktopChatScope.GLOBAL_LAN) " Repetir lo enviará otra vez a todos los equipos del canal." else ""
                         } else {
                             failures.firstOrNull()?.substringAfter(": ") ?: "No se pudo enviar."
                         }
                         failures.forEach { appendLog(it, isError = true) }
                     }
+                    val completion = desktopChatCompletionFeedback(
+                        sendingConversationKey, currentConversationKey(), targetLabel, messagePhase, messageStatus
+                    )
+                    messagePhase = completion.phase
+                    messageStatus = completion.status
+                    completion.notice?.let { notice = it }
                 }
             }
             messagePhase = DesktopTaskPhase.RUNNING
@@ -2645,8 +2712,7 @@ private fun runDesktopGui(cli: CliArgs) {
 
         Window(
             onCloseRequest = {
-                if (activeSendCancellation != null || receivingProgress != null ||
-                    messagePhase == DesktopTaskPhase.RUNNING || messagePhase == DesktopTaskPhase.STARTING) {
+                if (activeSendCancellation != null || receivingProgress != null || activeChatCancellation != null) {
                     showCloseDialog = true
                 } else {
                     stopDesktopOperationsForExit()
@@ -2747,9 +2813,9 @@ private fun runDesktopGui(cli: CliArgs) {
                         }.onSuccess { notice = "Datos de conexión copiados. Compártelos con la persona que conectará el otro equipo." }
                             .onFailure { notice = "No se pudo copiar. Puedes seleccionar los datos manualmente." }
                     },
-                    onChooseFile = { chooseFilePath(filePathText)?.let { selectSendFile(File(it), "Archivo elegido") } },
+                    onChooseFile = { chooseFilePath(filePathText, window)?.let { selectSendFile(File(it), "Archivo elegido") } },
                     onClearFile = { filePathText = ""; sendingProgress = null; sendingStatus = "Elige un archivo para compartir."; sendingPhase = DesktopTaskPhase.IDLE },
-                    onChooseDirectory = { chooseDirectoryPath(outputDirText)?.let { outputDirText = it; savePreferences() } },
+                    onChooseDirectory = { chooseDirectoryPath(outputDirText, window)?.let { outputDirText = it; savePreferences() } },
                     onOpenDirectory = {
                         runCatching {
                             val directory = File(outputDirText)
@@ -2816,6 +2882,7 @@ private fun runDesktopGui(cli: CliArgs) {
                         isFileDragActive = isFileDragActive,
                         transfers = transfers.toList(), notice = notice, sessionRemaining = sessionRemaining,
                         unreadMessages = unreadConversations.values.sum(),
+                        messageSending = activeChatCancellation != null,
                         identityFingerprint = desktopIdentityFingerprint(noiseIdentity.publicKey)
                     ),
                     actions = actions,
@@ -2841,8 +2908,12 @@ private fun runDesktopGui(cli: CliArgs) {
                             draft = chatDraftText,
                             onDraftChange = { chatDraftText = it.take(2_000) },
                             attachmentPath = chatAttachmentPathText,
-                            onChooseAttachment = { chooseFilePath(chatAttachmentPathText)?.let { selectChatAttachment(File(it), "Archivo adjunto") } },
-                            onClearAttachment = { chatAttachmentPathText = ""; messageStatus = "Adjunto quitado." },
+                            onChooseAttachment = { chooseFilePath(chatAttachmentPathText, window)?.let { selectChatAttachment(File(it), "Archivo adjunto") } },
+                            onClearAttachment = {
+                                chatAttachmentPathText = ""
+                                if (activeChatCancellation == null) messageStatus = "Adjunto quitado."
+                                else notice = "Adjunto quitado del borrador. El envío actual continúa."
+                            },
                             messages = chatMessages,
                             status = messageStatus,
                             messagePhase = messagePhase,
@@ -2854,7 +2925,13 @@ private fun runDesktopGui(cli: CliArgs) {
                             onAutoDownloadChannelFilesChange = { autoDownloadChannelFiles = it },
                             onDownloadChannelFileOffer = ::sendChannelFileOfferRequest,
                             credentialsReady = tokenError == null && pinError == null,
-                            unreadCounts = unreadConversations
+                            unreadCounts = unreadConversations,
+                            messageBusy = activeChatCancellation != null,
+                            onCancelSend = {
+                                messagePhase = DesktopTaskPhase.STOPPING
+                                messageStatus = "Cancelando el envío del chat…"
+                                chatSends.cancel()
+                            }
                         )
                     },
                     activityContent = { modifier ->
@@ -3077,7 +3154,9 @@ private fun DesktopChatScopeContent(
     onAutoDownloadChannelFilesChange: (Boolean) -> Unit,
     onDownloadChannelFileOffer: (DesktopChatEntry) -> Unit,
     credentialsReady: Boolean = true,
-    unreadCounts: Map<String, Int> = emptyMap()
+    unreadCounts: Map<String, Int> = emptyMap(),
+    messageBusy: Boolean = messagePhase in listOf(DesktopTaskPhase.STARTING, DesktopTaskPhase.RUNNING, DesktopTaskPhase.STOPPING),
+    onCancelSend: (() -> Unit)? = null
 ) {
     val activePeers = lanPeers.filter {
         it.sessionActive && it.ip.isNotBlank() && (scope == DesktopChatScope.DIRECT || it.globalLanJoined)
@@ -3109,8 +3188,7 @@ private fun DesktopChatScopeContent(
     }
     val canSend = credentialsReady && hasTarget &&
         (hasDraft || validAttachment != null) &&
-        messagePhase != DesktopTaskPhase.STARTING &&
-        messagePhase != DesktopTaskPhase.RUNNING
+        !messageBusy
 
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(
@@ -3216,13 +3294,17 @@ private fun DesktopChatScopeContent(
                         color = qetaraInk
                     )
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().toggleable(
+                            value = autoDownloadChannelFiles,
+                            role = Role.Checkbox,
+                            onValueChange = onAutoDownloadChannelFilesChange
+                        ),
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Checkbox(
                             checked = autoDownloadChannelFiles,
-                            onCheckedChange = onAutoDownloadChannelFilesChange
+                            onCheckedChange = null
                         )
                         Text(
                             "Descargar automáticamente archivos del canal",
@@ -3291,8 +3373,8 @@ private fun DesktopChatScopeContent(
             },
             maxLines = 4,
             modifier = Modifier.fillMaxWidth().onPreviewKeyEvent { event ->
-                if (event.type == KeyEventType.KeyDown && event.key == Key.Enter && event.isCtrlPressed && canSend) {
-                    onSend(scope)
+                if (event.type == KeyEventType.KeyDown && event.key == Key.Enter && event.isCtrlPressed) {
+                    if (canSend) onSend(scope)
                     true
                 } else false
             }
@@ -3344,7 +3426,12 @@ private fun DesktopChatScopeContent(
                 style = MaterialTheme.typography.caption,
                 color = if (messagePhase == DesktopTaskPhase.ERROR) MaterialTheme.colors.error else qetaraInk.copy(alpha = 0.8f)
             )
-            Button(
+            if (messageBusy && onCancelSend != null) {
+                OutlinedButton(
+                    onClick = onCancelSend,
+                    enabled = messagePhase != DesktopTaskPhase.STOPPING
+                ) { Text(if (messagePhase == DesktopTaskPhase.STOPPING) "Cancelando…" else "Cancelar envío") }
+            } else Button(
                 onClick = { onSend(scope) },
                 enabled = canSend,
                 colors = ButtonDefaults.buttonColors(
@@ -4388,7 +4475,7 @@ private fun desktopPhasePalette(phase: DesktopTaskPhase): DesktopPhasePalette = 
     )
 }
 
-private fun chooseFilePath(current: String): String? {
+private fun chooseFilePath(current: String, owner: java.awt.Component): String? {
     val chooser = JFileChooser().apply { dialogTitle = "Elige un archivo para compartir"; approveButtonText = "Elegir archivo" }
     val base = File(current)
     chooser.currentDirectory = when {
@@ -4397,14 +4484,14 @@ private fun chooseFilePath(current: String): String? {
         else -> File(System.getProperty("user.home"))
     }
     chooser.fileSelectionMode = JFileChooser.FILES_ONLY
-    return if (chooser.showOpenDialog(null) == JFileChooser.APPROVE_OPTION) {
+    return if (chooser.showOpenDialog(owner) == JFileChooser.APPROVE_OPTION) {
         chooser.selectedFile?.absolutePath
     } else {
         null
     }
 }
 
-private fun chooseDirectoryPath(current: String): String? {
+private fun chooseDirectoryPath(current: String, owner: java.awt.Component): String? {
     val chooser = JFileChooser().apply { dialogTitle = "Dónde guardar lo recibido"; approveButtonText = "Usar esta carpeta" }
     val base = File(current)
     chooser.currentDirectory = when {
@@ -4414,7 +4501,7 @@ private fun chooseDirectoryPath(current: String): String? {
     }
     chooser.fileSelectionMode = JFileChooser.DIRECTORIES_ONLY
     chooser.isAcceptAllFileFilterUsed = false
-    return if (chooser.showOpenDialog(null) == JFileChooser.APPROVE_OPTION) {
+    return if (chooser.showOpenDialog(owner) == JFileChooser.APPROVE_OPTION) {
         chooser.selectedFile?.absolutePath
     } else {
         null

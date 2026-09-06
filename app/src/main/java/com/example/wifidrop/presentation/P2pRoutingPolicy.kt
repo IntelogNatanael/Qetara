@@ -79,11 +79,9 @@ fun normalizeChatSelection(input: P2pChatSelectionInput): P2pChatSelectionState 
             .map { it.trim() }
             .filter { it.isNotBlank() }
             .distinct()
-        val resolved = availableDirectPeers
-            .filter { peer -> selectedIps.contains(peer.ip) }
-            .map { it.ip }
+        // A disappearing participant must not redirect an existing draft to another device.
         when {
-            resolved.isNotEmpty() -> resolved
+            selectedIps.isNotEmpty() -> selectedIps
             availableDirectPeers.size == 1 -> listOf(availableDirectPeers.first().ip)
             else -> emptyList()
         }
@@ -101,7 +99,8 @@ fun resolveP2pRouting(input: P2pRoutingInput): P2pRoutingState {
     val directTarget = resolveDirectTarget(
         wifiState = input.wifiState,
         transferState = input.transferState,
-        participants = directParticipants
+        participants = directParticipants,
+        preferredIp = input.manualTargetIp
     )
     val lanTarget = resolveLanTarget(
         transferState = input.transferState,
@@ -153,7 +152,8 @@ fun resolveP2pRouting(input: P2pRoutingInput): P2pRoutingState {
 private fun resolveDirectTarget(
     wifiState: WifiDirectState,
     transferState: TransferRuntimeState,
-    participants: List<KnownPeerSnapshot>
+    participants: List<KnownPeerSnapshot>,
+    preferredIp: String
 ): P2pResolvedTarget? {
     val connection = wifiState.connection ?: return null
     if (!connection.groupFormed) return null
@@ -169,18 +169,7 @@ private fun resolveDirectTarget(
         )
     }
 
-    val recentCutoff = System.currentTimeMillis() - 20_000L
-    val recentDirectPeer = transferState.lastPeerIp
-        ?.trim()
-        ?.takeUnless { it.isNullOrBlank() }
-        ?.let { lastIp ->
-            participants.firstOrNull { peer ->
-                peer.ip == lastIp && peer.lastSeenAtMs >= recentCutoff
-            }
-        }
-        ?: participants.firstOrNull()
-
-    return recentDirectPeer?.let { peer ->
+    return resolveSelectedDirectFilePeer(preferredIp, participants)?.let { peer ->
         P2pResolvedTarget(
             peerId = peer.id,
             ip = peer.ip,
@@ -188,6 +177,14 @@ private fun resolveDirectTarget(
             mode = ConnectionMode.WIFI_DIRECT
         )
     }
+}
+
+internal fun resolveSelectedDirectFilePeer(
+    selectedIp: String?,
+    participants: List<KnownPeerSnapshot>
+): KnownPeerSnapshot? {
+    val selected = selectedIp?.trim().takeUnless { it.isNullOrBlank() }
+    return if (selected != null) participants.firstOrNull { it.ip == selected } else participants.singleOrNull()
 }
 
 private fun resolveLanTarget(
@@ -262,7 +259,7 @@ private fun resolvePreferredTarget(
     }
 }
 
-private fun resolveExplicitDirectChatTargets(
+internal fun resolveExplicitDirectChatTargets(
     selectedIps: List<String>,
     availablePeers: List<KnownPeerSnapshot>
 ): List<P2pResolvedTarget> {
@@ -272,7 +269,10 @@ private fun resolveExplicitDirectChatTargets(
         .distinct()
 
     val resolved = when {
-        selected.isNotEmpty() -> availablePeers.filter { selected.contains(it.ip) }
+        selected.isNotEmpty() -> {
+            if (selected.any { ip -> availablePeers.none { it.ip == ip } }) emptyList()
+            else availablePeers.filter { selected.contains(it.ip) }
+        }
         availablePeers.size == 1 -> listOf(availablePeers.first())
         else -> emptyList()
     }

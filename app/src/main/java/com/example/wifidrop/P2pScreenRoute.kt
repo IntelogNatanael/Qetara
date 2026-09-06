@@ -314,7 +314,7 @@ fun P2pScreenRoute() {
     val pickFileLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenMultipleDocuments()
     ) { uris ->
-        shareImportPresenter.importPickedUris(uris, pendingPickerContext)
+        presenters.importPickedFiles(uris, pendingPickerContext)
     }
 
     fun handleOutboundResult(result: P2pOutboundOrchestrationResult) {
@@ -369,6 +369,18 @@ fun P2pScreenRoute() {
         }
         if (chatDirectWifiTargetIps != routeState.effectiveChatDirectWifiTargetIps) {
             chatDirectWifiTargetIps = routeState.effectiveChatDirectWifiTargetIps
+        }
+    }
+
+
+    LaunchedEffect(
+        uxPreferences.connectionViewMode,
+        wifiState.connection?.groupFormed,
+        routeState.routing.targets.directTarget?.ip
+    ) {
+        if (uxPreferences.connectionViewMode == ConnectionViewMode.WIFI_DIRECT &&
+            wifiState.connection?.groupFormed == true && targetIpInput.isBlank()) {
+            routeState.routing.targets.directTarget?.ip?.let { targetIpInput = it }
         }
     }
 

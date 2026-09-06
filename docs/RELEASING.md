@@ -35,12 +35,16 @@ Una instalación anterior firmada con una clave diferente, incluida una clave de
 En Windows:
 
 ```powershell
-.\scripts\package.ps1 -Installer
+.\scripts\package.ps1 -Installer -RuntimeSourceDirectory C:\Qetara\Qetara-third-party-source
 ```
+
+Selecciona en `JAVA_HOME` el JDK con el que vas a empaquetar. Para reproducir esta entrega se utilizó Eclipse Temurin 21.0.12.1+1. `-RuntimeSourceDirectory` identifica el paquete de fuentes de ese runtime; también puedes usar `QETARA_RUNTIME_SOURCE_DIR`. Si ambos están ausentes, el script busca `../Qetara-third-party-source`, junto al repositorio. La copia de código de Qetara se puede compilar y probar sin ese paquete: se exige cuando vas a generar una distribución con Java incluido.
+
+El paquete de fuentes debe conservar `PROVENANCE.json` (incluidos `selected_version`, `source_archive` y `build_scripts_commit`), `SHA256SUMS.txt`, el archivo completo de fuentes de OpenJDK, el snapshot de los scripts Temurin y sus avisos. Antes de compilar, el script comprueba cada archivo declarado, rechaza archivos adicionales o enlaces y verifica que los metadatos coincidan con el archivo de fuentes. No descarga archivos automáticamente. Si cambias el JDK, prepara el paquete correspondiente y actualiza los avisos de la distribución; no reutilices por nombre las fuentes de una versión anterior.
 
 El script verifica y construye los APK, JAR, aplicación Windows con Java incluido y ZIP portable. Con `-Installer` incluye también el MSI. Cada ejecución crea una carpeta nueva en `build/release/<fecha-UTC>-<identificador>/` y muestra su ruta al terminar; conserva las entregas anteriores.
 
-Los APK se seleccionan por `output-metadata.json`, y el JAR y MSI por la misma versión. No se incorporan instaladores anteriores ni APK ajenos al metadata actual. La carpeta incluye `LICENSE`, los avisos y `licenses/` cuando están disponibles, y `SHA256SUMS.txt` cubre todos los archivos de esa ejecución con rutas relativas. `-SkipVerification` sirve únicamente cuando ya se ejecutó la verificación del mismo código.
+Los APK se seleccionan por `output-metadata.json`, y el JAR y MSI por la misma versión. No se incorporan instaladores anteriores ni APK ajenos al metadata actual. La carpeta incluye `LICENSE`, los avisos, `licenses/` y los fuentes comprobados en `Fuentes/Qetara-third-party-source/`. El script exige que `runtime/release` declare la misma `JAVA_VERSION` numérica que `PROVENANCE.json`, vuelve a comprobar el paquete tras la compilación y verifica su copia final. `SHA256SUMS.txt` cubre todos los archivos de esa ejecución con rutas relativas. Estos controles detectan archivos ausentes, modificados o de otra versión; no sustituyen la verificación de procedencia del proveedor ni prueban una reconstrucción idéntica del runtime. `-SkipVerification` sirve únicamente cuando ya se ejecutó la verificación del mismo código.
 
 Para crear paquetes nativos de otro sistema, compila en ese sistema:
 
@@ -50,7 +54,7 @@ Para crear paquetes nativos de otro sistema, compila en ese sistema:
 ./gradlew -PqetaraDesktopOnly=true :pc:packageDeb   # Linux
 ```
 
-Cada aplicación portable debe conservar toda su carpeta, incluidos runtime, recursos y avisos legales. El JAR necesita Java instalado y corresponde al sistema en que se empaquetó.
+Cada aplicación portable debe conservar toda su carpeta, incluidos runtime, recursos y avisos legales. Al distribuir el portable o un instalador con Java, acompáñalo del paquete de fuentes correspondiente en el mismo conjunto de entrega; el ZIP portable por sí solo no contiene ese paquete. En macOS y Linux realiza también la comprobación y el acompañamiento de los fuentes del JDK utilizado, porque las tareas Gradle directas no ejecutan esta comprobación de `package.ps1`. El JAR necesita Java instalado y corresponde al sistema en que se empaquetó.
 
 La firma Android local no equivale a la firma de código o notarización de Windows/macOS. Estos procesos necesitan las credenciales del editor y se realizan separadamente antes de una distribución pública que los requiera.
 

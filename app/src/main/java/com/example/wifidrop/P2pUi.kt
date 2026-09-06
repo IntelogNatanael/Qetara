@@ -214,6 +214,7 @@ fun P2pScreen(
     var headerExpanded by rememberSaveable { mutableStateOf(false) }
     var downloadsInitialSection by rememberSaveable { mutableStateOf(DownloadLibrarySection.FILES) }
     var dismissedSupportCardKey by rememberSaveable { mutableStateOf<String?>(null) }
+    var lastHandledShareEventId by rememberSaveable { mutableStateOf<Long?>(null) }
     val focusEnabled = focusStage != FocusStage.OFF
     val selectedTab = when (focusStage) {
         FocusStage.CONNECT -> P2pMainTab.CONNECTION
@@ -271,7 +272,8 @@ fun P2pScreen(
         applyFocusStage(initialFocusStage, persist = false)
     }
     LaunchedEffect(screenState.incomingShareEventId) {
-        if (screenState.incomingShareEventId != null) {
+        if (com.example.wifidrop.presentation.shouldNavigateToIncomingShare(screenState.incomingShareEventId, lastHandledShareEventId)) {
+            lastHandledShareEventId = screenState.incomingShareEventId
             selectedTabIndex = allTabs.indexOf(P2pMainTab.SEND)
             applyFocusStage(FocusStage.OFF)
         }
@@ -2628,6 +2630,14 @@ fun P2pScreen(
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+
+                        if (com.example.wifidrop.presentation.isIncompleteAttachmentRecovery(state.shareImportStatus)) {
+                            Text(
+                                state.shareImportStatus,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        }
 
                         if (state.selectedFilesCount == 0) {
                             Button(onClick = pickFilesForContext, modifier = Modifier.fillMaxWidth()) {

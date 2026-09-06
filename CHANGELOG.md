@@ -1,5 +1,22 @@
 # Cambios en Qetara
 
+## 1.2.0 — 6 de septiembre de 2026
+
+Esta actualización se centra en conservar el trabajo preparado y recuperarse de interrupciones.
+
+- Android conserva los presentadores al recrear la pantalla y guarda el estado recuperable de la sesión y de los borradores. Girar el dispositivo no debe cambiar las credenciales ni descartar adjuntos.
+- Una selección restaurada con archivos inaccesibles muestra un aviso junto al selector. La importación desde Compartir se consume una sola vez y no reaparece tras borrar la selección y girar la pantalla.
+- Las preferencias heredadas alinean el modo LAN/Direct visible con la ruta elegida, conservando la vista Avanzada.
+- Las selecciones de destinatarios expresas se conservan aunque un equipo deje de estar disponible; el envío espera una selección válida y no cambia silenciosamente a otro miembro.
+- Windows permite cancelar el envío de mensajes y corta las conexiones y los lotes pendientes. Preparar otro adjunto no habilita un segundo envío simultáneo.
+- Los resultados del chat se atribuyen a su conversación. Un envío parcial al canal conserva los componentes pendientes del borrador y explica el alcance de un nuevo envío manual.
+- El receptor conserva un recibo del destino antes de publicar los bytes verificados. Tras un cierre de proceso en esa frontera, el mismo intento reconoce el archivo completo sin generar una segunda copia. Los recibos anteriores mantienen su formato compatible.
+- Los selectores de archivos de Windows pertenecen a la ventana de Qetara y los estados tardíos del receptor no reactivan visualmente una sesión caducada.
+
+- El empaquetado verifica los fuentes correspondientes del runtime, su inventario y versión, y los incluye en la distribución Windows.
+
+Los resultados y los límites de esta actualización se documentan en [Validación](docs/VALIDATION.md). La evidencia anterior se conserva en [Validación de 1.1.0](docs/VALIDATION-1.1.0.md).
+
 ## 1.1.0 — 6 de septiembre de 2026
 
 Esta versión convierte la base Android y PC en una entrega local instalable, con una experiencia de conexión, envío y recuperación más clara.

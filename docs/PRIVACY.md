@@ -12,6 +12,8 @@ Los archivos y mensajes se envían al equipo seleccionado. El canal Wi-Fi permit
 
 Qetara conserva los archivos recibidos, historial de transferencias, mensajes y preferencias necesarios para sus funciones. La identidad criptográfica y las decisiones de confianza se almacenan localmente. El código desactiva la copia de seguridad de Android para los datos de la aplicación.
 
+Android también conserva el estado de la tarea para poder recrear la pantalla: borradores, referencias a archivos seleccionados y las credenciales de sesión con su vencimiento original. Recuperar ese estado no confirma al destinatario ni reactiva una sesión cerrada. Los permisos de acceso a cada archivo se vuelven a comprobar.
+
 Los archivos que exportes o compartas con otra aplicación quedan también sujetos al almacenamiento y las reglas de esa aplicación. Desinstalar Qetara puede eliminar sus datos privados; conserva los archivos importantes antes de hacerlo.
 
 En PC, los archivos recibidos se guardan en la carpeta que elijas. Las preferencias de la interfaz no deben guardar el PIN o código de sesión como preferencias permanentes. Los registros de diagnóstico pueden contener nombres de archivos, equipos o direcciones de red: revísalos antes de compartirlos.

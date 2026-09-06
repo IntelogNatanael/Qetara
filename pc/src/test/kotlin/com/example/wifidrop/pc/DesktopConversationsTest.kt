@@ -62,6 +62,43 @@ class DesktopConversationsTest {
         assertEquals("new", drafts.restore("new").text)
     }
 
+    @Test
+    fun partialRecipientsKeepOnlyTheContentStillMissingConfirmation() {
+        val drafts = DesktopConversationDrafts()
+        drafts.save("channel", DesktopChatDraft("Message", "C:/file.pdf"))
+        drafts.acknowledgeDelivery("channel", setOf("alice", "bob"), setOf("alice", "bob"), setOf("alice"), "Message", "C:/file.pdf")
+        assertEquals(DesktopChatDraft(attachmentPath = "C:/file.pdf"), drafts.restore("channel"))
+        drafts.acknowledgeDelivery("channel", setOf("alice", "bob"), emptySet(), setOf("alice", "bob"), null, "C:/file.pdf")
+        assertEquals(DesktopChatDraft(), drafts.restore("channel"))
+    }
+
+    @Test
+    fun equalRecipientCountsDoNotAcknowledgeDifferentRecipientsOrNewEdits() {
+        val drafts = DesktopConversationDrafts()
+        drafts.save("alice", DesktopChatDraft("Original", "C:/original.pdf"))
+        drafts.acknowledgeDelivery("alice", setOf("alice"), setOf("bob"), setOf("bob"), "Original", "C:/original.pdf")
+        assertEquals(DesktopChatDraft("Original", "C:/original.pdf"), drafts.restore("alice"))
+        drafts.save("alice", DesktopChatDraft("New paragraph\nStill editing", "C:/new.pdf"))
+        drafts.save("bob", DesktopChatDraft("Private to Bob", "C:/bob.pdf"))
+        drafts.acknowledgeDelivery("alice", setOf("alice"), setOf("alice"), setOf("alice"), "Original", "C:/original.pdf")
+        assertEquals(DesktopChatDraft("New paragraph\nStill editing", "C:/new.pdf"), drafts.restore("alice"))
+        assertEquals(DesktopChatDraft("Private to Bob", "C:/bob.pdf"), drafts.restore("bob"))
+    }
+
+    @Test
+    fun lateFailureIsAttributedToTheSenderConversationWithoutFailingTheVisibleDraft() {
+        val alice = desktopConversationKey(DesktopChatScope.DIRECT, "192.168.1.4")
+        val bob = desktopConversationKey(DesktopChatScope.DIRECT, "192.168.1.5")
+        val elsewhere = desktopChatCompletionFeedback(alice, bob, "Alice", DesktopTaskPhase.ERROR, "No se pudo enviar.")
+        assertEquals(DesktopTaskPhase.IDLE, elsewhere.phase)
+        assertEquals("Escribe un mensaje para este equipo.", elsewhere.status)
+        assertEquals("Alice: No se pudo enviar.", elsewhere.notice)
+        val original = desktopChatCompletionFeedback(alice, alice, "Alice", DesktopTaskPhase.ERROR, "No se pudo enviar.")
+        assertEquals(DesktopTaskPhase.ERROR, original.phase)
+        assertEquals("No se pudo enviar.", original.status)
+        assertNull(original.notice)
+    }
+
     private fun peer(ip: String, active: Boolean) =
         DesktopLanPeer(ip, ip, ip, active, false, false, 0L)
 }

@@ -10,9 +10,11 @@ internal data class DesktopMessageReception(
     val expiresAtMs: Long?,
     val channelJoined: Boolean
 ) {
+    fun isActiveFor(expectedGeneration: Int, nowMs: Long = System.currentTimeMillis()): Boolean =
+        generation == expectedGeneration && receiving && expiresAtMs != null && nowMs < expiresAtMs
+
     fun requireDelivery(expectedGeneration: Int, scope: DesktopChatScope, nowMs: Long = System.currentTimeMillis()) {
-        check(generation == expectedGeneration && receiving &&
-            expiresAtMs != null && nowMs < expiresAtMs) { "sesion_expirada_o_detenida" }
+        check(isActiveFor(expectedGeneration, nowMs)) { "sesion_expirada_o_detenida" }
         check(scope != DesktopChatScope.GLOBAL_LAN || channelJoined) { "canal_no_unido" }
     }
 }
@@ -30,8 +32,8 @@ internal fun deliverDesktopMessageOnUi(deliver: () -> Unit) {
     }
 }
 
-/** A cancelled upload keeps its slot until the worker actually finishes. */
-internal class DesktopChannelUploadGate {
+/** Selection changes never free a running operation; cancellation keeps its slot until the worker finishes. */
+internal class DesktopTransferSlot {
     private var active: DesktopTransferCancellation? = null
 
     @Synchronized
@@ -44,6 +46,9 @@ internal class DesktopChannelUploadGate {
         val current = synchronized(this) { active }
         current?.cancel()
     }
+
+    @Synchronized
+    fun isCurrent(cancellation: DesktopTransferCancellation): Boolean = active === cancellation
 
     @Synchronized
     fun release(cancellation: DesktopTransferCancellation) {

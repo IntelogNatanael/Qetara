@@ -6,7 +6,10 @@ import java.io.FileOutputStream
 import java.io.IOException
 
 /** Publishes verified bytes without replacing an existing user file, including racing receivers. */
-fun publishReceivedFile(source: File, directory: File, desiredName: String): File {
+fun publishReceivedFile(
+    source: File, directory: File, desiredName: String,
+    beforePublish: (reservedTarget: File) -> Unit = {}
+): File {
     require(source.isFile) { "archivo temporal inexistente" }
     check(directory.isDirectory || directory.mkdirs()) { "carpeta de recepcion no disponible" }
     val safeName = sanitizeFileName(desiredName)
@@ -29,26 +32,30 @@ fun publishReceivedFile(source: File, directory: File, desiredName: String): Fil
         if (collision == Int.MAX_VALUE) throw IOException("demasiados archivos con el mismo nombre")
     }
     try {
-        // On filesystems that allow replacing our own empty reservation, publish in one rename.
-        if (!source.renameTo(target)) {
-            try {
-                // Windows cannot rename over our reservation with File.renameTo. Use an atomic move
-                // instead of streaming into the final name, which could expose a partial file on crash.
-                // Android 24/25 uses the successful same-volume rename above; fail safely if unavailable.
-                Class.forName("java.nio.file.Files")
-                java.nio.file.Files.move(
-                    source.toPath(), target.toPath(),
-                    java.nio.file.StandardCopyOption.ATOMIC_MOVE,
-                    java.nio.file.StandardCopyOption.REPLACE_EXISTING
-                )
-            } catch (error: Exception) {
-                throw IOException("no se pudo publicar el archivo verificado", error)
-            }
-        }
+        // The receiver can durably record this exact destination before any verified bytes move.
+        // Exceptions (including cancellation) release our reservation and retain the source.
+        beforePublish(target)
+        replaceOwnedFile(source, target)
         return target
     } catch (error: Exception) {
         target.delete()
         throw error
+    }
+}
+
+/** Replace only a file owned by this operation, never an unreserved user destination. */
+internal fun replaceOwnedFile(source: File, target: File) {
+    // Android 24/25 supports the same-volume rename; NIO is a fallback for Windows.
+    if (source.renameTo(target)) return
+    try {
+        Class.forName("java.nio.file.Files")
+        java.nio.file.Files.move(
+            source.toPath(), target.toPath(),
+            java.nio.file.StandardCopyOption.ATOMIC_MOVE,
+            java.nio.file.StandardCopyOption.REPLACE_EXISTING
+        )
+    } catch (error: Exception) {
+        throw IOException("no se pudo publicar el archivo verificado", error)
     }
 }
 

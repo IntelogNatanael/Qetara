@@ -247,7 +247,12 @@ internal fun P2pConnectTab(
                     direct && (state.directCreatingGroup || (linked && host)) -> {
                         Text(if (linked) "Tu enlace está abierto" else "Creando tu enlace…", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
                         if (!linked) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-                        Text("En el otro Android, abre Qetara, elige Wi-Fi Direct y toca Buscar un equipo. Después elige este dispositivo.")
+                        if (linked && state.chatDirectAvailablePeers.isNotEmpty()) {
+                            Text("Elige el equipo que recibirá tus archivos y mensajes. La selección anterior no cambia sola.")
+                            FilledTonalButton(onClick = onOpenChat) { Text("Elegir equipo") }
+                        } else {
+                            Text("En el otro Android, abre Qetara, elige Wi-Fi Direct y toca Buscar un equipo. Después elige este dispositivo.")
+                        }
                         Text(state.thisDeviceName.ifBlank { "Este equipo" }, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                         OutlinedButton(onClick = if (linked) onDisconnect else onCancelConnect) { Text("Cerrar enlace") }
                     }

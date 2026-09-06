@@ -103,5 +103,6 @@ El self-test valida:
 ## Notas
 
 - Puerto por defecto: `8988`
-- Carpeta destino por defecto: `~/Downloads/WifiDrop`
-- Si quieres responder solicitudes de token/PIN desde Android u otra PC, inicia con `--allow-credentials-share`.
+- Carpeta destino por defecto: `~/Downloads/Qetara`
+- PC utiliza emparejamiento manual: introduce el mismo código y PIN en ambos equipos. La opción retirada `--allow-credentials-share` se rechaza; PC no entrega credenciales por red.
+- En el primer envío PC → Android, aprueba la conexión en el teléfono, compara la huella mostrada por ambos equipos y vuelve a enviar. Consulta la [guía de escritorio](../docs/DESKTOP_GUIDE.md).

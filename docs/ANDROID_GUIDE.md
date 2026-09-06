@@ -2,7 +2,7 @@
 
 Qetara permite compartir archivos y mensajes entre equipos cercanos. No requiere una cuenta. Para empezar con un PC, conecta ambos equipos a la misma red Wi-Fi y abre Qetara en los dos.
 
-La aplicación está configurada para Android 7.0 (API 24) o posterior. Consulta el [README del proyecto](../README.md) para identificar el APK de la entrega y su forma de instalación. Esta guía describe Qetara 1.1.0.
+La aplicación está configurada para Android 7.0 (API 24) o posterior. Consulta el [README del proyecto](../README.md) para identificar el APK de la entrega y su forma de instalación. Esta guía describe Qetara 1.2.0.
 
 ## Elegir cómo conectar
 
@@ -76,6 +76,14 @@ Si Wi-Fi está apagada, usa **Abrir ajustes Wi-Fi**, actívala y vuelve a Qetara
 Puedes preparar una selección antes de conectar otro equipo. Si falta el destino, vuelve a **Conectar un equipo**; la selección permanece en la aplicación.
 
 La cola ofrece controles para pausar, reanudar, cancelar y cambiar el orden de los elementos pendientes cuando corresponde a su estado. Un archivo cancelado o fallido no debe interpretarse como entregado. Revisa el resultado en **Descargas → Actividad** antes de repetir un envío.
+
+## Conservar lo preparado
+
+Al girar el dispositivo o recrearse la pantalla, Qetara conserva los adjuntos de Enviar, Chat y Canal y mantiene el código, el PIN y el vencimiento de la sesión. Girar no renueva una sesión caducada ni reactiva una sesión que cerraste.
+
+Si Android recupera una tarea después de terminar su proceso, Qetara intenta recuperar el texto y los archivos a los que aún tenga acceso. Un archivo borrado o cuyo permiso ya no sea válido se omite con una explicación para volver a elegirlo. Revisa el equipo y confirma la sesión antes de enviar. Esta recuperación no sustituye una copia guardada y no cubre borrar los datos, desinstalar o eliminar voluntariamente la tarea.
+
+Cuando un destinatario elegido deja de estar disponible, Qetara conserva esa intención y espera: no sustituye silenciosamente el equipo por otro miembro. En un grupo Direct con varios miembros, el anfitrión debe elegir a quién enviará.
 
 ## Chat directo
 

@@ -159,7 +159,7 @@ fun BindP2pScreenRouteEffects(
     }
 
     LaunchedEffect(input.incomingShare?.eventId) {
-        input.presenters.shareImportPresenter.consumeIncomingShare(input.incomingShare)
+        input.presenters.consumeIncomingShare(input.incomingShare)
     }
 
     LaunchedEffect(input.sessionState.syncStatus) {

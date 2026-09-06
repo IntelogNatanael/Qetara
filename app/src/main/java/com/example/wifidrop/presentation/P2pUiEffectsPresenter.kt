@@ -45,7 +45,7 @@ class P2pUiEffectsPresenter {
         lastShareFeedback = message
         return P2pFeedbackMessage(
             message = message,
-            isError = isLikelyErrorMessage(message)
+            isError = isIncompleteAttachmentRecovery(message) || isLikelyErrorMessage(message)
         )
     }
 

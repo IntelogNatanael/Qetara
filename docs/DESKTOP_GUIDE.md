@@ -76,6 +76,8 @@ Para recibir respuestas en tu PC, activa también la recepción. Los dos equipos
 
 Los borradores y adjuntos se mantienen separados por destinatario. Cambiar de conversación no coloca el borrador anterior en el nuevo chat. Si editas un texto mientras se está enviando, la confirmación del envío no elimina el nuevo contenido.
 
+Durante el envío puedes preparar el siguiente texto o adjunto. La operación en curso conserva su propio contenido y puedes cancelarla; no empieza otra hasta que termine o se detenga. Si cambias de conversación, el resultado identifica al destinatario original.
+
 Si un equipo deja de estar disponible, su conversación puede seguir leyéndose. Qetara no cambia silenciosamente el envío a otro destinatario.
 
 ### Canal Wi-Fi
@@ -85,6 +87,8 @@ Al abrir **Canal Wi-Fi**, participas en el canal de esta PC. Los mensajes se env
 Un archivo compartido en el canal aparece como una oferta que los demás pueden descargar. Para descargarlo en tu PC, activa **Recibir**. La opción de descarga automática está desactivada inicialmente; puedes activarla en la vista del canal.
 
 La oferta necesita que el equipo que conserva el archivo siga disponible. El archivo no se sube a un servidor central. Al salir del canal, detener la recepción, cambiar de sesión o cerrar Qetara se retiran las ofertas de esta PC y se cancelan sus envíos del canal. Se atiende una descarga del canal a la vez; si está ocupada, el otro equipo puede volver a solicitarla al terminar.
+
+Si sólo parte del canal confirma la entrega, Qetara muestra los recuentos y conserva lo pendiente en el borrador. Un nuevo envío manual vuelve a dirigirse a todos los equipos del canal que estén disponibles; algunos pueden recibirlo otra vez. Revisa el resultado antes de repetir.
 
 ### Avisos y borradores
 
