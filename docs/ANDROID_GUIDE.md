@@ -2,7 +2,7 @@
 
 Qetara permite compartir archivos y mensajes entre equipos cercanos. No requiere una cuenta. Para empezar con un PC, conecta ambos equipos a la misma red Wi-Fi y abre Qetara en los dos.
 
-La aplicación está configurada para Android 7.0 (API 24) o posterior. Consulta el [README del proyecto](../README.md) para identificar el APK de la entrega y su forma de instalación. Esta guía describe Qetara 1.2.0.
+La aplicación está configurada para Android 7.0 (API 24) o posterior. Consulta el [README del proyecto](../README.md) para identificar el APK de la entrega y su forma de instalación. Esta rama incorpora mejoras de privacidad posteriores a Qetara 1.2.0; su validación en un teléfono físico sigue pendiente.
 
 ## Elegir cómo conectar
 
@@ -27,6 +27,10 @@ El selector bajo el nombre Qetara también permite cambiar de modo. La vista **C
 Si el PC va a enviar por primera vez a Android, usa en el PC el código y el PIN que muestra Android. El teléfono puede pedirte aprobar la conexión: compara la huella con **Ajustes → Este equipo** del PC, aprueba y vuelve a intentar el envío desde el PC.
 
 Si necesitas abrir el formulario de nuevo, usa **Ver o introducir credenciales** en Conectar. **Copiar código** copia el código de la sesión actual; **Pegar código** lo toma del portapapeles. El PIN se introduce por separado.
+
+El PIN está oculto mientras lo introduces. **Mostrar** permite comprobarlo sin abandonar el campo; **Ocultar** vuelve a cubrirlo. Al salir de la aplicación, girar la pantalla o cambiar la sesión, vuelve a ocultarse. Puedes mostrarlo otra vez cuando necesites comunicarlo al otro equipo.
+
+Qetara marca las copias como sensibles para pedir al sistema que oculte su vista previa. El contenido sigue disponible para pegarlo. En Android 13 o posterior también pide ocultar la miniatura guardada de aplicaciones recientes; la transición en directo depende del sistema. Las capturas de pantalla voluntarias siguen disponibles. Consulta los alcances en [Privacidad](PRIVACY.md).
 
 Al enviar hacia un receptor, usa el código y el PIN que muestra ese receptor. Si cambias los datos o renuevas la sesión en uno de los equipos, vuelve a comprobar que ambos usan los mismos valores. Una sesión expirada se recupera con **Renovar sesión**; la renovación local no modifica por sí sola la sesión del otro equipo.
 

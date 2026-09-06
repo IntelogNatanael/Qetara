@@ -331,7 +331,7 @@ internal fun P2pConnectTab(
                     if (showCredentials) {
                         Text("Con un PC o una versión anterior, copia aquí el código de sesión y el PIN que muestra el otro equipo. Ambos deben usar los mismos valores.", style = MaterialTheme.typography.bodySmall)
                         OutlinedTextField(value = state.authToken, onValueChange = onTokenChange, enabled = !sessionSyncing, label = { Text("Código de sesión") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
-                        OutlinedTextField(value = state.sessionPin, onValueChange = onPinChange, enabled = !sessionSyncing, label = { Text("PIN de 6 dígitos") }, modifier = Modifier.fillMaxWidth(), singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
+                        P2pSessionPinField(state = state, onValueChange = onPinChange, modifier = Modifier.fillMaxWidth())
                         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             TextButton(onClick = onCopyToken) { Text("Copiar código") }
                             TextButton(onClick = onPasteToken) { Text("Pegar código") }

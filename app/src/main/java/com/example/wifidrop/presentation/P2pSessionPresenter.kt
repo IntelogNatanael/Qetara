@@ -1,11 +1,11 @@
 package com.example.wifidrop.presentation
 
-import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import com.example.wifidrop.ConnectionSnapshot
 import com.example.wifidrop.LocalDeviceIdentity
 import com.example.wifidrop.TransferSecurity
+import com.example.wifidrop.copySensitiveText
 import com.example.wifidrop.backend.P2pBackend
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.currentCoroutineContext
@@ -135,7 +135,7 @@ class P2pSessionPresenter(
     }
 
     fun copyToken(): P2pSessionFeedback {
-        clipboard.setPrimaryClip(ClipData.newPlainText("WifiDropToken", _state.value.token))
+        copySensitiveText(appContext, "Código de sesión de Qetara", _state.value.token)
         return P2pSessionFeedback("Código de sesión copiado.")
     }
 

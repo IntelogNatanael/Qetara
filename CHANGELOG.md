@@ -1,5 +1,15 @@
 # Cambios en Qetara
 
+## En preparación — privacidad en Android
+
+- El PIN empieza oculto en las vistas normal y Completo, con controles Mostrar y Ocultar. Cambiar de sesión, recrear la pantalla o pasar a segundo plano vuelve a ocultarlo; editarlo conserva el foco.
+- Los botones de copia y la selección de texto marcan el portapapeles como sensible. El contenido se conserva para pegarlo, y los sistemas compatibles pueden ocultar su vista previa.
+- Android 13 y posteriores reciben la indicación de ocultar la miniatura guardada de Qetara en aplicaciones recientes. Las transiciones en directo dependen del sistema; las capturas voluntarias en primer plano siguen permitidas.
+- El descubrimiento público deja de indicar si el anfitrión confía en quien consulta. La disposición del protocolo y la autenticación se mantienen compatibles.
+- Las reglas de copia de seguridad excluyen explícitamente los dominios de datos privados, incluida la transferencia entre dispositivos y el almacenamiento protegido del dispositivo.
+
+Estas mejoras se evalúan en una compilación Android 1.2.1. La validación en un teléfono físico está pendiente; no constituyen todavía una nueva entrega estable.
+
 ## 1.2.0 — 6 de septiembre de 2026
 
 Esta actualización se centra en conservar el trabajo preparado y recuperarse de interrupciones.

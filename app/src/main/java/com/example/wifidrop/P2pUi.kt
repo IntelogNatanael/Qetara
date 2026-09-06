@@ -2238,13 +2238,7 @@ fun P2pScreen(
                                         modifier = Modifier.fillMaxWidth()
                                     )
 
-                                    OutlinedTextField(
-                                        value = state.sessionPin,
-                                        onValueChange = onPinChange,
-                                        singleLine = true,
-                                        label = { Text("PIN") },
-                                        modifier = Modifier.fillMaxWidth()
-                                    )
+                                    P2pSessionPinField(state = state, onValueChange = onPinChange, modifier = Modifier.fillMaxWidth())
                                     Button(
                                         onClick = onConfirmManualSession,
                                         enabled = !state.sessionExpired &&

@@ -706,7 +706,6 @@ object FileTransfer {
             val clientNonce = input.readUTF().take(64)
             val route = PeerRouteObservation(clientId, remoteIp, socket.localAddress?.hostAddress.orEmpty(), acceptedAtElapsedMs)
 
-            val trusted = isPeerTrusted(clientId)
             val isCredentialsRequest = packetType == PACKET_SECURE_CREDENTIALS_REQUEST
 
             if (packetType == PACKET_DISCOVERY_REQUEST) {
@@ -720,7 +719,6 @@ object FileTransfer {
                     peerId = localPeerId,
                     peerLabel = localLabel,
                     sessionActive = sessionActive,
-                    trustedByHost = trusted,
                     globalLanJoined = sessionActive && isGlobalLanJoined()
                 )
                 return
@@ -737,6 +735,7 @@ object FileTransfer {
                 throw SecurityException("sesion expirada")
             }
 
+            val trusted = isPeerTrusted(clientId)
             if (isCredentialsRequest) {
                 writeResultPacket(output, true, "secure_credentials_v1")
                 establishSecureChannel(
@@ -1203,12 +1202,11 @@ object FileTransfer {
         }
     }
 
-    private fun writeDiscoveryResponsePacket(
+    internal fun writeDiscoveryResponsePacket(
         output: DataOutputStream,
         peerId: String,
         peerLabel: String,
         sessionActive: Boolean,
-        trustedByHost: Boolean,
         globalLanJoined: Boolean
     ) {
         output.writeInt(PROTOCOL_MAGIC)
@@ -1217,7 +1215,8 @@ object FileTransfer {
         output.writeUTF(sanitizeClientId(peerId))
         output.writeUTF(sanitizePeerLabel(peerLabel))
         output.writeBoolean(sessionActive)
-        output.writeBoolean(trustedByHost)
+        // Preserve the WDRP4 field without disclosing trust for an unproven client ID.
+        output.writeBoolean(false)
         output.writeBoolean(globalLanJoined)
         output.flush()
     }

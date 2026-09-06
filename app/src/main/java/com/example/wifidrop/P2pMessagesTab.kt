@@ -12,8 +12,6 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.ui.platform.LocalClipboardManager
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.heading
@@ -1400,7 +1398,7 @@ private fun ChatMessageCard(
     onShareMessage: () -> Unit
 ) {
     var itemMoreExpanded by rememberSaveable(item.id) { mutableStateOf(false) }
-    val clipboard = LocalClipboardManager.current
+    val clipboardContext = LocalContext.current
     val outgoing = item.direction == ChatMessageDirection.OUTGOING
     val failed = item.status == ChatMessageStatus.FAILED
     val pending = item.status == ChatMessageStatus.QUEUED || item.status == ChatMessageStatus.SENDING
@@ -1453,7 +1451,10 @@ private fun ChatMessageCard(
                                 DropdownMenuItem(
                                     text = { Text("Copiar texto") },
                                     leadingIcon = { Icon(Icons.Rounded.ContentCopy, contentDescription = null) },
-                                    onClick = { itemMoreExpanded = false; clipboard.setText(AnnotatedString(item.text)) }
+                                    onClick = {
+                                        itemMoreExpanded = false
+                                        copySensitiveText(clipboardContext, "Mensaje de Qetara", item.text)
+                                    }
                                 )
                             }
                             DropdownMenuItem(

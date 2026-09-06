@@ -3,6 +3,7 @@ package com.example.wifidrop
 import android.content.Intent
 import android.content.res.Configuration
 import android.os.Bundle
+import android.os.Build
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
@@ -15,6 +16,10 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            // Disable saved task screenshots; live launcher transitions remain controlled by Android.
+            setRecentsScreenshotEnabled(false)
+        }
         applySystemBarContrast()
         incomingShareEventId = IncomingShareBus.publishFromIntent(
             intent, savedInstanceState?.getLong(SHARE_DELIVERY_KEY)?.takeIf { it > 0L }
