@@ -22,7 +22,7 @@ En PC, los archivos recibidos se guardan en la carpeta que elijas. Las preferenc
 
 ## PIN, portapapeles y vista de aplicaciones recientes
 
-En Android, el PIN aparece oculto. Puedes tocar **Mostrar** para consultarlo y **Ocultar** para volver a cubrirlo. Qetara lo oculta de nuevo al pasar a segundo plano, recrear la pantalla o cambiar la sesión. El valor de la sesión se conserva según las reglas anteriores; la elección de mostrarlo no se guarda.
+En Android, el PIN aparece oculto. Puedes tocar **Mostrar** para consultarlo y **Ocultar** para volver a cubrirlo. Qetara lo oculta de nuevo al pasar a segundo plano, recrear la pantalla o cambiar la sesión. El valor de la sesión se conserva según las reglas anteriores; la elección de mostrarlo no se guarda. Algunos sistemas mantienen la aplicación activa durante la vista de recientes: en ese recorrido el PIN puede seguir visible, incluso al regresar directamente a Qetara. Toca **Ocultar** antes de abrir recientes si necesitas cubrirlo.
 
 Al copiar un código, un mensaje o texto seleccionado dentro de Qetara, la aplicación marca el contenido como sensible para que Android y los teclados compatibles eviten mostrarlo en su vista previa. Esto es una indicación de presentación: no cifra el portapapeles, no impide pegar y no impide que la aplicación en la que pegas reciba el contenido. Qetara no incorpora un lector global del portapapeles ni borra automáticamente lo que copies.
 

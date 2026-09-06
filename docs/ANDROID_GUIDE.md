@@ -28,7 +28,7 @@ Si el PC va a enviar por primera vez a Android, usa en el PC el código y el PIN
 
 Si necesitas abrir el formulario de nuevo, usa **Ver o introducir credenciales** en Conectar. **Copiar código** copia el código de la sesión actual; **Pegar código** lo toma del portapapeles. El PIN se introduce por separado.
 
-El PIN está oculto mientras lo introduces. **Mostrar** permite comprobarlo sin abandonar el campo; **Ocultar** vuelve a cubrirlo. Al salir de la aplicación, girar la pantalla o cambiar la sesión, vuelve a ocultarse. Puedes mostrarlo otra vez cuando necesites comunicarlo al otro equipo.
+El PIN está oculto mientras lo introduces. **Mostrar** permite comprobarlo sin abandonar el campo; **Ocultar** vuelve a cubrirlo. Al pausar la aplicación, girar la pantalla o cambiar la sesión, vuelve a ocultarse. Algunos sistemas mantienen Qetara activa al abrir recientes; en ese caso puede seguir visible también al regresar directamente. Toca **Ocultar** antes de abrir recientes si necesitas cubrirlo. Puedes mostrarlo otra vez cuando necesites comunicarlo al otro equipo.
 
 Qetara marca las copias como sensibles para pedir al sistema que oculte su vista previa. El contenido sigue disponible para pegarlo. En Android 13 o posterior también pide ocultar la miniatura guardada de aplicaciones recientes; la transición en directo depende del sistema. Las capturas de pantalla voluntarias siguen disponibles. Consulta los alcances en [Privacidad](PRIVACY.md).
 
