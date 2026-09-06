@@ -410,7 +410,9 @@ internal fun P2pMessagesTab(
         }
         BoxWithConstraints(Modifier.fillMaxSize()) {
         val keyboardVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
-        val composerMaxHeight = (maxHeight * 0.62f).coerceAtLeast(128.dp).coerceAtMost(maxHeight)
+        val compactImeViewport = keyboardVisible && maxHeight < 220.dp
+        val composerMaxHeight = if (compactImeViewport) maxHeight
+            else (maxHeight * 0.62f).coerceAtLeast(128.dp).coerceAtMost(maxHeight)
         val headerMaxHeight = maxHeight * 0.34f
         Column(
             modifier = Modifier.fillMaxSize().padding(UiSpaceS),
@@ -730,7 +732,7 @@ internal fun P2pMessagesTab(
             }
 
             }
-            } else {
+            } else if (!compactImeViewport) {
                 Text(
                     if (isGlobalChat) channelTitle else directTargetLabel ?: chatHeaderTitle,
                     style = MaterialTheme.typography.labelLarge,
@@ -853,6 +855,7 @@ internal fun P2pMessagesTab(
                     selectedFilesCount = state.selectedFilesCount,
                     recoveryIncomplete = com.example.wifidrop.presentation.isIncompleteAttachmentRecovery(state.shareImportStatus),
                     placeholderText = composerPlaceholder,
+                    destinationDescription = if (isGlobalChat) channelTitle else directTargetLabel ?: chatHeaderTitle,
                     sendButtonLabel = sendButtonLabel,
                     composerEnabled = if (isGlobalChat) {
                         state.lanConnected && globalLanJoined && !state.sessionExpired
@@ -1167,6 +1170,7 @@ private fun ChatComposerPanel(
     selectedFilesCount: Int,
     recoveryIncomplete: Boolean,
     placeholderText: String,
+    destinationDescription: String,
     sendButtonLabel: String,
     composerEnabled: Boolean,
     sendEnabled: Boolean,
@@ -1225,7 +1229,7 @@ private fun ChatComposerPanel(
                     .fillMaxWidth()
                     .weight(1f, fill = false)
                     .heightIn(min = 56.dp)
-                    .semantics { contentDescription = "Escribir mensaje" },
+                    .semantics { contentDescription = "Escribir mensaje para $destinationDescription" },
                 keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
                 supportingText = if (draft.length >= 1_800) { { Text("${draft.length}/2000 caracteres") } } else null,
                 maxLines = 4,

@@ -587,14 +587,16 @@ fun P2pScreenRoute() {
                 }
             )
             }
-        },
-        snackbarHost = {
-            SnackbarHost(hostState = snackbarHostState)
         }
     ) { padding ->
         RenderP2pScreen(
             state = routeState.uiState,
             wiring = screenWiring,
+            snackbarHost = {
+                if (snackbarHostState.currentSnackbarData != null) {
+                    SnackbarHost(hostState = snackbarHostState)
+                }
+            },
             modifier = Modifier.padding(padding).consumeWindowInsets(padding)
         )
     }

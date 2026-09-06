@@ -72,4 +72,78 @@ class P2pSessionSyncCoordinatorTest {
         assertFalse(sessionSyncRequiresUserAction("Connection timed out"))
         assertFalse(sessionSyncRequiresUserAction("confirmacion_host_requerida"))
     }
+    @Test
+    fun rebuildingDiscoveryDuringManualCredentialEditingDoesNotStartAnotherRequest() = runBlocking {
+        val coordinator = P2pSessionSyncCoordinator()
+        val endpoint = P2pSessionSyncEndpoint("lan:true:192.168.1.5", "192.168.1.8")
+        var requests = 0
+        var syncingStarts = 0
+        suspend fun request() = coordinator.syncEndpointOnce(endpoint, manual = false) {
+            requests += 1
+            syncingStarts += 1
+            P2pSessionSyncAttempt(synced = false, requiresUserAction = true)
+        }
+        assertTrue(request().requiresUserAction)
+        // Each new loop has the same route, even if discovery lost/recovered the
+        // peer ID or the edited code temporarily has fewer than four characters.
+        repeat(4) { assertTrue(request().requiresUserAction) }
+        assertEquals(1, requests)
+        assertEquals(1, syncingStarts)
+    }
+
+    @Test
+    fun explicitRetryCanRecoverAnEndpointThatNeedsManualAction() = runBlocking {
+        val coordinator = P2pSessionSyncCoordinator()
+        val endpoint = P2pSessionSyncEndpoint("lan:true:192.168.1.5", "192.168.1.8")
+        coordinator.syncEndpointOnce(endpoint, manual = false) {
+            P2pSessionSyncAttempt(synced = false, requiresUserAction = true)
+        }
+        var requests = 0
+        assertTrue(coordinator.syncEndpointOnce(endpoint, manual = true) {
+            requests += 1
+            P2pSessionSyncAttempt(synced = true)
+        }.synced)
+        assertTrue(coordinator.syncEndpointOnce(endpoint, manual = false) {
+            requests += 1
+            P2pSessionSyncAttempt(synced = true)
+        }.synced)
+        assertEquals(2, requests)
+    }
+
+    @Test
+    fun differentAddressNetworkOrTransportAllowsAFirstAutomaticRequest() = runBlocking {
+        val coordinator = P2pSessionSyncCoordinator()
+        val endpoints = listOf(
+            P2pSessionSyncEndpoint("lan:true:192.168.1.5", "192.168.1.8"),
+            P2pSessionSyncEndpoint("lan:true:192.168.1.5", "192.168.1.9"),
+            P2pSessionSyncEndpoint("lan:true:192.168.2.5", "192.168.1.9"),
+            P2pSessionSyncEndpoint("direct:true:192.168.1.9:false", "192.168.1.9")
+        )
+        var requests = 0
+        endpoints.forEach { endpoint ->
+            val attempt = coordinator.syncEndpointOnce(endpoint, manual = false) {
+                requests += 1
+                P2pSessionSyncAttempt(synced = false, requiresUserAction = true)
+            }
+            assertTrue(attempt.requiresUserAction)
+        }
+        assertEquals(endpoints.size, requests)
+    }
+
+    @Test
+    fun transientNetworkFailureKeepsAutomaticRecoveryAvailable() = runBlocking {
+        val coordinator = P2pSessionSyncCoordinator()
+        val endpoint = P2pSessionSyncEndpoint("lan:true:192.168.1.5", "192.168.1.8")
+        var requests = 0
+        assertFalse(coordinator.syncEndpointOnce(endpoint, manual = false) {
+            requests += 1
+            P2pSessionSyncAttempt(synced = false)
+        }.synced)
+        assertTrue(coordinator.syncEndpointOnce(endpoint, manual = false) {
+            requests += 1
+            P2pSessionSyncAttempt(synced = true)
+        }.synced)
+        assertEquals(2, requests)
+    }
+
 }

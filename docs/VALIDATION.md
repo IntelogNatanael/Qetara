@@ -6,10 +6,10 @@ La entrega se verificó el 6 de septiembre de 2026 mediante pruebas automatizada
 
 | Componente | Pruebas | Fallos / errores / omitidas |
 | --- | ---: | --- |
-| Android | 152 | 0 / 0 / 0 |
+| Android | 156 | 0 / 0 / 0 |
 | PC | 37 | 0 / 0 / 0 |
 | Protocolo compartido | 30 | 0 / 0 / 0 |
-| **Total** | **219** | **0 / 0 / 0** |
+| **Total** | **223** | **0 / 0 / 0** |
 
 Se generaron APK debug y release firmado, JAR Windows, aplicación portable con Java incluido y MSI. El inventario por caso está en `Verificacion/final-validation.json` del paquete y los registros identifican cada compilación. Las tareas Gradle sin trabajo nuevo o excluidas no se contabilizan como pruebas omitidas.
 
@@ -25,7 +25,11 @@ Las pruebas usaron dos emuladores dedicados API 36. El receptor también se comp
 - Chat conservó texto, PNG y destinatario tras la misma rotación. Al retirar el proceso de segundo plano y restaurar su tarea, el texto y el adjunto seguían presentes. La autorización manual volvió a «Sesión por confirmar», como corresponde; el estado guardado no equivale a confianza vigente.
 - Si un archivo temporal ya no existe, se omite de la selección restaurada y se comunica la recuperación incompleta. Los límites de tamaño y número de referencias se prueban sin introducir archivos en el estado guardado.
 - Se reprodujo una preferencia heredada con modo LAN y vista simple Direct: la interfaz indicaba misma Wi-Fi, pero el destino manual quedaba vacío. La normalización alinea ambos campos después de aplicar la disponibilidad de transportes y conserva la vista Avanzada. Las regresiones incluyen una IP real y el cambio explícito a Direct.
+- Se reprodujo pérdida de foco al borrar un código manual de ocho a tres caracteres: un nuevo intento automático deshabilitaba el campo. Tras corregirlo, borrar y completar código y PIN conservó el foco y el teclado, y «Usar esta sesión» abrió Enviar con el PC como equipo listo. Las regresiones cuentan solicitudes y comprueban reintento explícito, red o dirección distinta y fallo transitorio.
 - El APK firmado 1.2.0 se instaló sobre 1.1.0, con el mismo certificado y sin desinstalar. Se conservaron la instalación original, archivos recibidos e historial observado.
+- Los avisos de sesión cubrían parte del botón Chat. La captura anterior registra 10692 píxeles cuadrados de solapamiento y el primer toque sin navegación; la corregida registra cero solapamiento y abre Chat al primer toque. Se compararon dos avisos de dos líneas: cierre de sesión antes y activación después. Se amplió sólo su duración para capturarlos; la geometría corresponde a 360 dp y fuente 1,3.
+
+Con teclado abierto y un aviso de dos líneas, la primera corrección de posición recortaba el texto del editor a 360 dp y fuente 1,3. La compilación 08 usa la altura disponible en ese caso y conserva el destino en la descripción accesible. La captura final muestra «Qetara final» completo, el botón Enviar y el aviso por encima del teclado; el sistema confirmó que el teclado estaba visible. Se conserva también la captura del fallo anterior.
 
 Los informes de Android identifican el APK y la compilación utilizados en cada caso. Una rotación, una recuperación de tarea y una actualización de APK son operaciones diferentes; no se presenta la recuperación de tarea como persistencia garantizada después de forzar detención, borrar datos o reiniciar el equipo.
 
@@ -52,7 +56,7 @@ La interfaz de envío y chat se probó con una compilación de esta evolución a
 
 Las pruebas automatizadas de PC ejercitan cancelación durante una transferencia real, conservación del parcial, reanudación desde su offset y deduplicación de un reintento del mismo envío. También verifican que un resultado tardío de la conversación A no se atribuya a B y que un envío parcial a un canal conserve el componente no confirmado. Una repetición manual es un envío nuevo; no se anuncia entrega exactamente una vez entre acciones diferentes del usuario.
 
-El APK final pasó siete sondas del receptor: descubrimiento, rechazo de credenciales antiguas, atención con un cliente inactivo, límite de cuatro conexiones, liberación de plazas y timeout sin autenticar. Cinco ciclos de Cerrar → Activar con tres conexiones por ciclo cerraron las conexiones anteriores y recuperaron el descubrimiento. Las acciones tuvieron separaciones reales de 313–391 ms y el receptor volvió a responder 156–203 ms después de activar.
+El APK final pasó siete sondas del receptor: descubrimiento, rechazo de credenciales antiguas, atención con un cliente inactivo, límite de cuatro conexiones, liberación de plazas y timeout sin autenticar. Cinco ciclos de Cerrar → Activar con tres conexiones por ciclo cerraron las conexiones anteriores y recuperaron el descubrimiento. Los tiempos observados de cada ciclo se conservan en `Verificacion/android-final-receiver-validation.json`; son mediciones del emulador y del control ADB.
 
 La compatibilidad PC 1.1.0 → 1.2.0 y PC 1.2.0 → 1.1.0 se comprobó con procesos nativos aislados. Ambos sentidos conservaron nombre Unicode y SHA-256, con un solo archivo por destino; los cuatro procesos terminaron y liberaron sus puertos. Esta prueba confirma los casos de archivo realizados, no todos los cambios posibles de versión o plataforma.
 

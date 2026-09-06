@@ -178,7 +178,8 @@ fun P2pScreen(
     onApproveCredentialShare: (PendingCredentialShareRequest) -> Unit,
     onRejectCredentialShare: (PendingCredentialShareRequest) -> Unit,
     onOpenHistoryItem: (TransferHistoryEntry) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    snackbarHost: @Composable () -> Unit = {}
 ) {
     val context = LocalContext.current
     val openDeveloperProfile: () -> Unit = {
@@ -3125,6 +3126,8 @@ fun P2pScreen(
                     DeveloperFooter(onOpenGithub = openDeveloperProfile)
                 }
             }
+
+            snackbarHost()
 
             if (!keyboardVisible || (selectedTab != P2pMainTab.MESSAGES && selectedTab != P2pMainTab.CHANNEL)) {
             QetaraBottomNavigation(

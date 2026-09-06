@@ -512,7 +512,8 @@ fun buildP2pScreenEventWiring(
 fun RenderP2pScreen(
     state: P2pScreenState,
     wiring: P2pScreenEventWiring,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    snackbarHost: @Composable () -> Unit = {}
 ) {
     P2pScreen(
         screenState = state,
@@ -586,6 +587,7 @@ fun RenderP2pScreen(
         onApproveCredentialShare = wiring.onApproveCredentialShare,
         onRejectCredentialShare = wiring.onRejectCredentialShare,
         onOpenHistoryItem = wiring.onOpenHistoryItem,
+        snackbarHost = snackbarHost,
         modifier = modifier
     )
 }

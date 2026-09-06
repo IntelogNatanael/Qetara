@@ -196,13 +196,14 @@ class P2pSessionPresenter(
             _state.update { current -> current.copy(syncStatus = buildMissingSyncHostStatus()) }
             return false
         }
-        return syncCoordinator.syncOnce {
+        val endpoint = P2pSessionSyncEndpoint(_state.value.connectionNetworkKey, hostIp)
+        val attempt = syncCoordinator.syncEndpointOnce(endpoint, manual) {
             val currentState = _state.value
             lastSyncNeedsUserAction = false
             _state.update { current ->
                 current.copy(syncing = true, confirmation = null, syncStatus = buildSyncStartStatus(manual))
             }
-            try {
+            val synced = try {
                 val result = backend.requestSessionCredentials(
                     hostAddress = hostIp,
                     clientId = localDeviceId,
@@ -236,7 +237,10 @@ class P2pSessionPresenter(
             } finally {
                 _state.update { current -> current.copy(syncing = false) }
             }
+            P2pSessionSyncAttempt(synced, lastSyncNeedsUserAction)
         }
+        lastSyncNeedsUserAction = attempt.requiresUserAction
+        return attempt.synced
     }
 
     suspend fun reconcileBackendSession(

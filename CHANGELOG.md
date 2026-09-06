@@ -8,11 +8,12 @@ Esta actualización se centra en conservar el trabajo preparado y recuperarse de
 - Una selección restaurada con archivos inaccesibles muestra un aviso junto al selector. La importación desde Compartir se consume una sola vez y no reaparece tras borrar la selección y girar la pantalla.
 - Las preferencias heredadas alinean el modo LAN/Direct visible con la ruta elegida, conservando la vista Avanzada.
 - Las selecciones de destinatarios expresas se conservan aunque un equipo deje de estar disponible; el envío espera una selección válida y no cambia silenciosamente a otro miembro.
+- El emparejamiento manual con PC conserva el foco al editar código y PIN. Un destino que requiere acción del usuario deja de provocar reintentos automáticos al actualizarse el descubrimiento.
+- Los avisos de Android ocupan espacio encima de la navegación. Cerrar una sesión ya no bloquea el primer toque en Chat mientras aparece la confirmación. En pantallas pequeñas, el editor conserva espacio cuando coinciden el teclado y un aviso; la descripción accesible identifica al destinatario.
 - Windows permite cancelar el envío de mensajes y corta las conexiones y los lotes pendientes. Preparar otro adjunto no habilita un segundo envío simultáneo.
 - Los resultados del chat se atribuyen a su conversación. Un envío parcial al canal conserva los componentes pendientes del borrador y explica el alcance de un nuevo envío manual.
 - El receptor conserva un recibo del destino antes de publicar los bytes verificados. Tras un cierre de proceso en esa frontera, el mismo intento reconoce el archivo completo sin generar una segunda copia. Los recibos anteriores mantienen su formato compatible.
 - Los selectores de archivos de Windows pertenecen a la ventana de Qetara y los estados tardíos del receptor no reactivan visualmente una sesión caducada.
-
 - El empaquetado verifica los fuentes correspondientes del runtime, su inventario y versión, y los incluye en la distribución Windows.
 
 Los resultados y los límites de esta actualización se documentan en [Validación](docs/VALIDATION.md). La evidencia anterior se conserva en [Validación de 1.1.0](docs/VALIDATION-1.1.0.md).
