@@ -57,7 +57,8 @@ data class UxPreferences(
     val connectionViewMode: ConnectionViewMode = ConnectionViewMode.WIFI_DIRECT,
     val wifiDirectModeEnabled: Boolean = true,
     val lanModeEnabled: Boolean = true,
-    val joinedGlobalLan: Boolean = false
+    val joinedGlobalLan: Boolean = false,
+    val autoDownloadChannelFiles: Boolean = false
 )
 
 object UxPreferencesStore {
@@ -73,6 +74,7 @@ object UxPreferencesStore {
     private const val KEY_WIFI_DIRECT_MODE_ENABLED = "wifi_direct_mode_enabled"
     private const val KEY_LAN_MODE_ENABLED = "lan_mode_enabled"
     private const val KEY_JOINED_GLOBAL_LAN = "joined_global_lan"
+    private const val KEY_AUTO_DOWNLOAD_CHANNEL_FILES = "auto_download_channel_files"
 
     fun load(context: Context): UxPreferences {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -94,7 +96,8 @@ object UxPreferencesStore {
                 ),
                 wifiDirectModeEnabled = prefs.getBoolean(KEY_WIFI_DIRECT_MODE_ENABLED, true),
                 lanModeEnabled = prefs.getBoolean(KEY_LAN_MODE_ENABLED, true),
-                joinedGlobalLan = prefs.getBoolean(KEY_JOINED_GLOBAL_LAN, false)
+                joinedGlobalLan = prefs.getBoolean(KEY_JOINED_GLOBAL_LAN, false),
+                autoDownloadChannelFiles = prefs.getBoolean(KEY_AUTO_DOWNLOAD_CHANNEL_FILES, false)
             )
         )
     }
@@ -114,6 +117,7 @@ object UxPreferencesStore {
                 putBoolean(KEY_WIFI_DIRECT_MODE_ENABLED, normalized.wifiDirectModeEnabled)
                 putBoolean(KEY_LAN_MODE_ENABLED, normalized.lanModeEnabled)
                 putBoolean(KEY_JOINED_GLOBAL_LAN, normalized.joinedGlobalLan)
+                putBoolean(KEY_AUTO_DOWNLOAD_CHANNEL_FILES, normalized.autoDownloadChannelFiles)
             }
         return normalized
     }
@@ -153,7 +157,8 @@ object UxPreferencesStore {
             connectionViewMode = viewMode,
             wifiDirectModeEnabled = wifiDirectEnabled,
             lanModeEnabled = lanEnabled,
-            joinedGlobalLan = preferences.joinedGlobalLan && lanEnabled
+            joinedGlobalLan = preferences.joinedGlobalLan && lanEnabled,
+            autoDownloadChannelFiles = preferences.autoDownloadChannelFiles
         )
     }
 }

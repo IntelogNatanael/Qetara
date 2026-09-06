@@ -1655,7 +1655,136 @@ class TransferForegroundService : Service() {
             is ChatMessageScopeCodec.DecodedChatPayload.DirectRoster -> {
                 mergeDirectRoster(decoded.peers)
             }
+
+            is ChatMessageScopeCodec.DecodedChatPayload.FileOffer -> {
+                handleIncomingChannelFileOffer(
+                    peerId = peerId,
+                    ip = ip,
+                    label = label,
+                    offer = decoded.offer
+                )
+            }
+
+            is ChatMessageScopeCodec.DecodedChatPayload.FileRequest -> {
+                handleIncomingChannelFileRequest(
+                    ip = ip,
+                    request = decoded.request
+                )
+            }
         }
+    }
+
+    private fun handleIncomingChannelFileOffer(
+        peerId: String,
+        ip: String,
+        label: String,
+        offer: ChannelFileOffer
+    ) {
+        if (offer.id.isBlank()) return
+        val localDeviceId = LocalDeviceIdentity.getOrCreate(applicationContext)
+        if (offer.senderId == localDeviceId) return
+
+        val senderIp = offer.senderIp?.takeIf { it.isNotBlank() } ?: ip
+        val senderLabel = offer.senderLabel.ifBlank { label.ifBlank { "Equipo" } }
+        val effectiveOffer = offer.copy(
+            senderIp = senderIp,
+            senderLabel = senderLabel,
+            uri = null
+        )
+        val preferences = UxPreferencesStore.load(applicationContext)
+        if (!preferences.joinedGlobalLan) return
+
+        onPeerSeen(
+            peerId = offer.senderId.ifBlank { peerId },
+            ip = senderIp,
+            label = senderLabel,
+            trusted = true,
+            globalLanJoined = true
+        )
+        ChannelFileOfferStore.upsert(applicationContext, effectiveOffer)
+
+        val alreadyVisible = ChatMessageStore.list(applicationContext, limit = 300).any { entry ->
+            val decoded = ChatMessageScopeCodec.decodeFromTransport(entry.text)
+            decoded is ChatMessageScopeCodec.DecodedChatPayload.FileOffer &&
+                decoded.offer.id == effectiveOffer.id
+        }
+        if (!alreadyVisible) {
+            val chatEntry = ChatMessageStore.newIncoming(
+                text = ChatMessageScopeCodec.encodeChannelFileOffer(effectiveOffer),
+                peerLabel = senderLabel,
+                peerIp = senderIp,
+                scope = ChatMessageScope.GLOBAL_LAN
+            )
+            ChatMessageStore.append(applicationContext, chatEntry)
+        }
+
+        refreshMessageState("$senderLabel compartió ${effectiveOffer.fileName}.")
+        _state.update { s ->
+            s.copy(
+                lastPeerIp = senderIp,
+                lastPeerLabel = senderLabel
+            )
+        }
+
+        if (preferences.autoDownloadChannelFiles) {
+            queueChannelFileOfferRequest(
+                offer = effectiveOffer,
+                targetIp = senderIp,
+                requesterLabel = Build.MODEL.ifBlank { "equipo" }
+            )
+            pumpMessageQueue()
+            syncWakeLockAndLifetime()
+        }
+    }
+
+    private fun handleIncomingChannelFileRequest(
+        ip: String,
+        request: ChannelFileRequest
+    ) {
+        if (request.offerId.isBlank()) return
+        val localDeviceId = LocalDeviceIdentity.getOrCreate(applicationContext)
+        if (request.requesterId == localDeviceId) return
+        val offer = ChannelFileOfferStore.find(applicationContext, request.offerId) ?: return
+        if (offer.senderId != localDeviceId) return
+        val uriRaw = offer.uri?.takeIf { it.isNotBlank() } ?: return
+        val targetIp = request.requesterIp?.takeIf { it.isNotBlank() } ?: ip
+        val deviceLabel = offer.senderLabel.ifBlank { "equipo" }
+
+        val intent = Intent(this, TransferForegroundService::class.java).apply {
+            action = ACTION_SEND_FILE
+            putExtra(EXTRA_FILE_URI, Uri.parse(uriRaw))
+            putExtra(EXTRA_FILE_NAME, offer.fileName)
+            putExtra(EXTRA_TARGET_IP, targetIp)
+            putExtra(EXTRA_TOKEN, currentToken)
+            putExtra(EXTRA_PIN, currentPin)
+            putExtra(EXTRA_DEVICE_LABEL, deviceLabel)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        startSend(intent)
+        refreshMessageState("${request.requesterLabel.ifBlank { "Equipo" }} solicitó ${offer.fileName}.")
+    }
+
+    private fun queueChannelFileOfferRequest(
+        offer: ChannelFileOffer,
+        targetIp: String,
+        requesterLabel: String,
+        requesterIp: String? = null
+    ): Boolean {
+        val request = ChannelFileRequest(
+            offerId = offer.id,
+            requesterId = LocalDeviceIdentity.getOrCreate(applicationContext),
+            requesterLabel = requesterLabel,
+            requesterIp = requesterIp
+        )
+        return queueSilentMessage(
+            targetIp = targetIp,
+            peerLabel = offer.senderLabel,
+            scope = ChatMessageScope.GLOBAL_LAN,
+            message = ChatMessageScopeCodec.encodeChannelFileRequest(request),
+            tokenRaw = currentToken,
+            pinRaw = currentPin,
+            deviceLabel = requesterLabel
+        )
     }
 
     private fun relayDirectMessage(
@@ -2660,6 +2789,35 @@ class TransferForegroundService : Service() {
                 putExtra(EXTRA_MESSAGE_SCOPE, scope.name)
                 if (!peerLabelOverride.isNullOrBlank()) {
                     putExtra(EXTRA_PEER_LABEL_OVERRIDE, peerLabelOverride)
+                }
+            }
+            ContextCompat.startForegroundService(context, intent)
+        }
+
+        fun requestChannelFileOffer(
+            context: Context,
+            offer: ChannelFileOffer,
+            targetIp: String,
+            token: String,
+            pin: String,
+            deviceLabel: String
+        ) {
+            val request = ChannelFileRequest(
+                offerId = offer.id,
+                requesterId = LocalDeviceIdentity.getOrCreate(context.applicationContext),
+                requesterLabel = deviceLabel,
+                requesterIp = null
+            )
+            val intent = Intent(context, TransferForegroundService::class.java).apply {
+                action = ACTION_SEND_SILENT_MESSAGE
+                putExtra(EXTRA_TARGET_IP, targetIp)
+                putExtra(EXTRA_TOKEN, token)
+                putExtra(EXTRA_PIN, pin)
+                putExtra(EXTRA_DEVICE_LABEL, deviceLabel)
+                putExtra(EXTRA_MESSAGE_TEXT, ChatMessageScopeCodec.encodeChannelFileRequest(request))
+                putExtra(EXTRA_MESSAGE_SCOPE, ChatMessageScope.GLOBAL_LAN.name)
+                if (offer.senderLabel.isNotBlank()) {
+                    putExtra(EXTRA_PEER_LABEL_OVERRIDE, offer.senderLabel)
                 }
             }
             ContextCompat.startForegroundService(context, intent)

@@ -89,7 +89,11 @@ class P2pShareImportPresenter(
         _state.update {
             it.copy(
                 selectedFiles = emptyList(),
-                shareImportStatus = "Enviando $fileCount archivo(s) por el canal Wi‑Fi."
+                shareImportStatus = if (fileCount == 1) {
+                    "Publicado 1 archivo en el canal Wi‑Fi."
+                } else {
+                    "Publicados $fileCount archivos en el canal Wi‑Fi."
+                }
             )
         }
     }

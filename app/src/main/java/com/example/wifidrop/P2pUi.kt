@@ -153,8 +153,10 @@ fun P2pScreen(
     onMoveQueueItemDown: (String) -> Unit,
     onChatChannelChange: (ChatChannel) -> Unit,
     onSetGlobalLanJoined: (Boolean) -> Unit,
+    onAutoDownloadChannelFilesChange: (Boolean) -> Unit,
     onChatDraftChange: (String) -> Unit,
     onSelectChatDirectPeer: (String) -> Unit,
+    onDownloadChannelFileOffer: (ChatMessageEntry) -> Unit,
     onSendMessage: () -> Unit,
     onRetryMessage: (String) -> Unit,
     onCancelQueuedMessage: (String) -> Unit,
@@ -1417,12 +1419,14 @@ fun P2pScreen(
                     },
                     experience = chatExperience,
                     onSetGlobalLanJoined = onSetGlobalLanJoined,
+                    onAutoDownloadChannelFilesChange = onAutoDownloadChannelFilesChange,
                     onOpenConnectTab = {
                         selectedTabIndex = allTabs.indexOf(P2pMainTab.CONNECTION)
                         applyFocusStage(FocusStage.CONNECT)
                     },
                     onChatDraftChange = onChatDraftChange,
                     onSelectChatDirectPeer = onSelectChatDirectPeer,
+                    onDownloadChannelFileOffer = onDownloadChannelFileOffer,
                     onPickFile = onPickFile,
                     onClearSelectedFiles = onClearSelectedFiles,
                     onSendMessage = onSendMessage,

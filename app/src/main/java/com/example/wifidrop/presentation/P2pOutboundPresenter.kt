@@ -112,15 +112,26 @@ class P2pOutboundPresenter(
             )
         }
         if (plan.includeFiles) {
-            val channelTargetIps = input.globalChatTargets
-                .map { it.ip.trim() }
-                .filter { it.isNotBlank() }
-                .distinct()
-            channelTargetIps.forEach { targetIp ->
-                queueSelectedFiles(input, targetIp)
+            input.selectedFiles.forEach { item ->
+                val offer = backend.registerChannelFileOffer(
+                    fileUri = item.uri,
+                    fileName = item.name,
+                    deviceLabel = input.deviceLabel
+                )
+                backend.sendBroadcastMessage(
+                    token = input.sessionToken,
+                    pin = input.sessionPin,
+                    deviceLabel = input.deviceLabel,
+                    message = ChatMessageScopeCodec.encodeChannelFileOffer(offer),
+                    scope = ChatMessageScope.GLOBAL_LAN,
+                    channelLabel = "Canal Wi‑Fi",
+                    targetPeerIds = input.globalChatTargets.map { it.id },
+                    targetIps = input.globalChatTargets.map { it.ip },
+                    targetLabels = input.globalChatTargets.map { it.label.ifBlank { it.ip } }
+                )
             }
             shareImportPresenter.markChannelComposerFilesQueued(
-                input.selectedFiles.size * channelTargetIps.size
+                input.selectedFiles.size
             )
         }
         return P2pOutboundOrchestrationResult(

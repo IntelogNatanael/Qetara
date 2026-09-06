@@ -153,6 +153,7 @@ import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.util.Base64
 import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
@@ -313,6 +314,28 @@ private data class DesktopChatEntry(
     val peerAddress: String,
     val message: String,
     val isError: Boolean = false
+)
+
+private data class DesktopChannelFileOffer(
+    val id: String,
+    val fileName: String,
+    val fileSizeBytes: Long,
+    val senderId: String,
+    val senderLabel: String,
+    val senderIp: String?,
+    val createdAtMs: Long
+)
+
+private data class DesktopChannelFileRequest(
+    val offerId: String,
+    val requesterId: String,
+    val requesterLabel: String,
+    val requesterIp: String?
+)
+
+private data class DesktopLocalChannelFileOffer(
+    val offer: DesktopChannelFileOffer,
+    val file: File
 )
 
 private object DesktopIdentityStore {
@@ -1320,9 +1343,11 @@ private fun readDiscoveryResponseOrFailure(input: DataInputStream): DesktopDisco
 }
 
 private const val GLOBAL_LAN_CHAT_MARKER = "\u2063QGL\u2063"
+private const val TRANSPORT_CHAT_MARKER = "\u2063QCT\u2063"
 
 private fun encodeDesktopChatPayload(messageRaw: String, scope: DesktopChatScope): String {
     val message = requireValidMessage(messageRaw)
+    if (message.startsWith(TRANSPORT_CHAT_MARKER)) return message
     return when (scope) {
         DesktopChatScope.DIRECT -> message
         DesktopChatScope.GLOBAL_LAN -> GLOBAL_LAN_CHAT_MARKER + message
@@ -1331,10 +1356,126 @@ private fun encodeDesktopChatPayload(messageRaw: String, scope: DesktopChatScope
 
 private fun decodeDesktopChatPayload(messageRaw: String): Pair<DesktopChatScope, String> {
     val message = requireValidMessage(messageRaw)
-    return if (message.startsWith(GLOBAL_LAN_CHAT_MARKER)) {
+    return if (message.startsWith(TRANSPORT_CHAT_MARKER)) {
+        DesktopChatScope.GLOBAL_LAN to message
+    } else if (message.startsWith(GLOBAL_LAN_CHAT_MARKER)) {
         DesktopChatScope.GLOBAL_LAN to requireValidMessage(message.removePrefix(GLOBAL_LAN_CHAT_MARKER))
     } else {
         DesktopChatScope.DIRECT to message
+    }
+}
+
+private fun encodeDesktopChannelFileOffer(offer: DesktopChannelFileOffer): String {
+    return TRANSPORT_CHAT_MARKER + buildDesktopJson(
+        "kind" to "file_offer",
+        "scope" to "GLOBAL_LAN",
+        "offer_id" to offer.id.take(120),
+        "file_name" to offer.fileName.take(160),
+        "file_size_bytes" to offer.fileSizeBytes,
+        "sender_id" to offer.senderId.take(80),
+        "sender_label" to offer.senderLabel.take(64),
+        "sender_ip" to offer.senderIp.orEmpty().take(64),
+        "created_at_ms" to offer.createdAtMs
+    )
+}
+
+private fun encodeDesktopChannelFileRequest(request: DesktopChannelFileRequest): String {
+    return TRANSPORT_CHAT_MARKER + buildDesktopJson(
+        "kind" to "file_request",
+        "offer_id" to request.offerId.take(120),
+        "requester_id" to request.requesterId.take(80),
+        "requester_label" to request.requesterLabel.take(64),
+        "requester_ip" to request.requesterIp.orEmpty().take(64)
+    )
+}
+
+private fun decodeDesktopChannelFileOffer(messageRaw: String): DesktopChannelFileOffer? {
+    val payload = messageRaw.trim().removePrefix(TRANSPORT_CHAT_MARKER)
+    if (payload == messageRaw.trim()) return null
+    if (desktopJsonString(payload, "kind") != "file_offer") return null
+    val offerId = desktopJsonString(payload, "offer_id")?.take(120).orEmpty()
+    if (offerId.isBlank()) return null
+    return DesktopChannelFileOffer(
+        id = offerId,
+        fileName = sanitizeFileName(desktopJsonString(payload, "file_name").orEmpty()).ifBlank { "archivo" },
+        fileSizeBytes = desktopJsonLong(payload, "file_size_bytes") ?: -1L,
+        senderId = desktopJsonString(payload, "sender_id")?.take(80).orEmpty(),
+        senderLabel = sanitizePeerLabel(desktopJsonString(payload, "sender_label").orEmpty()).ifBlank { "Equipo" },
+        senderIp = desktopJsonString(payload, "sender_ip")?.takeIf { it.isNotBlank() }?.take(64),
+        createdAtMs = desktopJsonLong(payload, "created_at_ms") ?: System.currentTimeMillis()
+    )
+}
+
+private fun decodeDesktopChannelFileRequest(messageRaw: String): DesktopChannelFileRequest? {
+    val payload = messageRaw.trim().removePrefix(TRANSPORT_CHAT_MARKER)
+    if (payload == messageRaw.trim()) return null
+    if (desktopJsonString(payload, "kind") != "file_request") return null
+    val offerId = desktopJsonString(payload, "offer_id")?.take(120).orEmpty()
+    if (offerId.isBlank()) return null
+    return DesktopChannelFileRequest(
+        offerId = offerId,
+        requesterId = desktopJsonString(payload, "requester_id")?.take(80).orEmpty(),
+        requesterLabel = sanitizePeerLabel(desktopJsonString(payload, "requester_label").orEmpty()).ifBlank { "Equipo" },
+        requesterIp = desktopJsonString(payload, "requester_ip")?.takeIf { it.isNotBlank() }?.take(64)
+    )
+}
+
+private fun buildDesktopJson(vararg fields: Pair<String, Any?>): String {
+    return fields.joinToString(prefix = "{", postfix = "}") { (key, value) ->
+        val encodedValue = when (value) {
+            is Number -> value.toString()
+            is Boolean -> value.toString()
+            else -> "\"${desktopJsonEscape(value?.toString().orEmpty())}\""
+        }
+        "\"${desktopJsonEscape(key)}\":$encodedValue"
+    }
+}
+
+private fun desktopJsonString(json: String, key: String): String? {
+    val pattern = Regex("\"${Regex.escape(key)}\"\\s*:\\s*\"((?:\\\\.|[^\"\\\\])*)\"")
+    return pattern.find(json)?.groupValues?.getOrNull(1)?.let(::desktopJsonUnescape)
+}
+
+private fun desktopJsonLong(json: String, key: String): Long? {
+    val pattern = Regex("\"${Regex.escape(key)}\"\\s*:\\s*(-?\\d+)")
+    return pattern.find(json)?.groupValues?.getOrNull(1)?.toLongOrNull()
+}
+
+private fun desktopJsonEscape(raw: String): String {
+    return buildString {
+        raw.forEach { ch ->
+            when (ch) {
+                '\\' -> append("\\\\")
+                '"' -> append("\\\"")
+                '\n' -> append("\\n")
+                '\r' -> append("\\r")
+                '\t' -> append("\\t")
+                else -> append(ch)
+            }
+        }
+    }
+}
+
+private fun desktopJsonUnescape(raw: String): String {
+    return buildString {
+        var index = 0
+        while (index < raw.length) {
+            val ch = raw[index]
+            if (ch == '\\' && index + 1 < raw.length) {
+                when (val escaped = raw[index + 1]) {
+                    '\\' -> append('\\')
+                    '"' -> append('"')
+                    'n' -> append('\n')
+                    'r' -> append('\r')
+                    't' -> append('\t')
+                    else -> append(escaped)
+                }
+                index += 2
+            } else {
+                append(ch)
+                index += 1
+            }
+        }
     }
 }
 
@@ -1360,6 +1501,8 @@ private fun runDesktopGui(cli: CliArgs) {
         var chatPanelOffset by remember { mutableStateOf(IntOffset.Zero) }
         var selectedDirectPeerIp by remember { mutableStateOf<String?>(null) }
         var isGlobalLanJoined by remember { mutableStateOf(false) }
+        var autoDownloadChannelFiles by remember { mutableStateOf(false) }
+        val channelFileOffers = remember { ConcurrentHashMap<String, DesktopLocalChannelFileOffer>() }
 
         var receiverPhase by remember { mutableStateOf(DesktopTaskPhase.IDLE) }
         var receiverStatus by remember { mutableStateOf("Listo para recibir desde otro equipo.") }
@@ -1506,6 +1649,127 @@ private fun runDesktopGui(cli: CliArgs) {
             globalLanJoinedFlag.set(joined)
         }
 
+        fun sendChannelFileOfferRequest(entry: DesktopChatEntry) {
+            val offer = decodeDesktopChannelFileOffer(entry.message) ?: run {
+                messageStatus = "No encontré los datos del archivo."
+                appendLog(messageStatus, isError = true)
+                return
+            }
+            val targetIp = offer.senderIp?.takeIf { it.isNotBlank() } ?: entry.peerAddress
+            val token = runCatching { requireValidToken(tokenText) }.getOrElse {
+                messageStatus = it.message ?: "Token inválido."
+                appendLog(messageStatus, isError = true)
+                return
+            }
+            val pin = runCatching { requireValidPin(pinText) }.getOrElse {
+                messageStatus = it.message ?: "PIN inválido."
+                appendLog(messageStatus, isError = true)
+                return
+            }
+            val port = parsePort() ?: run {
+                messageStatus = portError ?: "Puerto inválido."
+                appendLog(messageStatus, isError = true)
+                return
+            }
+            val retries = parseRetries() ?: run {
+                messageStatus = retriesError ?: "Reintentos inválidos."
+                appendLog(messageStatus, isError = true)
+                return
+            }
+            if (targetIp.isBlank()) {
+                messageStatus = "No encontré la IP del equipo que compartió el archivo."
+                appendLog(messageStatus, isError = true)
+                return
+            }
+
+            val request = DesktopChannelFileRequest(
+                offerId = offer.id,
+                requesterId = localPeerId,
+                requesterLabel = sanitizePeerLabel(deviceLabelText),
+                requesterIp = null
+            )
+            val config = SenderConfig(
+                token = token,
+                pin = pin,
+                targetHost = targetIp,
+                port = port,
+                clientId = localPeerId,
+                clientLabel = sanitizePeerLabel(deviceLabelText),
+                retries = retries,
+                localNoiseIdentity = noiseIdentity
+            )
+            messageStatus = "Solicitando ${offer.fileName}..."
+            thread(
+                start = true,
+                isDaemon = true,
+                name = "qetara-channel-file-request"
+            ) {
+                runCatching {
+                    sendMessageToPeer(
+                        messageRaw = encodeDesktopChannelFileRequest(request),
+                        scope = DesktopChatScope.GLOBAL_LAN,
+                        config = config
+                    )
+                }.onSuccess {
+                    SwingUtilities.invokeLater {
+                        messageStatus = "Descarga solicitada a ${offer.senderLabel}."
+                        appendLog(messageStatus)
+                    }
+                }.onFailure { error ->
+                    SwingUtilities.invokeLater {
+                        messageStatus = "No se pudo solicitar la descarga."
+                        appendLog("${messageStatus} ${error.message ?: error::class.java.simpleName}", isError = true)
+                    }
+                }
+            }
+        }
+
+        fun handleChannelFileRequest(entry: DesktopChatEntry): Boolean {
+            val request = decodeDesktopChannelFileRequest(entry.message) ?: return false
+            if (request.requesterId == localPeerId) return true
+            val localOffer = channelFileOffers[request.offerId]
+            if (localOffer == null) {
+                appendLog("Solicitud de archivo desconocida: ${request.offerId.take(8)}", isError = true)
+                return true
+            }
+            val targetIp = request.requesterIp?.takeIf { it.isNotBlank() } ?: entry.peerAddress
+            val token = runCatching { requireValidToken(tokenText) }.getOrNull() ?: return true
+            val pin = runCatching { requireValidPin(pinText) }.getOrNull() ?: return true
+            val port = parsePort() ?: return true
+            val retries = parseRetries() ?: return true
+            val config = SenderConfig(
+                token = token,
+                pin = pin,
+                targetHost = targetIp,
+                port = port,
+                clientId = localPeerId,
+                clientLabel = sanitizePeerLabel(deviceLabelText),
+                retries = retries,
+                localNoiseIdentity = noiseIdentity
+            )
+            appendLog("${request.requesterLabel} pidió ${localOffer.offer.fileName}. Enviando...")
+            thread(
+                start = true,
+                isDaemon = true,
+                name = "qetara-channel-file-send"
+            ) {
+                runCatching { sendFileToPeer(localOffer.file, config) }
+                    .onSuccess { result ->
+                        SwingUtilities.invokeLater {
+                            messageStatus = "Archivo enviado a ${request.requesterLabel}."
+                            appendLog(result)
+                        }
+                    }
+                    .onFailure { error ->
+                        SwingUtilities.invokeLater {
+                            messageStatus = "No se pudo enviar ${localOffer.offer.fileName}."
+                            appendLog("${messageStatus} ${error.message ?: error::class.java.simpleName}", isError = true)
+                        }
+                    }
+            }
+            return true
+        }
+
         fun refreshLanPeers(manual: Boolean = true) {
             if (lanDiscoveryPhase == DesktopTaskPhase.STARTING || lanDiscoveryPhase == DesktopTaskPhase.RUNNING) return
             val port = parsePort() ?: run {
@@ -1640,6 +1904,10 @@ private fun runDesktopGui(cli: CliArgs) {
                 isGlobalLanJoined = { globalLanJoinedFlag.get() },
                 onMessageReceived = { entry ->
                     SwingUtilities.invokeLater {
+                        if (handleChannelFileRequest(entry)) {
+                            return@invokeLater
+                        }
+                        val incomingOffer = decodeDesktopChannelFileOffer(entry.message)
                         appendChat(entry)
                         upsertLanPeer(
                             DesktopLanPeer(
@@ -1652,8 +1920,15 @@ private fun runDesktopGui(cli: CliArgs) {
                                 lastSeenAtMs = System.currentTimeMillis()
                             )
                         )
-                        messageStatus = "Mensaje recibido de ${entry.peerLabel}."
+                        messageStatus = if (incomingOffer != null) {
+                            "${entry.peerLabel} compartió ${incomingOffer.fileName}."
+                        } else {
+                            "Mensaje recibido de ${entry.peerLabel}."
+                        }
                         appendLog("Mensaje recibido de ${entry.peerLabel} @ ${entry.peerAddress}")
+                        if (incomingOffer != null && autoDownloadChannelFiles) {
+                            sendChannelFileOfferRequest(entry)
+                        }
                     }
                 }
             )
@@ -1901,6 +2176,26 @@ private fun runDesktopGui(cli: CliArgs) {
                 retries = retries,
                 localNoiseIdentity = noiseIdentity
             )
+            val channelFileOffer = if (scope == DesktopChatScope.GLOBAL_LAN && attachment != null) {
+                DesktopChannelFileOffer(
+                    id = UUID.randomUUID().toString(),
+                    fileName = sanitizeFileName(attachment.name),
+                    fileSizeBytes = attachment.length(),
+                    senderId = localPeerId,
+                    senderLabel = sanitizePeerLabel(deviceLabelText),
+                    senderIp = null,
+                    createdAtMs = System.currentTimeMillis()
+                )
+            } else {
+                null
+            }
+            val channelFileOfferPayload = channelFileOffer?.let { offer ->
+                channelFileOffers[offer.id] = DesktopLocalChannelFileOffer(
+                    offer = offer,
+                    file = attachment!!
+                )
+                encodeDesktopChannelFileOffer(offer)
+            }
 
             messagePhase = DesktopTaskPhase.STARTING
             val payloadLabel = when {
@@ -1918,6 +2213,7 @@ private fun runDesktopGui(cli: CliArgs) {
                 val failures = mutableListOf<String>()
                 val messageTargets = mutableListOf<DesktopLanPeer>()
                 val fileTargets = mutableListOf<DesktopLanPeer>()
+                val offerTargets = mutableListOf<DesktopLanPeer>()
                 targets.forEach { peer ->
                     val peerConfig = baseConfig.copy(targetHost = peer.ip)
                     if (message != null) {
@@ -1933,7 +2229,19 @@ private fun runDesktopGui(cli: CliArgs) {
                             failures.add("${peer.ip} mensaje: ${error.message ?: error::class.java.simpleName}")
                         }
                     }
-                    if (attachment != null) {
+                    if (channelFileOfferPayload != null) {
+                        runCatching {
+                            sendMessageToPeer(
+                                messageRaw = channelFileOfferPayload,
+                                scope = DesktopChatScope.GLOBAL_LAN,
+                                config = peerConfig
+                            )
+                        }.onSuccess {
+                            offerTargets.add(peer)
+                        }.onFailure { error ->
+                            failures.add("${peer.ip} archivo: ${error.message ?: error::class.java.simpleName}")
+                        }
+                    } else if (attachment != null) {
                         runCatching {
                             sendFileToPeer(attachment, peerConfig)
                         }.onSuccess {
@@ -1957,15 +2265,15 @@ private fun runDesktopGui(cli: CliArgs) {
                         )
                         chatDraftText = ""
                     }
-                    if (attachment != null && fileTargets.isNotEmpty()) {
+                    if (attachment != null && (fileTargets.isNotEmpty() || offerTargets.isNotEmpty())) {
                         appendChat(
                             DesktopChatEntry(
                                 timestamp = LocalTime.now().format(uiLogTimeFormatter),
                                 scope = scope,
                                 direction = DesktopChatDirection.OUTGOING,
                                 peerLabel = targetLabel,
-                                peerAddress = fileTargets.joinToString(", ") { it.ip },
-                                message = "Archivo enviado: ${attachment.name}"
+                                peerAddress = (fileTargets + offerTargets).joinToString(", ") { it.ip },
+                                message = channelFileOfferPayload ?: "Archivo enviado: ${attachment.name}"
                             )
                         )
                         chatAttachmentPathText = ""
@@ -1989,7 +2297,7 @@ private fun runDesktopGui(cli: CliArgs) {
                         appendLog(messageStatus)
                     } else {
                         messagePhase = DesktopTaskPhase.ERROR
-                        val sentCount = messageTargets.size + fileTargets.size
+                        val sentCount = messageTargets.size + fileTargets.size + offerTargets.size
                         messageStatus = if (sentCount > 0) {
                             "Envío parcial con ${failures.size} fallo(s)."
                         } else {
@@ -2397,6 +2705,9 @@ private fun runDesktopGui(cli: CliArgs) {
                                         discoveryPhase = lanDiscoveryPhase,
                                         onRefreshLan = { refreshLanPeers(manual = true) },
                                         onSend = { scope -> sendChatMessage(scope) },
+                                        autoDownloadChannelFiles = autoDownloadChannelFiles,
+                                        onAutoDownloadChannelFilesChange = { autoDownloadChannelFiles = it },
+                                        onDownloadChannelFileOffer = ::sendChannelFileOfferRequest,
                                         onClose = {
                                             openChatScope = null
                                             chatPanelOffset = IntOffset.Zero
@@ -2500,6 +2811,9 @@ private fun DesktopChatFloatingSheet(
     discoveryPhase: DesktopTaskPhase,
     onRefreshLan: () -> Unit,
     onSend: (DesktopChatScope) -> Unit,
+    autoDownloadChannelFiles: Boolean,
+    onAutoDownloadChannelFilesChange: (Boolean) -> Unit,
+    onDownloadChannelFileOffer: (DesktopChatEntry) -> Unit,
     onClose: () -> Unit,
     onDrag: (Offset) -> Unit,
     modifier: Modifier = Modifier
@@ -2565,7 +2879,10 @@ private fun DesktopChatFloatingSheet(
                 discoveryStatus = discoveryStatus,
                 discoveryPhase = discoveryPhase,
                 onRefreshLan = onRefreshLan,
-                onSend = onSend
+                onSend = onSend,
+                autoDownloadChannelFiles = autoDownloadChannelFiles,
+                onAutoDownloadChannelFilesChange = onAutoDownloadChannelFilesChange,
+                onDownloadChannelFileOffer = onDownloadChannelFileOffer
             )
         }
     }
@@ -2613,7 +2930,10 @@ private fun DesktopChatScopeContent(
     discoveryStatus: String,
     discoveryPhase: DesktopTaskPhase,
     onRefreshLan: () -> Unit,
-    onSend: (DesktopChatScope) -> Unit
+    onSend: (DesktopChatScope) -> Unit,
+    autoDownloadChannelFiles: Boolean,
+    onAutoDownloadChannelFilesChange: (Boolean) -> Unit,
+    onDownloadChannelFileOffer: (DesktopChatEntry) -> Unit
 ) {
     val activePeers = lanPeers.filter { it.sessionActive && it.ip.isNotBlank() }.distinctBy { it.ip }
     val selectedPeer = selectedDirectPeerIp
@@ -2727,6 +3047,43 @@ private fun DesktopChatScopeContent(
             }
         }
 
+        if (scope == DesktopChatScope.GLOBAL_LAN) {
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = qetaraPanelShape,
+                color = qetaraMist,
+                elevation = 0.dp
+            ) {
+                Column(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    Text(
+                        "Descargas del Canal Wi-Fi",
+                        style = MaterialTheme.typography.body2,
+                        fontWeight = FontWeight.SemiBold,
+                        color = qetaraInk
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Checkbox(
+                            checked = autoDownloadChannelFiles,
+                            onCheckedChange = onAutoDownloadChannelFilesChange
+                        )
+                        Text(
+                            "Descargar automáticamente archivos del canal",
+                            style = MaterialTheme.typography.caption,
+                            color = MaterialTheme.colors.onSurface.copy(alpha = 0.64f),
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+            }
+        }
+
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
@@ -2760,7 +3117,10 @@ private fun DesktopChatScopeContent(
                     )
                 } else {
                     scopedMessages.forEach { entry ->
-                        DesktopChatMessageRow(entry)
+                        DesktopChatMessageRow(
+                            entry = entry,
+                            onDownloadChannelFileOffer = { onDownloadChannelFileOffer(entry) }
+                        )
                     }
                 }
             }
@@ -3037,8 +3397,12 @@ private fun DesktopWifiGlyph(
 }
 
 @Composable
-private fun DesktopChatMessageRow(entry: DesktopChatEntry) {
+private fun DesktopChatMessageRow(
+    entry: DesktopChatEntry,
+    onDownloadChannelFileOffer: () -> Unit
+) {
     val directionLabel = if (entry.direction == DesktopChatDirection.OUTGOING) "Tu" else entry.peerLabel
+    val fileOffer = decodeDesktopChannelFileOffer(entry.message)
     val color = when {
         entry.isError -> MaterialTheme.colors.error
         entry.direction == DesktopChatDirection.OUTGOING -> qetaraTeal
@@ -3053,13 +3417,70 @@ private fun DesktopChatMessageRow(entry: DesktopChatEntry) {
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
-        Text(
-            entry.message,
-            style = MaterialTheme.typography.body2,
-            color = MaterialTheme.colors.onSurface.copy(alpha = 0.78f),
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis
-        )
+        if (fileOffer != null) {
+            Text(
+                if (entry.direction == DesktopChatDirection.OUTGOING) {
+                    "Tú compartiste:"
+                } else {
+                    "${entry.peerLabel} compartió:"
+                },
+                style = MaterialTheme.typography.body2,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colors.onSurface.copy(alpha = 0.78f)
+            )
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(8.dp),
+                color = qetaraCanvasElevated,
+                border = BorderStroke(1.dp, qetaraPanelBorder.copy(alpha = 0.6f)),
+                elevation = 0.dp
+            ) {
+                Row(
+                    modifier = Modifier.padding(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            fileOffer.fileName,
+                            style = MaterialTheme.typography.body2,
+                            fontWeight = FontWeight.SemiBold,
+                            color = qetaraInk,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text(
+                            if (fileOffer.fileSizeBytes >= 0L) {
+                                formatBytes(fileOffer.fileSizeBytes)
+                            } else {
+                                "Tamaño no disponible"
+                            },
+                            style = MaterialTheme.typography.caption,
+                            color = MaterialTheme.colors.onSurface.copy(alpha = 0.58f)
+                        )
+                    }
+                    if (entry.direction == DesktopChatDirection.INCOMING) {
+                        Button(
+                            onClick = onDownloadChannelFileOffer,
+                            colors = ButtonDefaults.buttonColors(
+                                backgroundColor = qetaraTeal,
+                                contentColor = Color.White
+                            )
+                        ) {
+                            Text("Descargar")
+                        }
+                    }
+                }
+            }
+        } else {
+            Text(
+                entry.message,
+                style = MaterialTheme.typography.body2,
+                color = MaterialTheme.colors.onSurface.copy(alpha = 0.78f),
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
     }
 }
 

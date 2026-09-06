@@ -40,6 +40,8 @@ object ChatMessageScopeCodec {
     private const val KIND_DIRECT_RELAY = "direct_relay"
     private const val KIND_CHANNEL_RELAY = "channel_relay"
     private const val KIND_ROSTER = "roster"
+    private const val KIND_FILE_OFFER = "file_offer"
+    private const val KIND_FILE_REQUEST = "file_request"
 
     sealed interface DecodedChatPayload {
         data class User(
@@ -68,10 +70,21 @@ object ChatMessageScopeCodec {
         data class DirectRoster(
             val peers: List<ChatTransportPeer>
         ) : DecodedChatPayload
+
+        data class FileOffer(
+            val offer: ChannelFileOffer
+        ) : DecodedChatPayload
+
+        data class FileRequest(
+            val request: ChannelFileRequest
+        ) : DecodedChatPayload
     }
 
     fun encodeForTransport(textRaw: String, scope: ChatMessageScope): String {
         val text = sanitizeChatText(textRaw)
+        if (text.startsWith(TRANSPORT_MARKER)) {
+            return text
+        }
         return when (scope) {
             ChatMessageScope.DIRECT -> text
             ChatMessageScope.GLOBAL_LAN -> GLOBAL_LAN_MARKER + text
@@ -148,6 +161,30 @@ object ChatMessageScopeCodec {
             .toString()
     }
 
+    fun encodeChannelFileOffer(offer: ChannelFileOffer): String {
+        return TRANSPORT_MARKER + JSONObject()
+            .put("kind", KIND_FILE_OFFER)
+            .put("scope", ChatMessageScope.GLOBAL_LAN.name)
+            .put("offer_id", offer.id.trim().take(120))
+            .put("file_name", offer.fileName.trim().take(160))
+            .put("file_size_bytes", offer.fileSizeBytes)
+            .put("sender_id", offer.senderId.trim().take(80))
+            .put("sender_label", offer.senderLabel.trim().take(64))
+            .put("sender_ip", offer.senderIp.orEmpty().trim().take(64))
+            .put("created_at_ms", offer.createdAtMs)
+            .toString()
+    }
+
+    fun encodeChannelFileRequest(request: ChannelFileRequest): String {
+        return TRANSPORT_MARKER + JSONObject()
+            .put("kind", KIND_FILE_REQUEST)
+            .put("offer_id", request.offerId.trim().take(120))
+            .put("requester_id", request.requesterId.trim().take(80))
+            .put("requester_label", request.requesterLabel.trim().take(64))
+            .put("requester_ip", request.requesterIp.orEmpty().trim().take(64))
+            .toString()
+    }
+
     fun decodeFromTransport(messageRaw: String): DecodedChatPayload {
         val raw = messageRaw.trim()
         if (raw.startsWith(TRANSPORT_MARKER)) {
@@ -205,6 +242,28 @@ object ChatMessageScopeCodec {
                     }
                     DecodedChatPayload.DirectRoster(normalizedPeers)
                 }
+
+                KIND_FILE_OFFER -> DecodedChatPayload.FileOffer(
+                    ChannelFileOffer(
+                        id = payload.optString("offer_id").trim().take(120),
+                        fileName = payload.optString("file_name").trim().take(160).ifBlank { "archivo" },
+                        fileSizeBytes = payload.optLong("file_size_bytes", -1L),
+                        senderId = payload.optString("sender_id").trim().take(80),
+                        senderLabel = payload.optString("sender_label").trim().take(64).ifBlank { "Equipo" },
+                        senderIp = payload.optString("sender_ip").trim().takeIf { it.isNotBlank() }?.take(64),
+                        uri = null,
+                        createdAtMs = payload.optLong("created_at_ms", System.currentTimeMillis())
+                    )
+                )
+
+                KIND_FILE_REQUEST -> DecodedChatPayload.FileRequest(
+                    ChannelFileRequest(
+                        offerId = payload.optString("offer_id").trim().take(120),
+                        requesterId = payload.optString("requester_id").trim().take(80),
+                        requesterLabel = payload.optString("requester_label").trim().take(64).ifBlank { "Equipo" },
+                        requesterIp = payload.optString("requester_ip").trim().takeIf { it.isNotBlank() }?.take(64)
+                    )
+                )
 
                 else -> DecodedChatPayload.User(
                     scope = when (payload.optString("scope")) {

@@ -95,5 +95,6 @@ data class P2pScreenState(
     val compactMode: Boolean,
     val vibrateOnConnect: Boolean,
     val vibrateOnError: Boolean,
-    val silentSuccessFeedback: Boolean
+    val silentSuccessFeedback: Boolean,
+    val autoDownloadChannelFiles: Boolean
 )

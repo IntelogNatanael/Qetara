@@ -99,8 +99,10 @@ data class P2pScreenEventWiring(
     val onMoveQueueItemDown: (String) -> Unit,
     val onChatChannelChange: (ChatChannel) -> Unit,
     val onSetGlobalLanJoined: (Boolean) -> Unit,
+    val onAutoDownloadChannelFilesChange: (Boolean) -> Unit,
     val onChatDraftChange: (String) -> Unit,
     val onSelectChatDirectPeer: (String) -> Unit,
+    val onDownloadChannelFileOffer: (ChatMessageEntry) -> Unit,
     val onSendMessage: () -> Unit,
     val onRetryMessage: (String) -> Unit,
     val onCancelQueuedMessage: (String) -> Unit,
@@ -337,6 +339,9 @@ fun buildP2pScreenEventWiring(
                 input.pushFeedback("Saliste del canal Wi‑Fi.", false)
             }
         },
+        onAutoDownloadChannelFilesChange = { enabled ->
+            input.persistUxPreferences(input.uxPreferences.copy(autoDownloadChannelFiles = enabled))
+        },
         onChatDraftChange = input.setChatDraft,
         onSelectChatDirectPeer = { ip ->
             if (input.uxPreferences.activeConnectionMode == ConnectionMode.WIFI_DIRECT) {
@@ -359,6 +364,31 @@ fun buildP2pScreenEventWiring(
                 } else {
                     input.setChatDirectLanTargetIp(normalized)
                     input.setTargetIpInput(normalized)
+                }
+            }
+        },
+        onDownloadChannelFileOffer = { item ->
+            val offer = (
+                ChatMessageScopeCodec.decodeFromTransport(item.text)
+                    as? ChatMessageScopeCodec.DecodedChatPayload.FileOffer
+                )?.offer
+            val targetIp = offer?.senderIp?.trim()?.takeIf { it.isNotBlank() }
+                ?: item.peerIp?.trim()?.takeIf { it.isNotBlank() }
+            when {
+                offer == null -> input.pushFeedback("No encontré los datos del archivo.", true)
+                targetIp == null -> input.pushFeedback("No encontré la IP del equipo que lo compartió.", true)
+                !FileTransfer.isValidToken(input.routeState.outboundInput.sessionToken) ||
+                    !TransferSecurity.isValidPin(input.routeState.outboundInput.sessionPin) ->
+                    input.pushFeedback("Renueva la sesión antes de descargar.", true)
+                else -> {
+                    backend.requestChannelFileOffer(
+                        offer = offer,
+                        targetIp = targetIp,
+                        token = input.routeState.outboundInput.sessionToken,
+                        pin = input.routeState.outboundInput.sessionPin,
+                        deviceLabel = input.routeState.localDeviceLabel
+                    )
+                    input.pushFeedback("Descarga solicitada.", false)
                 }
             }
         },
@@ -476,8 +506,10 @@ fun RenderP2pScreen(
         onMoveQueueItemDown = wiring.onMoveQueueItemDown,
         onChatChannelChange = wiring.onChatChannelChange,
         onSetGlobalLanJoined = wiring.onSetGlobalLanJoined,
+        onAutoDownloadChannelFilesChange = wiring.onAutoDownloadChannelFilesChange,
         onChatDraftChange = wiring.onChatDraftChange,
         onSelectChatDirectPeer = wiring.onSelectChatDirectPeer,
+        onDownloadChannelFileOffer = wiring.onDownloadChannelFileOffer,
         onSendMessage = wiring.onSendMessage,
         onRetryMessage = wiring.onRetryMessage,
         onCancelQueuedMessage = wiring.onCancelQueuedMessage,

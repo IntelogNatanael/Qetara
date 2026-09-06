@@ -3,6 +3,8 @@ package com.example.wifidrop.backend
 import android.content.Context
 import android.net.Uri
 import com.example.wifidrop.ChatMessageScope
+import com.example.wifidrop.ChannelFileOffer
+import com.example.wifidrop.ChannelFileOfferStore
 import com.example.wifidrop.FileTransfer
 import com.example.wifidrop.PeerDiscoveryPayload
 import com.example.wifidrop.SessionCredentialsPayload
@@ -89,6 +91,21 @@ interface P2pBackend {
         targetPeerIds: List<String>,
         targetIps: List<String>,
         targetLabels: List<String>
+    )
+
+    fun registerChannelFileOffer(
+        fileUri: Uri,
+        fileName: String,
+        deviceLabel: String,
+        senderIp: String? = null
+    ): ChannelFileOffer
+
+    fun requestChannelFileOffer(
+        offer: ChannelFileOffer,
+        targetIp: String,
+        token: String,
+        pin: String,
+        deviceLabel: String
     )
 
     fun sendSilentMessage(
@@ -306,6 +323,40 @@ class AndroidP2pBackend(
         )
     }
 
+    override fun registerChannelFileOffer(
+        fileUri: Uri,
+        fileName: String,
+        deviceLabel: String,
+        senderIp: String?
+    ): ChannelFileOffer {
+        return ChannelFileOfferStore.register(
+            context = appContext,
+            uri = fileUri,
+            fileName = fileName,
+            fileSizeBytes = queryUriSize(fileUri),
+            senderId = com.example.wifidrop.LocalDeviceIdentity.getOrCreate(appContext),
+            senderLabel = deviceLabel,
+            senderIp = senderIp
+        )
+    }
+
+    override fun requestChannelFileOffer(
+        offer: ChannelFileOffer,
+        targetIp: String,
+        token: String,
+        pin: String,
+        deviceLabel: String
+    ) {
+        TransferForegroundService.requestChannelFileOffer(
+            context = appContext,
+            offer = offer,
+            targetIp = targetIp,
+            token = token,
+            pin = pin,
+            deviceLabel = deviceLabel
+        )
+    }
+
     override fun sendSilentMessage(
         targetIp: String,
         token: String,
@@ -446,5 +497,15 @@ class AndroidP2pBackend(
 
     override fun moveQueueItemDown(transferId: String) {
         TransferForegroundService.moveQueueItemDown(appContext, transferId)
+    }
+
+    private fun queryUriSize(uri: Uri): Long {
+        return try {
+            appContext.contentResolver.openFileDescriptor(uri, "r")?.use { pfd ->
+                pfd.statSize.takeIf { it >= 0L } ?: -1L
+            } ?: -1L
+        } catch (_: Exception) {
+            -1L
+        }
     }
 }

@@ -36,6 +36,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ElevatedCard
@@ -72,9 +73,11 @@ internal fun P2pMessagesTab(
     activeChannel: ChatChannel,
     experience: P2pChatExperienceState,
     onSetGlobalLanJoined: (Boolean) -> Unit,
+    onAutoDownloadChannelFilesChange: (Boolean) -> Unit,
     onOpenConnectTab: () -> Unit,
     onChatDraftChange: (String) -> Unit,
     onSelectChatDirectPeer: (String) -> Unit,
+    onDownloadChannelFileOffer: (ChatMessageEntry) -> Unit,
     onPickFile: () -> Unit,
     onClearSelectedFiles: () -> Unit,
     onSendMessage: () -> Unit,
@@ -229,7 +232,7 @@ internal fun P2pMessagesTab(
         isGlobalChat && state.selectedFilesCount > 0 && state.globalChatPeerCount <= 0 ->
             "Cuando haya otro equipo en el canal podrás enviarle archivos."
         isGlobalChat && state.selectedFilesCount > 0 ->
-            "Los archivos se enviarán a ${if (state.globalChatPeerCount == 1) "1 equipo" else "${state.globalChatPeerCount} equipos"} del canal."
+            "Se publicará una descarga para ${if (state.globalChatPeerCount == 1) "1 equipo" else "${state.globalChatPeerCount} equipos"} del canal."
         !isGlobalChat && directChatMode == ConnectionMode.WIFI_DIRECT && state.chatDirectTargetIps.isEmpty() -> "Elige a quién enviar."
         !isGlobalChat && !directChannelReady -> if (directChatMode == ConnectionMode.LAN) "Elige un equipo." else "Deja un equipo listo."
         else -> null
@@ -552,6 +555,14 @@ internal fun P2pMessagesTab(
                             Text("Sincronizar sesión")
                         }
                     }
+
+                    if (isGlobalChat) {
+                        ChannelDownloadSettingsCard(
+                            autoDownload = state.autoDownloadChannelFiles,
+                            onAutoDownloadChange = onAutoDownloadChannelFilesChange,
+                            panelColor = quietPanelColor
+                        )
+                    }
                 }
             }
 
@@ -691,6 +702,7 @@ internal fun P2pMessagesTab(
                             item = item,
                             onRetryMessage = onRetryMessage,
                             onCancelQueuedMessage = onCancelQueuedMessage,
+                            onDownloadChannelFileOffer = { onDownloadChannelFileOffer(item) },
                             onRequestDelete = { pendingDeleteMessageId = item.id },
                             onShareMessage = { shareChatMessage(context, item) }
                         )
@@ -728,6 +740,11 @@ internal fun P2pMessagesTab(
                         peerCount = state.globalChatPeerCount,
                         onJoin = { onSetGlobalLanJoined(true) },
                         onOpenConnectTab = onOpenConnectTab
+                    )
+                    ChannelDownloadSettingsCard(
+                        autoDownload = state.autoDownloadChannelFiles,
+                        onAutoDownloadChange = onAutoDownloadChannelFilesChange,
+                        panelColor = quietPanelColor
                     )
                 }
             } else {
@@ -803,7 +820,11 @@ internal fun P2pMessagesTab(
                             contentDescription = null
                         )
                     },
-                    enabled = !isGlobalChat,
+                    enabled = if (isGlobalChat) {
+                        state.lanConnected && globalLanJoined && !state.sessionExpired
+                    } else {
+                        directChannelReady && !state.sessionExpired
+                    },
                     onClick = {
                         composerMoreExpanded = false
                         onPickFile()
@@ -1327,15 +1348,60 @@ private fun ChatStarterCard(
 }
 
 @Composable
+private fun ChannelDownloadSettingsCard(
+    autoDownload: Boolean,
+    onAutoDownloadChange: (Boolean) -> Unit,
+    panelColor: Color
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        color = panelColor
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = UiSpaceM, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Text(
+                "Descargas del Canal Wi‑Fi",
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Checkbox(
+                    checked = autoDownload,
+                    onCheckedChange = onAutoDownloadChange
+                )
+                Text(
+                    "Descargar automáticamente archivos del canal",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+    }
+}
+
+@Composable
 private fun ChatMessageCard(
     item: ChatMessageEntry,
     onRetryMessage: (String) -> Unit,
     onCancelQueuedMessage: (String) -> Unit,
+    onDownloadChannelFileOffer: () -> Unit,
     onRequestDelete: () -> Unit,
     onShareMessage: () -> Unit
 ) {
     var itemMoreExpanded by rememberSaveable(item.id) { mutableStateOf(false) }
     val outgoing = item.direction == ChatMessageDirection.OUTGOING
+    val channelFileOffer = (
+        ChatMessageScopeCodec.decodeFromTransport(item.text)
+            as? ChatMessageScopeCodec.DecodedChatPayload.FileOffer
+        )?.offer
     val bubbleColor = when {
         outgoing && item.status == ChatMessageStatus.FAILED -> MaterialTheme.colorScheme.errorContainer
         outgoing && item.status == ChatMessageStatus.CANCELED -> MaterialTheme.colorScheme.surfaceVariant
@@ -1425,7 +1491,60 @@ private fun ChatMessageCard(
                     }
                 }
 
-                Text(item.text, style = MaterialTheme.typography.bodyMedium)
+                if (channelFileOffer != null) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            if (outgoing) {
+                                "Tú compartiste:"
+                            } else {
+                                "${item.peerLabel ?: channelFileOffer.senderLabel} compartió:"
+                            },
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(14.dp),
+                            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.68f)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(12.dp),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Description,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                                Column(Modifier.weight(1f)) {
+                                    Text(
+                                        channelFileOffer.fileName,
+                                        fontWeight = FontWeight.SemiBold,
+                                        maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    Text(
+                                        if (channelFileOffer.fileSizeBytes >= 0L) {
+                                            formatBytes(channelFileOffer.fileSizeBytes)
+                                        } else {
+                                            "Tamaño no disponible"
+                                        },
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+                        if (!outgoing) {
+                            Button(onClick = onDownloadChannelFileOffer) {
+                                Text("Descargar")
+                            }
+                        }
+                    }
+                } else {
+                    Text(item.text, style = MaterialTheme.typography.bodyMedium)
+                }
 
                 if (
                     item.status == ChatMessageStatus.SENT ||
@@ -1561,6 +1680,10 @@ private fun deviceCountLabel(count: Int): String {
 }
 
 private fun shareChatMessage(context: android.content.Context, item: ChatMessageEntry) {
+    val fileOffer = (
+        ChatMessageScopeCodec.decodeFromTransport(item.text)
+            as? ChatMessageScopeCodec.DecodedChatPayload.FileOffer
+        )?.offer
     val shareBody = buildString {
         append("Qetara")
         append('\n')
@@ -1582,7 +1705,27 @@ private fun shareChatMessage(context: android.content.Context, item: ChatMessage
         append('\n')
         append("Hora: ${formatHistoryTime(item.timestampMs)}")
         append("\n\n")
-        append(item.text)
+        if (fileOffer != null) {
+            append(
+                if (item.direction == ChatMessageDirection.OUTGOING) {
+                    "Tú compartiste:"
+                } else {
+                    "${item.peerLabel ?: fileOffer.senderLabel} compartió:"
+                }
+            )
+            append('\n')
+            append(fileOffer.fileName)
+            append('\n')
+            append(
+                if (fileOffer.fileSizeBytes >= 0L) {
+                    formatBytes(fileOffer.fileSizeBytes)
+                } else {
+                    "Tamaño no disponible"
+                }
+            )
+        } else {
+            append(item.text)
+        }
     }
     val intent = Intent(Intent.ACTION_SEND).apply {
         type = "text/plain"

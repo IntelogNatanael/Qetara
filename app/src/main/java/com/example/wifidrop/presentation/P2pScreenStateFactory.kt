@@ -170,7 +170,8 @@ fun buildP2pScreenState(input: P2pScreenStateInput): P2pScreenState {
         compactMode = input.uxPreferences.compactMode,
         vibrateOnConnect = input.uxPreferences.vibrateOnConnect,
         vibrateOnError = input.uxPreferences.vibrateOnError,
-        silentSuccessFeedback = input.uxPreferences.silentSuccessFeedback
+        silentSuccessFeedback = input.uxPreferences.silentSuccessFeedback,
+        autoDownloadChannelFiles = input.uxPreferences.autoDownloadChannelFiles
     )
 }
 
