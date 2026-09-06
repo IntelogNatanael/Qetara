@@ -1,5 +1,6 @@
 package com.example.wifidrop
 
+import android.view.ViewTreeObserver
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -22,6 +23,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
@@ -56,8 +58,10 @@ internal data class P2pPinVisibilityState(
 
     fun edited(raw: String): P2pPinVisibilityState = copy(observedPin = normalizeSessionPin(raw))
     fun hidden(): P2pPinVisibilityState = copy(revealed = false)
-    fun toggled(isResumed: Boolean): P2pPinVisibilityState =
-        if (isResumed) copy(revealed = !revealed) else hidden()
+    fun forWindowFocus(hasWindowFocus: Boolean): P2pPinVisibilityState =
+        if (hasWindowFocus) this else hidden()
+    fun toggled(isResumed: Boolean, hasWindowFocus: Boolean): P2pPinVisibilityState =
+        if (isResumed && hasWindowFocus) copy(revealed = !revealed) else hidden()
 }
 
 @Composable
@@ -90,6 +94,21 @@ internal fun P2pSessionPinField(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
+    val view = LocalView.current
+    DisposableEffect(view) {
+        val observer = view.viewTreeObserver
+        val listener = ViewTreeObserver.OnWindowFocusChangeListener { focused ->
+            // Latch concealment at the event, even if focus returns before the next composition.
+            visibility = visibility.forWindowFocus(focused)
+        }
+        observer.addOnWindowFocusChangeListener(listener)
+        visibility = visibility.forWindowFocus(view.hasWindowFocus())
+        onDispose {
+            val currentObserver = if (observer.isAlive) observer else view.viewTreeObserver
+            if (currentObserver.isAlive) currentObserver.removeOnWindowFocusChangeListener(listener)
+        }
+    }
+
     val bringIntoViewRequester = remember { BringIntoViewRequester() }
     var hasFocus by remember { mutableStateOf(false) }
     val imeBottom = WindowInsets.ime.getBottom(LocalDensity.current)
@@ -120,7 +139,8 @@ internal fun P2pSessionPinField(
                 TextButton(
                     onClick = {
                         visibility = visibility.forSession(sessionKey, state.sessionPin).toggled(
-                            isResumed = lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)
+                            isResumed = lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED),
+                            hasWindowFocus = view.hasWindowFocus()
                         )
                     },
                     enabled = !state.sessionSyncing,

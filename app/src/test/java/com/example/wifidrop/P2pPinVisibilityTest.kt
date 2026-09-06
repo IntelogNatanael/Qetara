@@ -52,8 +52,32 @@ class P2pPinVisibilityTest {
     fun aLateRevealCallbackCannotUndoPauseConcealment() {
         val beforePause = P2pPinVisibilityState(session, "123456", revealed = true)
         val paused = beforePause.hidden()
-        assertFalse(paused.toggled(isResumed = false).revealed)
-        assertFalse(beforePause.toggled(isResumed = false).revealed)
-        assertTrue(paused.toggled(isResumed = true).revealed)
+        assertFalse(paused.toggled(isResumed = false, hasWindowFocus = true).revealed)
+        assertFalse(beforePause.toggled(isResumed = false, hasWindowFocus = true).revealed)
+        assertTrue(paused.toggled(isResumed = true, hasWindowFocus = true).revealed)
+    }
+
+    @Test
+    fun losingAndRegainingWindowFocusDoesNotRestoreRevealWithoutPausing() {
+        val revealed = P2pPinVisibilityState(session, "123456", revealed = true)
+        val unfocused = revealed.forWindowFocus(hasWindowFocus = false)
+        val returned = unfocused.forWindowFocus(hasWindowFocus = true)
+        assertFalse(unfocused.revealed)
+        assertFalse(returned.revealed)
+        assertEquals(session, returned.session)
+        assertEquals("123456", returned.observedPin)
+        // Returning focus requires an explicit reveal; an ordinary focus notification preserves it.
+        val explicitlyShown = returned.toggled(isResumed = true, hasWindowFocus = true)
+        assertTrue(explicitlyShown.forWindowFocus(hasWindowFocus = true).revealed)
+    }
+
+    @Test
+    fun aLateCallbackCannotRevealWhileResumedWithoutWindowFocus() {
+        for (previouslyRevealed in listOf(false, true)) {
+            val state = P2pPinVisibilityState(session, "123456", revealed = previouslyRevealed)
+            val afterCallback = state.toggled(isResumed = true, hasWindowFocus = false)
+            assertFalse(afterCallback.revealed)
+            assertFalse(afterCallback.forWindowFocus(hasWindowFocus = true).revealed)
+        }
     }
 }
