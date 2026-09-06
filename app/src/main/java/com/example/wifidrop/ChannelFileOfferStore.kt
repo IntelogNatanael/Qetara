@@ -30,6 +30,7 @@ object ChannelFileOfferStore {
     private const val KEY_JSON = "offers_json"
     private const val MAX_ITEMS = 80
 
+    @Synchronized
     fun register(
         context: Context,
         uri: Uri,
@@ -53,6 +54,7 @@ object ChannelFileOfferStore {
         return offer
     }
 
+    @Synchronized
     fun upsert(context: Context, offer: ChannelFileOffer) {
         val next = (list(context).filterNot { it.id == offer.id } + sanitize(offer))
             .sortedByDescending { it.createdAtMs }
@@ -66,6 +68,7 @@ object ChannelFileOfferStore {
         return list(context).firstOrNull { it.id == offerId }
     }
 
+    @Synchronized
     fun list(context: Context): List<ChannelFileOffer> {
         val raw = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             .getString(KEY_JSON, null)

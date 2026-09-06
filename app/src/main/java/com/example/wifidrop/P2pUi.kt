@@ -12,6 +12,8 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -76,6 +78,9 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
@@ -102,7 +107,7 @@ internal const val DEVELOPER_GITHUB_URL = "https://github.com/IntelogNatanael"
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun P2pScreen(
-    state: P2pScreenState,
+    screenState: P2pScreenState,
     onRequestPermission: () -> Unit,
     onOpenWifiSettings: () -> Unit,
     onFontScaleChange: (Float) -> Unit,
@@ -129,14 +134,17 @@ fun P2pScreen(
     onGenerateToken: () -> Unit,
     onGeneratePin: () -> Unit,
     onRenewSession: () -> Unit,
+    onSetSessionEnabled: (Boolean) -> Unit,
     onCopyToken: () -> Unit,
     onPasteToken: () -> Unit,
     onSyncToken: () -> Unit,
+    onConfirmManualSession: () -> Unit,
     onSyncFromPeerIp: (String) -> Unit,
     onTargetIpChange: (String) -> Unit,
     onUseSuggestedTarget: () -> Unit,
-    onPickFile: () -> Unit,
-    onClearSelectedFiles: () -> Unit,
+    onPickFile: (com.example.wifidrop.presentation.P2pAttachmentContext) -> Unit,
+    onClearSelectedFiles: (com.example.wifidrop.presentation.P2pAttachmentContext) -> Unit,
+    onAttachmentContextChange: (com.example.wifidrop.presentation.P2pAttachmentContext) -> Unit,
     onSendFile: () -> Unit,
     onRefreshReceived: () -> Unit,
     onShareReceivedFile: (File) -> Unit,
@@ -146,6 +154,7 @@ fun P2pScreen(
     onSendToLastTarget: () -> Unit,
     onSetPeerFavorite: (String, Boolean) -> Unit,
     onSetPeerAlias: (String, String) -> Unit,
+    onForgetPeer: (String) -> Unit,
     onPauseQueueItem: (String) -> Unit,
     onResumeQueueItem: (String) -> Unit,
     onCancelQueueItem: (String) -> Unit,
@@ -182,8 +191,8 @@ fun P2pScreen(
             )
         }
     }
-    val connected = state.connection?.groupFormed == true
-    val isHost = state.connection?.isGroupOwner == true
+    val connected = screenState.connection?.groupFormed == true
+    val isHost = screenState.connection?.isGroupOwner == true
     val windowSize = LocalWindowInfo.current.containerSize
     val density = LocalDensity.current
     val isCompactScreen = with(density) {
@@ -203,6 +212,7 @@ fun P2pScreen(
     var focusStage by rememberSaveable(initialFocusStage.name) { mutableStateOf(initialFocusStage) }
     var headerMinimized by rememberSaveable(isCompactScreen) { mutableStateOf(isCompactScreen) }
     var headerExpanded by rememberSaveable { mutableStateOf(false) }
+    var downloadsInitialSection by rememberSaveable { mutableStateOf(DownloadLibrarySection.FILES) }
     var dismissedSupportCardKey by rememberSaveable { mutableStateOf<String?>(null) }
     val focusEnabled = focusStage != FocusStage.OFF
     val selectedTab = when (focusStage) {
@@ -211,6 +221,19 @@ fun P2pScreen(
         FocusStage.CHAT -> P2pMainTab.MESSAGES
         FocusStage.OFF -> allTabs[selectedTabIndex]
     }
+    val selectionContext = when (selectedTab) {
+        P2pMainTab.SEND -> com.example.wifidrop.presentation.P2pAttachmentContext.FILES
+        P2pMainTab.MESSAGES -> com.example.wifidrop.presentation.P2pAttachmentContext.DIRECT_CHAT
+        P2pMainTab.CHANNEL -> com.example.wifidrop.presentation.P2pAttachmentContext.CHANNEL
+        else -> screenState.attachmentContext
+    }
+    // The new screen never renders the previous audience's attachments while its state updates.
+    val state = if (screenState.attachmentContext == selectionContext) screenState else screenState.copy(
+        selectedFileNames = emptyList(), selectedFilesCount = 0, shareImportStatus = ""
+    )
+    val pickFilesForContext: () -> Unit = { onPickFile(selectionContext) }
+    val clearFilesForContext: () -> Unit = { onClearSelectedFiles(selectionContext) }
+    LaunchedEffect(selectionContext) { onAttachmentContextChange(selectionContext) }
     val contentScroll = rememberScrollState()
     var showAdvancedTargetOptions by rememberSaveable { mutableStateOf(false) }
     var showQueueDetails by rememberSaveable { mutableStateOf(false) }
@@ -220,9 +243,12 @@ fun P2pScreen(
     var previousConnectionReady by rememberSaveable { mutableStateOf(false) }
     var securityExpanded by rememberSaveable { mutableStateOf(false) }
     var showSendActivityDetails by rememberSaveable { mutableStateOf(false) }
+    var showSelectedFilesReview by rememberSaveable { mutableStateOf(false) }
     var sessionDetailsExpanded by rememberSaveable { mutableStateOf(false) }
     var trustExpanded by rememberSaveable { mutableStateOf(false) }
     var showUxPreferences by rememberSaveable { mutableStateOf(false) }
+    var dismissedCredentialRequestId by rememberSaveable { mutableStateOf<String?>(null) }
+    var pendingForgetPeerId by rememberSaveable { mutableStateOf<String?>(null) }
     val connectionViewMode = state.connectionViewMode
     fun applyFocusStage(next: FocusStage, persist: Boolean = true) {
         val changed = focusStage != next
@@ -244,6 +270,12 @@ fun P2pScreen(
     LaunchedEffect(initialFocusStage) {
         applyFocusStage(initialFocusStage, persist = false)
     }
+    LaunchedEffect(screenState.incomingShareEventId) {
+        if (screenState.incomingShareEventId != null) {
+            selectedTabIndex = allTabs.indexOf(P2pMainTab.SEND)
+            applyFocusStage(FocusStage.OFF)
+        }
+    }
     LaunchedEffect(selectedTab, state.chatChannel) {
         val targetChannel = when (selectedTab) {
             P2pMainTab.MESSAGES -> ChatChannel.DIRECT
@@ -256,28 +288,13 @@ fun P2pScreen(
     }
 
     fun applyConnectionMode(next: ConnectionMode) {
-        when (next) {
-            ConnectionMode.WIFI_DIRECT -> {
-                if (!state.wifiDirectModeEnabled) {
-                    onWifiDirectModeEnabledChange(true)
-                }
-            }
-
-            ConnectionMode.LAN -> {
-                if (!state.lanModeEnabled) {
-                    onLanModeEnabledChange(true)
-                }
-            }
-        }
-        if (state.activeConnectionMode == next) return
-        if (connectionViewMode != ConnectionViewMode.ADVANCED) {
+        if (connectionViewMode == ConnectionViewMode.ADVANCED) {
+            onConnectionModeChange(next)
+        } else {
             onConnectionViewModeChange(ConnectionViewMode.fromConnectionMode(next))
         }
         headerExpanded = false
-        if (isCompactScreen) {
-            headerMinimized = true
-        }
-        onConnectionModeChange(next)
+        if (isCompactScreen) headerMinimized = true
     }
 
     @Composable
@@ -319,11 +336,6 @@ fun P2pScreen(
                 val selected = connectionViewMode == mode
                 val onClick = {
                     onConnectionViewModeChange(mode)
-                    when (mode) {
-                        ConnectionViewMode.WIFI_DIRECT -> applyConnectionMode(ConnectionMode.WIFI_DIRECT)
-                        ConnectionViewMode.LAN -> applyConnectionMode(ConnectionMode.LAN)
-                        ConnectionViewMode.ADVANCED -> Unit
-                    }
                 }
                 if (selected) {
                     Button(onClick = onClick) { Text(mode.title) }
@@ -368,8 +380,7 @@ fun P2pScreen(
         it.direction == ChatMessageDirection.OUTGOING && it.status == ChatMessageStatus.FAILED
     }
     val hasConnectionAlerts = state.pendingCredentialShare != null || state.pendingTrust != null
-    val isSyncingNow = state.tokenSyncStatus.contains("sincron", ignoreCase = true) ||
-        state.tokenSyncStatus.contains("reintent", ignoreCase = true)
+    val isSyncingNow = state.sessionSyncing
     val isConnectingNow = state.directDiscovering || state.directConnecting || state.directCreatingGroup
     val activeTransferCancelLabel = when {
         state.receiving && (state.sending || state.sendActiveCount > 0) -> "Cancelar transferencias"
@@ -386,6 +397,7 @@ fun P2pScreen(
             P2pExperienceCommand.CANCEL_LAN_SCAN -> onCancelLanScan()
             P2pExperienceCommand.USE_SUGGESTED_TARGET -> onUseSuggestedTarget()
             P2pExperienceCommand.REFRESH_STATE -> onRefreshState()
+            P2pExperienceCommand.REVIEW_TRUST -> { dismissedCredentialRequestId = null }
             P2pExperienceCommand.RENEW_SESSION -> onRenewSession()
             P2pExperienceCommand.OPEN_DOWNLOADS -> onOpenDownloads()
             P2pExperienceCommand.SYNC_TOKEN -> onSyncToken()
@@ -421,7 +433,6 @@ fun P2pScreen(
             connectionViewMode != ConnectionViewMode.ADVANCED
     val suppressDirectConnectionBanner =
         selectedTab == P2pMainTab.CONNECTION &&
-            activeConnectionMode == ConnectionMode.WIFI_DIRECT &&
             connectionViewMode != ConnectionViewMode.ADVANCED
     val showSupportBanner = !focusEnabled &&
         supportCard != null &&
@@ -450,6 +461,7 @@ fun P2pScreen(
     var securityMoreExpanded by rememberSaveable { mutableStateOf(false) }
     var sendMoreExpanded by rememberSaveable { mutableStateOf(false) }
     var headerQuietMenuExpanded by rememberSaveable { mutableStateOf(false) }
+    val keyboardVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
     val baseDensity = LocalDensity.current
     val appliedFontScale = state.fontScale.coerceIn(0.85f, 1.25f)
     val compactSpacing = if (state.compactMode) 6.dp else UiSpaceS
@@ -567,21 +579,29 @@ fun P2pScreen(
             !connected &&
             !directReadyForExchange &&
             !directBusy
+    val requiresManualPairing = state.tokenSyncStatus.contains("manual", ignoreCase = true) ||
+        state.tokenSyncStatus.contains("secure_credentials_required", ignoreCase = true)
+    LaunchedEffect(requiresManualPairing) {
+        if (requiresManualPairing) {
+            securityExpanded = true
+            sessionDetailsExpanded = true
+        }
+    }
     val compactSyncLabel = when {
         state.sessionExpired -> "Sesión expirada"
-        state.tokenSyncStatus.contains("sincron", ignoreCase = true) -> "Sincronizando"
+        state.sessionSyncing -> "Sincronizando"
         state.tokenSyncStatus.contains("reintent", ignoreCase = true) -> "Reintentando"
         state.tokenSyncStatus.contains("aprob", ignoreCase = true) -> "Pendiente"
         state.tokenSyncStatus.contains("no pude", ignoreCase = true) ||
             state.tokenSyncStatus.contains("no se pudo", ignoreCase = true) -> "Reintentar"
         else -> null
     }
-    val sessionNeedsAttention = state.sessionExpired ||
+    val sessionNeedsAttention = requiresManualPairing || state.sessionExpired ||
         state.pendingCredentialShare != null ||
         state.tokenSyncStatus.contains("no pude", ignoreCase = true) ||
         state.tokenSyncStatus.contains("no se pudo", ignoreCase = true) ||
         state.tokenSyncStatus.contains("aprob", ignoreCase = true)
-    val showSessionActionButton = state.sessionExpired ||
+    val showSessionActionButton = requiresManualPairing || state.sessionExpired ||
         state.tokenSyncStatus.contains("no pude", ignoreCase = true) ||
         state.tokenSyncStatus.contains("no se pudo", ignoreCase = true) ||
         state.tokenSyncStatus.contains("aprob", ignoreCase = true)
@@ -589,13 +609,15 @@ fun P2pScreen(
         !sessionNeedsAttention &&
         connectionViewMode != ConnectionViewMode.ADVANCED
     val sessionActionLabel = when {
+        requiresManualPairing -> "Introducir credenciales"
         state.sessionExpired -> "Renovar sesión"
         state.tokenSyncStatus.contains("aprob", ignoreCase = true) -> "Reintentar sincronización"
         else -> "Sincronizar ahora"
     }
     val sessionStatusText = when {
+        requiresManualPairing -> "Abre Qetara en el otro equipo. Copia aquí su token y su PIN para compartir la misma sesión."
         state.sessionExpired -> "La sesión expiró. Renueva para continuar."
-        state.tokenSyncStatus.contains("sincron", ignoreCase = true) -> "Sincronizando sesión..."
+        state.sessionSyncing -> "Sincronizando sesión..."
         state.tokenSyncStatus.contains("reintent", ignoreCase = true) -> state.tokenSyncStatus
         state.tokenSyncStatus.contains("aprob", ignoreCase = true) -> "El otro equipo debe aprobar la sesión."
         state.tokenSyncStatus.contains("no pude", ignoreCase = true) ||
@@ -775,8 +797,9 @@ fun P2pScreen(
     val showStateHeader =
         connectionViewMode == ConnectionViewMode.ADVANCED ||
             headerExpanded ||
-            (!headerIsQuiet && selectedTab == P2pMainTab.CONNECTION)
+            (!headerIsQuiet && selectedTab == P2pMainTab.CONNECTION && connectionViewMode == ConnectionViewMode.ADVANCED)
     val useDedicatedTabViewport =
+        (selectedTab == P2pMainTab.CONNECTION && connectionViewMode != ConnectionViewMode.ADVANCED) ||
         selectedTab == P2pMainTab.MESSAGES ||
             selectedTab == P2pMainTab.CHANNEL ||
             selectedTab == P2pMainTab.HISTORY ||
@@ -796,101 +819,57 @@ fun P2pScreen(
             QetaraBackdrop(
                 modifier = Modifier.fillMaxSize()
             )
-            if (showUxPreferences) {
+            state.pendingCredentialShare?.takeIf { it.id != dismissedCredentialRequestId }?.let { request ->
+                QetaraCredentialRequestDialog(
+                    request = request,
+                    onApprove = { onApproveCredentialShare(request) },
+                    onReject = { onRejectCredentialShare(request) },
+                    onDismiss = { dismissedCredentialRequestId = request.id }
+                )
+            }
+            pendingForgetPeerId?.let { peerId ->
+                val peer = state.trustedPeers.firstOrNull { it.id == peerId }
                 AlertDialog(
-                    onDismissRequest = { showUxPreferences = false },
-                    title = { Text("Ajustes UX") },
+                    onDismissRequest = { pendingForgetPeerId = null },
+                    title = { Text("¿Olvidar este equipo?") },
                     text = {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .verticalScroll(rememberScrollState()),
-                            verticalArrangement = Arrangement.spacedBy(UiSpaceM)
-                        ) {
-                            Text(
-                                "Estos ajustes afinan lectura, densidad y feedback sin tocar el protocolo.",
-                                style = MaterialTheme.typography.bodySmall
-                            )
-                            Surface(
-                                shape = RoundedCornerShape(14.dp),
-                                color = quietPanelColor
-                            ) {
-                                Column(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(UiSpaceM),
-                                    verticalArrangement = Arrangement.spacedBy(UiSpaceS)
-                                ) {
-                                    Text(
-                                        "Tamano del texto",
-                                        style = MaterialTheme.typography.titleSmall,
-                                        fontWeight = FontWeight.SemiBold
-                                    )
-                                    Text(
-                                        "Actual: ${(state.fontScale * 100).roundToInt()}%",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                    FlowRow(
-                                        horizontalArrangement = Arrangement.spacedBy(UiSpaceS),
-                                        verticalArrangement = Arrangement.spacedBy(UiSpaceS)
-                                    ) {
-                                        OutlinedButton(
-                                            onClick = {
-                                                onFontScaleChange((state.fontScale - 0.05f).coerceAtLeast(0.85f))
-                                            },
-                                            enabled = state.fontScale > 0.85f
-                                        ) {
-                                            Text("A-")
-                                        }
-                                        OutlinedButton(
-                                            onClick = { onFontScaleChange(1.0f) },
-                                            enabled = kotlin.math.abs(state.fontScale - 1.0f) > 0.01f
-                                        ) {
-                                            Text("Normal")
-                                        }
-                                        OutlinedButton(
-                                            onClick = {
-                                                onFontScaleChange((state.fontScale + 0.05f).coerceAtMost(1.25f))
-                                            },
-                                            enabled = state.fontScale < 1.25f
-                                        ) {
-                                            Text("A+")
-                                        }
-                                    }
-                                    PreferenceToggleRow(
-                                        title = "Modo compacto",
-                                        subtitle = "Reduce padding y altura para ver mas contenido util.",
-                                        checked = state.compactMode,
-                                        onCheckedChange = onCompactModeChange
-                                    )
-                                    PreferenceToggleRow(
-                                        title = "Vibrar al conectar",
-                                        subtitle = "Feedback tactil cuando el enlace queda listo.",
-                                        checked = state.vibrateOnConnect,
-                                        onCheckedChange = onVibrateOnConnectChange
-                                    )
-                                    PreferenceToggleRow(
-                                        title = "Vibrar en errores",
-                                        subtitle = "Alerta tactil cuando algo requiere atencion.",
-                                        checked = state.vibrateOnError,
-                                        onCheckedChange = onVibrateOnErrorChange
-                                    )
-                                    PreferenceToggleRow(
-                                        title = "Exito silencioso",
-                                        subtitle = "Reduce snackbars de exito para dejar menos ruido en pantalla.",
-                                        checked = state.silentSuccessFeedback,
-                                        onCheckedChange = onSilentSuccessFeedbackChange
-                                    )
+                        Text((peer?.let(TrustedPeerStore::displayName) ?: "Este equipo") +
+                            " dejará de estar recordado. Se cancelarán sus envíos activos y pendientes y tendrás que aprobar una nueva conexión. Los archivos ya recibidos se conservan.")
+                    },
+                    confirmButton = {
+                        TextButton(onClick = { pendingForgetPeerId = null; onForgetPeer(peerId) }) {
+                            Text("Olvidar equipo", color = MaterialTheme.colorScheme.error)
+                        }
+                    },
+                    dismissButton = { TextButton(onClick = { pendingForgetPeerId = null }) { Text("Cancelar") } }
+                )
+            }
+            if (showSelectedFilesReview) {
+                AlertDialog(
+                    onDismissRequest = { showSelectedFilesReview = false },
+                    title = { Text("Archivos preparados") },
+                    text = {
+                        LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            items(state.selectedFileNames) { name ->
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Icon(Icons.Rounded.Description, contentDescription = null, modifier = Modifier.size(20.dp))
+                                    Text(name, style = MaterialTheme.typography.bodyMedium)
                                 }
                             }
                         }
                     },
-                    confirmButton = {
-                        TextButton(onClick = { showUxPreferences = false }) {
-                            Text("Cerrar")
-                        }
-                    }
+                    confirmButton = { TextButton(onClick = { showSelectedFilesReview = false }) { Text("Listo") } }
+                )
+            }
+            if (showUxPreferences) {
+                QetaraPreferencesDialog(
+                    state = state,
+                    onFontScaleChange = onFontScaleChange,
+                    onCompactModeChange = onCompactModeChange,
+                    onVibrateOnConnectChange = onVibrateOnConnectChange,
+                    onVibrateOnErrorChange = onVibrateOnErrorChange,
+                    onSilentSuccessFeedbackChange = onSilentSuccessFeedbackChange,
+                    onDismiss = { showUxPreferences = false }
                 )
             }
             Column(
@@ -905,7 +884,7 @@ fun P2pScreen(
                     .weight(1f),
                 verticalArrangement = Arrangement.spacedBy(compactSpacing)
             ) {
-            if (showStateHeader) {
+            if (showStateHeader && !keyboardVisible && selectedTab != P2pMainTab.MESSAGES && selectedTab != P2pMainTab.CHANNEL) {
             ElevatedCard(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.elevatedCardColors(
@@ -926,9 +905,9 @@ fun P2pScreen(
                     if (!headerMinimized) {
                         Text(
                             text = if (activeConnectionMode == ConnectionMode.WIFI_DIRECT) {
-                                "Local-first · directo entre dos equipos"
+                                "Entre tus equipos · sin internet"
                             } else {
-                                "Local-first · misma red, sin panel"
+                                "Tu red local · sin cuentas"
                             },
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -1037,11 +1016,6 @@ fun P2pScreen(
                                                     onClick = {
                                                         headerQuietMenuExpanded = false
                                                         onConnectionViewModeChange(mode)
-                                                        when (mode) {
-                                                            ConnectionViewMode.WIFI_DIRECT -> applyConnectionMode(ConnectionMode.WIFI_DIRECT)
-                                                            ConnectionViewMode.LAN -> applyConnectionMode(ConnectionMode.LAN)
-                                                            ConnectionViewMode.ADVANCED -> Unit
-                                                        }
                                                     }
                                                 )
                                             }
@@ -1319,7 +1293,81 @@ fun P2pScreen(
             }
             }
 
-            if (activeSupportCard != null) {
+
+            if ((selectedTab == P2pMainTab.CONNECTION || !state.sessionEnabled) &&
+                !(keyboardVisible && (selectedTab == P2pMainTab.MESSAGES || selectedTab == P2pMainTab.CHANNEL))) {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant
+                ) {
+                    Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text(
+                                if (state.sessionEnabled) "Compartir en este equipo" else "Sesión cerrada",
+                                modifier = Modifier.weight(1f),
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            TextButton(onClick = { onSetSessionEnabled(!state.sessionEnabled) }) {
+                                Text(if (state.sessionEnabled) "Cerrar sesión" else "Activar sesión")
+                            }
+                        }
+                        Text(
+                            if (state.sessionEnabled) "Cerrar detiene la recepción y las operaciones en curso."
+                            else "Actívala para conectar o enviar. Tus archivos y borradores se conservan.",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+            }
+
+            if (selectedTab == P2pMainTab.SEND) {
+                buildP2pSendSummary(
+                    total = state.sendBatchTotal,
+                    completed = state.sendBatchCompleted,
+                    failed = state.sendBatchFailed,
+                    canceled = state.sendBatchCanceled,
+                    sending = state.sending,
+                    paused = state.paused
+                )?.let { summary ->
+                    Surface(
+                        modifier = Modifier.fillMaxWidth().semantics { liveRegion = LiveRegionMode.Polite },
+                        shape = RoundedCornerShape(16.dp),
+                        color = when (summary.kind) {
+                            P2pSendSummaryKind.SUCCESS -> MaterialTheme.colorScheme.primaryContainer
+                            P2pSendSummaryKind.ATTENTION -> MaterialTheme.colorScheme.errorContainer
+                            P2pSendSummaryKind.ACTIVE -> MaterialTheme.colorScheme.surfaceVariant
+                        },
+                        contentColor = when (summary.kind) {
+                            P2pSendSummaryKind.SUCCESS -> MaterialTheme.colorScheme.onPrimaryContainer
+                            P2pSendSummaryKind.ATTENTION -> MaterialTheme.colorScheme.onErrorContainer
+                            P2pSendSummaryKind.ACTIVE -> MaterialTheme.colorScheme.onSurfaceVariant
+                        }
+                    ) {
+                        Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Column(Modifier.weight(1f)) {
+                                    Text(summary.title, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+                                    Text(summary.detail, style = MaterialTheme.typography.bodySmall)
+                                }
+                                TextButton(onClick = {
+                                    downloadsInitialSection = DownloadLibrarySection.ACTIVITY
+                                    selectedTabIndex = allTabs.indexOf(P2pMainTab.HISTORY)
+                                    applyFocusStage(FocusStage.OFF)
+                                }) { Text("Actividad") }
+                            }
+                            if (summary.kind == P2pSendSummaryKind.ACTIVE) {
+                                LinearProgressIndicator(progress = { state.sendProgress.coerceIn(0f, 1f) }, modifier = Modifier.fillMaxWidth())
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (!keyboardVisible && activeSupportCard != null &&
+                selectedTab != P2pMainTab.MESSAGES && selectedTab != P2pMainTab.CHANNEL &&
+                (selectedTab != P2pMainTab.SEND || activeSupportCard.isError)) {
                 val currentSupportCardKey = supportCardKey.orEmpty()
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
@@ -1385,7 +1433,7 @@ fun P2pScreen(
                 },
                 verticalArrangement = Arrangement.spacedBy(UiSpaceS)
             ) {
-            if (!focusEnabled && supportCard == null && !state.permissionGranted && !state.lanConnected) {
+            if (selectedTab == P2pMainTab.CONNECTION && connectionViewMode == ConnectionViewMode.ADVANCED && !focusEnabled && supportCard == null && !state.permissionGranted && !state.lanConnected) {
                 if (!hideDirectConnectCard) {
                 ElevatedCard(
                     modifier = Modifier.fillMaxWidth(),
@@ -1427,8 +1475,8 @@ fun P2pScreen(
                     onChatDraftChange = onChatDraftChange,
                     onSelectChatDirectPeer = onSelectChatDirectPeer,
                     onDownloadChannelFileOffer = onDownloadChannelFileOffer,
-                    onPickFile = onPickFile,
-                    onClearSelectedFiles = onClearSelectedFiles,
+                    onPickFile = pickFilesForContext,
+                    onClearSelectedFiles = clearFilesForContext,
                     onSendMessage = onSendMessage,
                     onRetryMessage = onRetryMessage,
                     onCancelQueuedMessage = onCancelQueuedMessage,
@@ -1439,7 +1487,6 @@ fun P2pScreen(
                         .fillMaxWidth()
                         .weight(1f)
                 )
-                DeveloperFooter(onOpenGithub = openDeveloperProfile)
             }
 
             if (selectedTab == P2pMainTab.SEND && showQueueDetails) {
@@ -1641,7 +1688,46 @@ fun P2pScreen(
                 DeveloperFooter(onOpenGithub = openDeveloperProfile)
             }
 
-            if (selectedTab == P2pMainTab.CONNECTION) {
+            if (selectedTab == P2pMainTab.CONNECTION && connectionViewMode != ConnectionViewMode.ADVANCED) {
+                P2pConnectTab(
+                    state = state,
+                    onModeChange = { mode ->
+                        onConnectionViewModeChange(ConnectionViewMode.fromConnectionMode(mode))
+                    },
+                    onRequestPermission = onRequestPermission,
+                    onOpenWifiSettings = onOpenWifiSettings,
+                    onStartHost = onStartHost,
+                    onStartClient = onStartClient,
+                    onCancelConnect = onCancelConnect,
+                    onDisconnect = onDisconnect,
+                    onConnectToPeer = onConnectToPeer,
+                    onScan = onScanLanPeers,
+                    onCancelScan = onCancelLanScan,
+                    onUsePeer = onSyncFromPeerIp,
+                    onSyncSession = onSyncToken,
+                    onConfirmManualSession = onConfirmManualSession,
+                    onRenewSession = onRenewSession,
+                    onTokenChange = onTokenChange,
+                    onPinChange = onPinChange,
+                    onCopyToken = onCopyToken,
+                    onPasteToken = onPasteToken,
+                    onOpenSend = {
+                        selectedTabIndex = allTabs.indexOf(P2pMainTab.SEND)
+                        applyFocusStage(FocusStage.OFF)
+                    },
+                    onOpenChat = {
+                        selectedTabIndex = allTabs.indexOf(P2pMainTab.MESSAGES)
+                        applyFocusStage(FocusStage.OFF)
+                    },
+                    onSaveFavorite = onSaveSuggestedFavorite,
+                    onSkipFavorite = onSkipSuggestedFavorite,
+                    onTrustPeer = onTrustPeer,
+                    onRequestForgetPeer = { pendingForgetPeerId = it },
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            if (selectedTab == P2pMainTab.CONNECTION && connectionViewMode == ConnectionViewMode.ADVANCED) {
                 if (!state.favoriteSuggestionPeerId.isNullOrBlank() && !state.favoriteSuggestionLabel.isNullOrBlank()) {
                     ElevatedCard(
                         modifier = Modifier.fillMaxWidth(),
@@ -1657,7 +1743,7 @@ fun P2pScreen(
                                 .padding(UiSpaceM),
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Text("Conexion nueva detectada", fontWeight = FontWeight.Bold)
+                            Text("Conexión nueva detectada", fontWeight = FontWeight.Bold)
                             Text("¿Guardar $peerLabel como favorito?")
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Button(onClick = { onSaveSuggestedFavorite(peerId) }) {
@@ -1688,7 +1774,7 @@ fun P2pScreen(
                             )
                             if (simpleWifiDirectMode) {
                                 Text(
-                                    "Flujo simple, 1 a 1 y sin pasos ocultos.",
+                                    "Comparte cerca, aunque no tengas internet.",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -2073,7 +2159,9 @@ fun P2pScreen(
                                     if (showSessionActionButton) {
                                         Button(
                                             onClick = {
-                                                if (state.sessionExpired) {
+                                                if (requiresManualPairing) {
+                                                    sessionDetailsExpanded = true
+                                                } else if (state.sessionExpired) {
                                                     onRenewSession()
                                                 } else {
                                                     onSyncToken()
@@ -2134,11 +2222,16 @@ fun P2pScreen(
                                 }
 
                                 if (sessionDetailsExpanded) {
+                                    Text(
+                                        "Para conectar manualmente, introduce el código de sesión y el PIN que muestra el equipo receptor. Después confirma los datos.",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
                                     OutlinedTextField(
                                         value = state.authToken,
                                         onValueChange = onTokenChange,
                                         singleLine = true,
-                                        label = { Text("Token") },
+                                        label = { Text("Código de sesión") },
                                         modifier = Modifier.fillMaxWidth()
                                     )
 
@@ -2149,6 +2242,14 @@ fun P2pScreen(
                                         label = { Text("PIN") },
                                         modifier = Modifier.fillMaxWidth()
                                     )
+                                    Button(
+                                        onClick = onConfirmManualSession,
+                                        enabled = !state.sessionExpired &&
+                                            !state.sessionSyncing &&
+                                            FileTransfer.isValidToken(state.authToken) && TransferSecurity.isValidPin(state.sessionPin) &&
+                                            (if (state.activeConnectionMode == ConnectionMode.WIFI_DIRECT) !state.directTargetIp.isNullOrBlank() else !state.resolvedTargetIp.isNullOrBlank())
+                                    ) { Text("Usar esta sesión") }
+
                                 }
                             }
                         )
@@ -2172,15 +2273,18 @@ fun P2pScreen(
                                 val req = state.pendingCredentialShare
                                 Text("Solicitud de sesión · ${req.label}")
                                 Text(req.ip, style = MaterialTheme.typography.bodySmall)
+                                credentialRequestFingerprint(req)?.let { fingerprint ->
+                                    Text("Huella: $fingerprint", style = MaterialTheme.typography.labelMedium)
+                                }
                                 Text(
-                                    "Confirma antes de compartir la sesión.",
+                                    "Confirma que reconoces este equipo antes de compartir la sesión.",
                                     style = MaterialTheme.typography.bodySmall
                                 )
                                 FlowRow(
                                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                                     verticalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
-                                    Button(onClick = { onApproveCredentialShare(req) }) {
+                                    Button(onClick = { onApproveCredentialShare(req) }, enabled = credentialRequestFingerprint(req) != null) {
                                         Text("Aprobar")
                                     }
                                     OutlinedButton(onClick = { onRejectCredentialShare(req) }) {
@@ -2245,6 +2349,9 @@ fun P2pScreen(
                                             }
                                         ) {
                                             Text("Editar apodo")
+                                        }
+                                        TextButton(onClick = { pendingForgetPeerId = peer.id }) {
+                                            Text("Olvidar equipo", color = MaterialTheme.colorScheme.error)
                                         }
                                     }
                                     Text(
@@ -2504,7 +2611,7 @@ fun P2pScreen(
                 }
             }
 
-            if (selectedTab == P2pMainTab.SEND) {
+            if (selectedTab == P2pMainTab.SEND && !showQueueDetails) {
                 ElevatedCard(
                     modifier = Modifier.fillMaxWidth(),
                     colors = sectionCardColors
@@ -2515,12 +2622,26 @@ fun P2pScreen(
                             .padding(UiSpaceM),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Text("Enviar", fontWeight = FontWeight.Bold)
+                        Text("Elige qué compartir", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.headlineSmall)
+                        Text(
+                            "Fotos, documentos y más. Puedes elegir varios archivos a la vez.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+
+                        if (state.selectedFilesCount == 0) {
+                            Button(onClick = pickFilesForContext, modifier = Modifier.fillMaxWidth()) {
+                                Icon(imageVector = Icons.Rounded.AttachFile, contentDescription = null)
+                                Spacer(Modifier.width(8.dp))
+                                Text("Elegir archivos")
+                            }
+                        }
 
                         val resolved = state.resolvedTargetIp
                         val resolvedLabel = state.resolvedTargetLabel ?: resolved
                         val hasResolvedRoute = !resolved.isNullOrBlank()
                         val routeTitle = when {
+                            hasResolvedRoute && !state.sessionReady -> "Sesión por confirmar"
                             simpleWifiDirectMode && hasResolvedRoute -> {
                                 "Directo listo"
                             }
@@ -2551,9 +2672,10 @@ fun P2pScreen(
                             state.resolvedTargetMode == ConnectionMode.LAN && !resolved.isNullOrBlank() -> {
                                 "Ruta lista: misma Wi-Fi"
                             }
-                            else -> "Todavía no hay destino listo"
+                            else -> "Elige un equipo cuando estés listo"
                         }
                         val routeBody = when {
+                            hasResolvedRoute && !state.sessionReady -> "El equipo está seleccionado. Confirma su sesión en Conectar antes de enviar."
                             simpleWifiDirectMode && hasResolvedRoute -> {
                                 resolvedLabel?.let { "Enviarás directo a $it." } ?: "El equipo ya quedó listo para recibir."
                             }
@@ -2576,7 +2698,7 @@ fun P2pScreen(
                                 "Mantén el otro equipo con el enlace abierto para que aparezca."
                             }
                             simpleWifiDirectMode -> {
-                                "Primero deja un equipo listo desde Conectar."
+                                "Puedes preparar los archivos ahora y conectar un equipo después."
                             }
                             state.resolvedTargetMode == ConnectionMode.WIFI_DIRECT && !resolved.isNullOrBlank() -> {
                                 resolvedLabel?.let { "Directo listo con $it." } ?: "Directo listo para enviar."
@@ -2587,13 +2709,13 @@ fun P2pScreen(
                             !state.suggestedTargetIp.isNullOrBlank() -> {
                                 "Usa la IP sugerida o elige otro destino."
                             }
-                            else -> "Primero deja un equipo listo."
+                            else -> "Puedes preparar los archivos ahora y conectar un equipo después."
                         }
                         val showDestinationChooser = when {
-                            simpleWifiDirectMode -> false
+                            connectionViewMode != ConnectionViewMode.ADVANCED -> false
                             else -> showAdvancedTargetOptions || !hasResolvedRoute
                         }
-                        val canUseLastDestination = state.lastSendTargetIp != null &&
+                        val canUseLastDestination = state.sessionReady && state.lastSendTargetIp == resolved && state.lastSendTargetIp != null &&
                             state.selectedFilesCount > 0 &&
                             !state.sessionExpired
                         val showSendMore = state.selectedFilesCount > 0
@@ -2605,7 +2727,8 @@ fun P2pScreen(
                         val sendDisabledReason = when {
                             state.selectedFilesCount <= 0 -> null
                             state.sessionExpired -> "Sesión expirada. Renueva la sesión antes de enviar."
-                            !hasResolvedRoute -> "Todavía no hay un equipo listo. Deja un destino preparado."
+                            !hasResolvedRoute -> "Conecta un equipo para enviarlos. Tu selección se queda aquí."
+                            !state.sessionReady -> "Confirma la sesión con el receptor en Conectar antes de enviar."
                             else -> null
                         }
                         val hasSendActivity = state.shareImportStatus.isNotBlank() ||
@@ -2664,27 +2787,15 @@ fun P2pScreen(
                             horizontalArrangement = Arrangement.spacedBy(UiSpaceS),
                             verticalArrangement = Arrangement.spacedBy(UiSpaceS)
                         ) {
-                            if (!simpleWifiDirectMode && !state.suggestedTargetIp.isNullOrBlank() && !hasResolvedRoute) {
-                                FilledTonalButton(onClick = onUseSuggestedTarget) {
-                                    Text("Usar sugerida")
+                            FilledTonalButton(
+                                onClick = {
+                                    selectedTabIndex = allTabs.indexOf(P2pMainTab.CONNECTION)
+                                    applyFocusStage(FocusStage.OFF)
                                 }
-                            }
-                            if (!simpleWifiDirectMode && hasResolvedRoute) {
+                            ) { Text(if (hasResolvedRoute) "Cambiar equipo" else "Conectar un equipo") }
+                            if (connectionViewMode == ConnectionViewMode.ADVANCED) {
                                 TextButton(onClick = { showAdvancedTargetOptions = !showAdvancedTargetOptions }) {
-                                    Text(if (showDestinationChooser) "Ocultar destinos" else "Cambiar destino")
-                                }
-                            } else if (!simpleWifiDirectMode) {
-                                OutlinedButton(onClick = { showAdvancedTargetOptions = !showAdvancedTargetOptions }) {
-                                    Text(if (showDestinationChooser) "Ocultar destinos" else "Elegir destino")
-                                }
-                            } else if (!hasResolvedRoute) {
-                                FilledTonalButton(
-                                    onClick = {
-                                        selectedTabIndex = allTabs.indexOf(P2pMainTab.CONNECTION)
-                                        applyFocusStage(FocusStage.CONNECT)
-                                    }
-                                ) {
-                                    Text("Ir a Conectar")
+                                    Text(if (showDestinationChooser) "Ocultar direcciones" else "Elegir por IP")
                                 }
                             }
                         }
@@ -2776,11 +2887,9 @@ fun P2pScreen(
                                         Text(name, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                     }
                                     if (state.selectedFilesCount > 3) {
-                                        Text(
-                                            "+${state.selectedFilesCount - 3} más",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
+                                        TextButton(onClick = { showSelectedFilesReview = true }) {
+                                            Text("Revisar ${state.selectedFilesCount} archivos")
+                                        }
                                     }
                                 }
                             }
@@ -2791,39 +2900,20 @@ fun P2pScreen(
                             horizontalArrangement = Arrangement.spacedBy(UiSpaceS),
                             verticalArrangement = Arrangement.spacedBy(UiSpaceS)
                         ) {
-                            if (state.selectedFilesCount == 0) {
-                                if (simpleWifiDirectMode && !hasResolvedRoute) {
-                                    FilledTonalButton(onClick = onPickFile) {
-                                        Icon(
-                                            imageVector = Icons.Rounded.AttachFile,
-                                            contentDescription = null
-                                        )
-                                        Spacer(Modifier.width(8.dp))
-                                        Text("Preparar archivos")
-                                    }
-                                } else {
-                                    Button(onClick = onPickFile) {
-                                        Icon(
-                                            imageVector = Icons.Rounded.AttachFile,
-                                            contentDescription = null
-                                        )
-                                        Spacer(Modifier.width(8.dp))
-                                        Text("Elegir archivos")
-                                    }
-                                }
-                            } else {
+                            if (state.selectedFilesCount > 0) {
                                 Button(
                                     onClick = onSendFile,
-                                    enabled = sendDisabledReason == null
+                                    enabled = sendDisabledReason == null,
+                                    modifier = Modifier.fillMaxWidth()
                                 ) {
                                     Icon(
                                         imageVector = Icons.AutoMirrored.Rounded.Send,
                                         contentDescription = null
                                     )
                                     Spacer(Modifier.width(8.dp))
-                                    Text("Enviar")
+                                    Text(if (state.selectedFilesCount == 1) "Enviar archivo" else "Enviar ${state.selectedFilesCount} archivos")
                                 }
-                                OutlinedButton(onClick = onPickFile) {
+                                OutlinedButton(onClick = pickFilesForContext) {
                                     Icon(
                                         imageVector = Icons.Rounded.AttachFile,
                                         contentDescription = null
@@ -2846,7 +2936,7 @@ fun P2pScreen(
                                             enabled = state.selectedFilesCount > 0,
                                             onClick = {
                                                 sendMoreExpanded = false
-                                                onClearSelectedFiles()
+                                                clearFilesForContext()
                                             }
                                         )
                                         DropdownMenuItem(
@@ -3002,243 +3092,23 @@ fun P2pScreen(
             }
 
             if (selectedTab == P2pMainTab.HISTORY) {
-                val recentReceivedFiles = state.receivedFiles.take(5)
-                val recentHistoryItems = state.history.take(20)
-                ElevatedCard(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f),
-                    colors = sectionCardColors
-                ) {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(UiSpaceM),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        item("history-header") {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Column(
-                                    modifier = Modifier.weight(1f),
-                                    verticalArrangement = Arrangement.spacedBy(2.dp)
-                                ) {
-                                    Text("Descargas", fontWeight = FontWeight.Bold)
-                                    Text(
-                                        if (simpleWifiDirectMode) {
-                                            "Lo que recibes por Wi-Fi Direct y la actividad reciente."
-                                        } else {
-                                            "Archivos recibidos y actividad reciente."
-                                        },
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                                TextButton(onClick = onOpenDownloads) {
-                                    Icon(
-                                        imageVector = Icons.Rounded.Download,
-                                        contentDescription = null
-                                    )
-                                    Spacer(Modifier.width(6.dp))
-                                    Text("Abrir carpeta")
-                                }
-                            }
-                        }
-                        item("history-chips") {
-                            FlowRow(
-                                horizontalArrangement = Arrangement.spacedBy(UiSpaceS),
-                                verticalArrangement = Arrangement.spacedBy(UiSpaceS)
-                            ) {
-                                StatusChip(
-                                    label = if (state.receiving) "Recibiendo" else "En espera",
-                                    containerColor = if (state.receiving) {
-                                        MaterialTheme.colorScheme.primaryContainer
-                                    } else {
-                                        MaterialTheme.colorScheme.surfaceVariant
-                                    },
-                                    contentColor = if (state.receiving) {
-                                        MaterialTheme.colorScheme.onPrimaryContainer
-                                    } else {
-                                        MaterialTheme.colorScheme.onSurfaceVariant
-                                    }
-                                )
-                                if (state.receiverStatus.isNotBlank()) {
-                                    StatusChip(
-                                        label = state.receiverStatus,
-                                        containerColor = quietPanelColor,
-                                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                                if (state.receivedFiles.isNotEmpty()) {
-                                    StatusChip(
-                                        label = "Recibidos ${state.receivedFiles.size}",
-                                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                                    )
-                                }
-                            }
-                        }
-                        val rxProgress = state.receiverProgress
-                        if (rxProgress != null) {
-                            item("history-progress") {
-                                Column(verticalArrangement = Arrangement.spacedBy(UiSpaceS)) {
-                                    LinearProgressIndicator(
-                                        progress = { rxProgress.coerceIn(0f, 1f) },
-                                        modifier = Modifier.fillMaxWidth()
-                                    )
-                                    val pct = (rxProgress * 100).roundToInt().coerceIn(0, 100)
-                                    Text("Recibiendo ${state.receiverFileName ?: "archivo"}: $pct%")
-                                }
-                            }
-                        }
-                        if (state.receiving || state.receiverAverageBps > 0L || state.receiverEtaSeconds != null) {
-                            item("history-metrics") {
-                                FlowRow(
-                                    horizontalArrangement = Arrangement.spacedBy(UiSpaceS),
-                                    verticalArrangement = Arrangement.spacedBy(UiSpaceS)
-                                ) {
-                                    StatusChip(
-                                        label = "Inst ${formatRate(state.receiverInstantBps)}",
-                                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                    StatusChip(
-                                        label = "Media ${formatRate(state.receiverAverageBps)}",
-                                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                    StatusChip(
-                                        label = "ETA ${formatEta(state.receiverEtaSeconds)}",
-                                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
-                        }
-                        if (!state.receiverFailureCause.isNullOrBlank()) {
-                            item("history-error") {
-                                Text(
-                                    friendlyTransferIssue(state.receiverFailureCause, "No se pudo completar la recepción.") ?: "No se pudo completar la recepción.",
-                                    color = MaterialTheme.colorScheme.error
-                                )
-                            }
-                        }
-                        item("history-refresh") {
-                            OutlinedButton(onClick = onRefreshReceived) {
-                                Icon(
-                                    imageVector = Icons.Rounded.Refresh,
-                                    contentDescription = null
-                                )
-                                Spacer(Modifier.width(8.dp))
-                                Text("Refrescar")
-                            }
-                        }
-                        if (recentReceivedFiles.isNotEmpty()) {
-                            item("recent-files-title") {
-                                Text(
-                                    "Archivos recientes",
-                                    style = MaterialTheme.typography.labelLarge,
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                            }
-                            items(recentReceivedFiles, key = { it.absolutePath }) { file ->
-                                Surface(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    shape = RoundedCornerShape(14.dp),
-                                    color = quietPanelColor
-                                ) {
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(UiSpaceM),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Rounded.Description,
-                                            contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                        Column(Modifier.weight(1f)) {
-                                            Text(file.name, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                            Text(
-                                                formatBytes(file.length()),
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                                            )
-                                        }
-                                        OutlinedButton(onClick = { onShareReceivedFile(file) }) {
-                                            Icon(
-                                                imageVector = Icons.Rounded.Share,
-                                                contentDescription = null
-                                            )
-                                            Text("Compartir")
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        item("history-title") {
-                            Text(
-                                "Actividad reciente",
-                                style = MaterialTheme.typography.labelLarge,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        }
-                        if (recentHistoryItems.isEmpty()) {
-                            item("history-empty") {
-                                EmptyStateBlock(
-                                    title = "Aún no hay descargas",
-                                    body = "Aquí verás lo recibido y lo abierto hace poco.",
-                                    actionLabel = "Ir a Enviar",
-                                    onAction = {
-                                        selectedTabIndex = allTabs.indexOf(P2pMainTab.SEND)
-                                    }
-                                )
-                            }
-                        } else {
-                            items(
-                                items = recentHistoryItems,
-                                key = { "${it.timestampMs}-${it.fileName}-${it.direction}" }
-                            ) { item ->
-                                Surface(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    shape = RoundedCornerShape(14.dp),
-                                    color = quietPanelColor
-                                ) {
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(UiSpaceM),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                    ) {
-                                        Column(Modifier.weight(1f)) {
-                                            Text(
-                                                "${historyDirectionLabel(item.direction)} · ${historyOutcomeLabel(item.outcome)}",
-                                                fontWeight = FontWeight.SemiBold
-                                            )
-                                            Text(item.fileName, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                            Text(
-                                                "${formatHistoryTime(item.timestampMs)} · ${item.peerLabel ?: item.peerIp.orEmpty()}",
-                                                style = MaterialTheme.typography.bodySmall
-                                            )
-                                            if (item.bytes > 0) {
-                                                Text(formatBytes(item.bytes), style = MaterialTheme.typography.bodySmall)
-                                            }
-                                        }
-                                        OutlinedButton(onClick = { onOpenHistoryItem(item) }) {
-                                            Text("Abrir")
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                DeveloperFooter(onOpenGithub = openDeveloperProfile)
+                P2pDownloadsTab(
+                    state = state,
+                    initialSection = downloadsInitialSection,
+                    onRefresh = onRefreshReceived,
+                    onOpenDownloads = onOpenDownloads,
+                    onShareFile = onShareReceivedFile,
+                    onOpenHistoryItem = onOpenHistoryItem,
+                    onOpenConnect = {
+                        selectedTabIndex = allTabs.indexOf(P2pMainTab.CONNECTION)
+                        applyFocusStage(FocusStage.OFF)
+                    },
+                    onOpenSend = {
+                        selectedTabIndex = allTabs.indexOf(P2pMainTab.SEND)
+                        applyFocusStage(FocusStage.OFF)
+                    },
+                    modifier = Modifier.weight(1f)
+                )
             }
 
                 if (!useDedicatedTabViewport) {
@@ -3246,6 +3116,7 @@ fun P2pScreen(
                 }
             }
 
+            if (!keyboardVisible || (selectedTab != P2pMainTab.MESSAGES && selectedTab != P2pMainTab.CHANNEL)) {
             QetaraBottomNavigation(
                 tabs = allTabs,
                 selectedTabIndex = selectedTabIndex,
@@ -3278,6 +3149,8 @@ fun P2pScreen(
                 tabIcon = ::tabIcon,
                 modifier = Modifier.fillMaxWidth()
             )
+
+            }
 
             if (!aliasEditorPeerId.isNullOrBlank()) {
                 val editingPeerId = aliasEditorPeerId.orEmpty()

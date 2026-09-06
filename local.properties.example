@@ -1,0 +1,6 @@
+# Copy this file to local.properties and set the Android SDK location.
+# Alternatively set the ANDROID_HOME environment variable.
+# Windows example (forward slashes avoid escaping):
+# sdk.dir=C:/Android/Sdk
+# Linux example:
+# sdk.dir=/opt/android-sdk

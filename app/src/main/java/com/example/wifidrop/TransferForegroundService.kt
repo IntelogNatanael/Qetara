@@ -16,6 +16,8 @@ import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
@@ -28,6 +30,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.EOFException
 import java.io.File
 import java.net.ConnectException
@@ -40,7 +43,12 @@ class TransferForegroundService : Service() {
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
+    @Volatile
+    private var shuttingDown = false
+
     private var receiverJob: Job? = null
+    private var sessionStopBarrier: Job? = null
+    private val sessionLifecycle = SessionLifecycleFence()
     private val sendJobs = linkedMapOf<String, Job>()
     private val sendSnapshots = linkedMapOf<String, SendTaskSnapshot>()
     private val sendPayloads = linkedMapOf<String, SendTaskPayload>()
@@ -54,21 +62,23 @@ class TransferForegroundService : Service() {
     private val pendingMessageTasks = linkedMapOf<String, PendingMessageTask>()
     private var messageSenderJob: Job? = null
     private var messageTickerJob: Job? = null
-    private val deniedCredentialShareUntilMs = linkedMapOf<String, Long>()
-    private val credentialRequestPromptedAtMs = linkedMapOf<String, Long>()
+    private val deniedCredentialShareUntilMs = java.util.concurrent.ConcurrentHashMap<String, Long>()
+    private val credentialRequestPromptedAtMs = java.util.concurrent.ConcurrentHashMap<String, Long>()
 
     private var currentToken: String = ""
     private var currentPin: String = ""
     private var currentSessionExpiresAtMs: Long = 0L
     private var receiveDir: File? = null
 
-    private val knownPeersMap = linkedMapOf<String, KnownPeerSnapshot>()
+    private val knownPeersMap = java.util.concurrent.ConcurrentHashMap<String, KnownPeerSnapshot>()
+    private var directGroupMonitor: WifiDirectGroupMonitor? = null
 
     @Volatile
     private var pausedTransfers = false
 
     @Volatile
     private var cancelCurrentTransfer = false
+    private val receiveCancellationGeneration = java.util.concurrent.atomic.AtomicLong(0L)
 
     private var wakeLock: PowerManager.WakeLock? = null
 
@@ -78,6 +88,12 @@ class TransferForegroundService : Service() {
         super.onCreate()
         createNotificationChannel()
         startForeground(NOTIFICATION_ID, buildNotification("Servicio listo"))
+        directGroupMonitor = WifiDirectGroupMonitor(applicationContext) { group ->
+            _state.update { state -> state.copy(
+                directGroup = group,
+                authenticatedPeerRoutes = if (state.directGroup?.sessionId == group?.sessionId) state.authenticatedPeerRoutes else emptyList()
+            ) }
+        }.also { it.start() }
         val trusted = TrustedPeerStore.all(applicationContext)
         val lastTarget = LastSendTargetStore.get(applicationContext)
         val pending = PendingMessageStore.list(applicationContext)
@@ -110,6 +126,12 @@ class TransferForegroundService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        sessionLifecycle.recordCommand(startId)
+        if (!UxPreferencesStore.load(applicationContext).sessionEnabled &&
+            (intent == null || intent.action in SESSION_NETWORK_ACTIONS)) {
+            stopSession()
+            return START_NOT_STICKY
+        }
         when (intent?.action) {
             ACTION_START_SESSION -> startOrUpdateSession(intent)
             ACTION_STOP_SESSION -> stopSession()
@@ -126,7 +148,9 @@ class TransferForegroundService : Service() {
             ACTION_CANCEL_ACTIVE -> requestCancelActiveTransfer()
             ACTION_OPEN_DOWNLOADS -> openDownloadsFolder()
             ACTION_TRUST_PEER -> trustPeer(intent)
+            ACTION_FORGET_PEER -> forgetPeer(intent)
             ACTION_REPORT_DISCOVERED_PEER -> reportDiscoveredPeer(intent)
+            ACTION_REPORT_AUTHENTICATED_PEER -> reportAuthenticatedPeer(intent)
             ACTION_APPROVE_CREDENTIAL_SHARE -> approveCredentialShare(intent)
             ACTION_REJECT_CREDENTIAL_SHARE -> rejectCredentialShare(intent)
             ACTION_SET_PEER_FAVORITE -> setPeerFavorite(intent)
@@ -141,6 +165,10 @@ class TransferForegroundService : Service() {
     }
 
     override fun onDestroy() {
+        sessionLifecycle.beginStop()
+        shuttingDown = true
+        directGroupMonitor?.stop()
+        directGroupMonitor = null
         receiverJob?.cancel()
         cancelAllSendJobs()
         messageSenderJob?.cancel()
@@ -159,6 +187,7 @@ class TransferForegroundService : Service() {
         }
         deniedCredentialShareUntilMs.clear()
         credentialRequestPromptedAtMs.clear()
+        serviceScope.cancel()
         releaseWakeLock()
         val trusted = TrustedPeerStore.all(applicationContext)
         val lastTarget = LastSendTargetStore.get(applicationContext)
@@ -185,6 +214,7 @@ class TransferForegroundService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     private fun startOrUpdateSession(intent: Intent) {
+        directGroupMonitor?.refresh()
         val tokenRaw = intent.getStringExtra(EXTRA_TOKEN).orEmpty()
         val pinRaw = intent.getStringExtra(EXTRA_PIN).orEmpty()
         val expiresAtMs = intent.getLongExtra(EXTRA_SESSION_EXPIRES_AT_MS, 0L)
@@ -228,48 +258,78 @@ class TransferForegroundService : Service() {
         val expiresChanged = expiresAtMs != currentSessionExpiresAtMs
         val dirChanged = receiveDir?.absolutePath != nextDir.absolutePath
 
-        currentToken = normalizedToken
-        currentPin = normalizedPin
-        currentSessionExpiresAtMs = expiresAtMs
-        receiveDir = nextDir
-        val trusted = TrustedPeerStore.all(applicationContext)
-
-        _state.update {
-            it.copy(
-                serviceRunning = true,
-                activeToken = normalizedToken,
-                sessionExpiresAtMs = expiresAtMs,
-                trustedPeers = trusted,
-                favoritePeers = trusted.filter { p -> p.favorite },
-                history = TransferHistoryStore.list(applicationContext),
-                receiverStatus = if (tokenChanged || pinChanged || expiresChanged || dirChanged) {
-                    "Sesion actualizada."
-                } else {
-                    it.receiverStatus
-                }
-            )
+        if (!shuttingDown && !tokenChanged && !pinChanged && !expiresChanged && !dirChanged &&
+            receiverJob?.isActive == true) {
+            syncWakeLockAndLifetime()
+            return
         }
 
-        if (tokenChanged || pinChanged || expiresChanged || dirChanged || receiverJob?.isActive != true) {
-            receiverJob?.cancel()
-            receiverJob = serviceScope.launch {
+        val reopeningAfterStop = shuttingDown
+        val ticket = sessionLifecycle.beginStart()
+        val previousReceiver = receiverJob
+        val previousStop = sessionStopBarrier
+        previousReceiver?.cancel()
+        // A startForegroundService request must be acknowledged even while old workers drain.
+        startForeground(NOTIFICATION_ID, buildNotification("Preparando sesion..."))
+        receiverJob = serviceScope.launch(start = CoroutineStart.LAZY) {
+            if (!awaitSessionWorkers(listOfNotNull(previousReceiver, previousStop), sessionLifecycle, ticket)) {
+                return@launch
+            }
+            val activated = withContext(Dispatchers.Main.immediate) {
+                if (!sessionLifecycle.canActivate(ticket) ||
+                    !UxPreferencesStore.load(applicationContext).sessionEnabled) {
+                    false
+                } else {
+                    // No cancelled worker from the previous session can publish past this point.
+                    if (reopeningAfterStop) {
+                        knownPeersMap.clear()
+                        deniedCredentialShareUntilMs.clear()
+                        credentialRequestPromptedAtMs.clear()
+                    }
+                    shuttingDown = false
+                    currentToken = normalizedToken
+                    currentPin = normalizedPin
+                    currentSessionExpiresAtMs = expiresAtMs
+                    receiveDir = nextDir
+                    val trusted = TrustedPeerStore.all(applicationContext)
+                    _state.update { state -> state.copy(
+                        serviceRunning = true,
+                        activeToken = normalizedToken,
+                        sessionExpiresAtMs = expiresAtMs,
+                        knownPeers = if (reopeningAfterStop) emptyList() else state.knownPeers,
+                        pendingTrust = if (reopeningAfterStop) null else state.pendingTrust,
+                        pendingCredentialShare = if (reopeningAfterStop) null else state.pendingCredentialShare,
+                        authenticatedPeerRoutes = if (reopeningAfterStop) emptyList() else state.authenticatedPeerRoutes,
+                        credentialSharedPeers = if (reopeningAfterStop || tokenChanged || pinChanged || expiresChanged || dirChanged)
+                            emptyList() else state.credentialSharedPeers,
+                        trustedPeers = trusted,
+                        favoritePeers = trusted.filter { it.favorite },
+                        history = TransferHistoryStore.list(applicationContext),
+                        receiverStatus = "Preparando recepcion..."
+                    ) }
+                    if (messageTickerJob?.isActive != true) startMessageTicker()
+                    syncWakeLockAndLifetime()
+                    refreshMessageState()
+                    pumpMessageQueue()
+                    true
+                }
+            }
+            if (activated) {
+                currentCoroutineContext().ensureActive()
                 runReceiverLoop(normalizedToken, normalizedPin, expiresAtMs, nextDir)
             }
-        }
-
-        syncWakeLockAndLifetime()
-        updateForegroundNotification("Sesion segura activa")
-        refreshMessageState()
-        pumpMessageQueue()
+        }.also { it.start() }
     }
 
     private suspend fun runReceiverLoop(token: String, pin: String, expiresAtMs: Long, dir: File) {
+        val receiverContext = currentCoroutineContext()
         receiveTracker.reset()
 
         _state.update {
             it.copy(
-                receiving = true,
-                receiverStatus = "Receptor iniciado.",
+                receiving = false,
+                receiverListening = false,
+                receiverStatus = "Preparando recepcion...",
                 receiverProgress = null,
                 receiverFileName = null,
                 receiverInstantBps = 0L,
@@ -295,14 +355,46 @@ class TransferForegroundService : Service() {
                     onNoiseKeyObserved = { peerId, noiseKey ->
                         TrustedPeerStore.updateNoiseStaticKey(applicationContext, peerId, noiseKey)
                     },
+                    onListening = {
+                        _state.update { it.copy(receiverListening = true, receiverFailureCause = null) }
+                        updateForegroundNotification()
+                    },
+                    onReceiveFailed = { error ->
+                        receiveTracker.reset()
+                        _state.update { state ->
+                            state.copy(
+                                receiving = false,
+                                receiverFileName = null,
+                                receiverProgress = null,
+                                receiverInstantBps = 0L,
+                                receiverAverageBps = 0L,
+                                receiverEtaSeconds = null,
+                                receiverFailureCause = if (error is CancellationException) null else error.message
+                            )
+                        }
+                        updateForegroundNotification()
+                    },
                     onStatus = { msg ->
-                        _state.update { s -> s.copy(receiverStatus = msg) }
-                        updateForegroundNotification(msg)
+                        // A discovery client's error must not replace an unrelated active file's status.
+                        if (!_state.value.receiving) {
+                            _state.update { state -> state.copy(receiverStatus = msg) }
+                            updateForegroundNotification(msg)
+                        }
                     },
                     onPeerSeen = { peerId, ip, label, trusted ->
                         onPeerSeen(peerId, ip, label, trusted)
                     },
-                    onCredentialsRequested = { peerId, ip, label, trusted ->
+                    onAuthenticatedPeerRoute = { route ->
+                        if (receiverContext.isActive && !shuttingDown) {
+                            _state.update { state -> state.copy(
+                                authenticatedPeerRoutes = (state.authenticatedPeerRoutes.filterNot {
+                                    it.peerId == route.peerId && it.peerIp == route.peerIp && it.localIp == route.localIp
+                                } + route).takeLast(256)
+                            ) }
+                        }
+                    },
+                    onCredentialsRequested = credentialsRequest@ { peerId, ip, label, trusted, noiseKey ->
+                        if (!receiverContext.isActive || shuttingDown) return@credentialsRequest false
                         if (trusted) {
                             val updatedTrusted = TrustedPeerStore.all(applicationContext)
                             _state.update { s ->
@@ -311,7 +403,7 @@ class TransferForegroundService : Service() {
                                     trustedPeers = updatedTrusted,
                                     favoritePeers = updatedTrusted.filter { p -> p.favorite },
                                     pendingCredentialShare = pendingAfter,
-                                    receiverStatus = "Credenciales compartidas con $label ($ip)."
+                                    receiverStatus = "Preparando conexion con $label ($ip)."
                                 )
                             }
                             onPeerSeen(peerId, ip, label, trusted = true)
@@ -333,17 +425,34 @@ class TransferForegroundService : Service() {
                                         id = peerId,
                                         label = label,
                                         ip = ip,
-                                        requestedAtMs = now
+                                        requestedAtMs = now,
+                                        noiseStaticKey = noiseKey
                                     )
                                     _state.update { s ->
                                         s.copy(
                                             pendingCredentialShare = req,
-                                            receiverStatus = "Solicitud de token/PIN de $label ($ip). Confirma para compartir."
+                                            receiverStatus = "Solicitud de conexion de $label ($ip). Compara su huella antes de aprobar."
                                         )
                                     }
-                                    updateForegroundNotification("Confirma compartir token/PIN: $label")
+                                    updateForegroundNotification("Confirma la conexion: $label")
                                     false
                                 }
+                            }
+                        }
+                    },
+                    onCredentialsShared = { peerId, ip, label ->
+                        _state.update { state ->
+                            if (!receiverContext.isActive || state.activeToken != token ||
+                                state.sessionExpiresAtMs != expiresAtMs ||
+                                !TrustedPeerStore.isTrusted(applicationContext, peerId)) {
+                                state
+                            } else {
+                                state.copy(
+                                    credentialSharedPeers = (state.credentialSharedPeers.filterNot {
+                                        it.peerId == peerId || it.peerIp == ip
+                                    } + SessionCredentialShare(peerId, ip, System.currentTimeMillis())).takeLast(200),
+                                    receiverStatus = if (state.receiving) state.receiverStatus else "Credenciales compartidas con $label ($ip)."
+                                )
                             }
                         }
                     },
@@ -362,19 +471,24 @@ class TransferForegroundService : Service() {
                         }
                         updateForegroundNotification("Confirma dispositivo: $label")
                     },
-                    onMessageReceived = { peerId, ip, label, message ->
+                    onMessageReceived = { peerId, ip, label, message, route ->
                         handleIncomingChatPayload(
                             peerId = peerId,
                             ip = ip,
                             label = label,
-                            message = message
+                            message = message,
+                            route = route
                         )
                     },
                     onProgress = { fileName, received, total ->
+                        if (!_state.value.receiving) receiveTracker.reset()
                         val snapshot = receiveTracker.update(received, total)
                         _state.update { s ->
                             s.copy(
+                                receiving = true,
                                 receiverFileName = fileName,
+                                receiverFailureCause = null,
+                                receiverStatus = "Recibiendo $fileName",
                                 receiverProgress = if (total > 0) {
                                     (received.toFloat() / total.toFloat()).coerceIn(0f, 1f)
                                 } else {
@@ -386,10 +500,16 @@ class TransferForegroundService : Service() {
                             )
                         }
                     },
-                    onFileReceived = { file ->
-                        val exported = DownloadsExport.exportToDownloads(applicationContext, file)
+                    onFileReceived = { file, _, peerAddress, peerLabel ->
+                        val exportGeneration = receiveCancellationGeneration.get()
+                        val exported = DownloadsExport.exportToDownloads(applicationContext, file) {
+                            receiverContext.ensureActive()
+                            if (receiveCancellationGeneration.get() != exportGeneration) {
+                                throw CancellationException("exportacion cancelada; archivo original conservado")
+                            }
+                        }
                         val exportMessage = exported.fold(
-                            onSuccess = { "Copiado a Descargas/WifiDrop." },
+                            onSuccess = { "Guardado en Descargas/Qetara." },
                             onFailure = {
                                 "No pude copiar a Descargas: ${it.message ?: it::class.java.simpleName}."
                             }
@@ -401,8 +521,8 @@ class TransferForegroundService : Service() {
                             fileName = file.name,
                             bytes = file.length(),
                             outcome = TransferOutcome.SUCCESS,
-                            peerLabel = _state.value.lastPeerLabel,
-                            peerIp = _state.value.lastPeerIp,
+                            peerLabel = peerLabel,
+                            peerIp = peerAddress,
                             route = route,
                             errorCause = null
                         )
@@ -410,25 +530,31 @@ class TransferForegroundService : Service() {
 
                         _state.update { s ->
                             s.copy(
+                                receiving = false,
                                 receiverStatus = "Archivo recibido: ${file.name}. $exportMessage",
                                 receiverProgress = null,
                                 receiverFileName = null,
                                 receiverInstantBps = 0L,
                                 receiverEtaSeconds = null,
                                 receiverFailureCause = null,
-                                lastReceivedPath = route
+                                lastReceivedPath = route,
+                                lastPeerIp = peerAddress,
+                                lastPeerLabel = peerLabel
                             )
                         }
                         updateForegroundNotification("Recibido: ${file.name}")
                     },
                     awaitIfPaused = { awaitIfPaused() },
-                    isCancelled = { cancelCurrentTransfer }
+                    isCancelled = { cancelCurrentTransfer },
+                    cancellationGeneration = { receiveCancellationGeneration.get() }
                 )
             } catch (_: CancellationException) {
                 break
             } catch (e: Exception) {
                 _state.update {
                     it.copy(
+                        receiving = false,
+                        receiverListening = false,
                         receiverStatus = "Error receptor: ${e.message ?: e::class.java.simpleName}. Reintentando...",
                         receiverProgress = null,
                         receiverFileName = null,
@@ -445,6 +571,7 @@ class TransferForegroundService : Service() {
         _state.update {
             it.copy(
                 receiving = false,
+                receiverListening = false,
                 receiverProgress = null,
                 receiverFileName = null,
                 receiverStatus = "Receptor detenido.",
@@ -554,7 +681,6 @@ class TransferForegroundService : Service() {
         val message = intent.getStringExtra(EXTRA_MESSAGE_TEXT)
             .orEmpty()
             .trim()
-            .replace(Regex("\\s+"), " ")
             .take(2_000)
 
         if (targetIp.isBlank()) {
@@ -639,8 +765,6 @@ class TransferForegroundService : Service() {
         val message = intent.getStringExtra(EXTRA_MESSAGE_TEXT)
             .orEmpty()
             .trim()
-            .replace(Regex("\\s+"), " ")
-            .take(2_000)
         val peerLabel = intent.getStringExtra(EXTRA_PEER_LABEL_OVERRIDE)
             ?.trim()
             ?.takeIf { it.isNotBlank() }
@@ -670,7 +794,6 @@ class TransferForegroundService : Service() {
         val message = intent.getStringExtra(EXTRA_MESSAGE_TEXT)
             .orEmpty()
             .trim()
-            .replace(Regex("\\s+"), " ")
             .take(2_000)
         val messageScope = parseMessageScope(intent.getStringExtra(EXTRA_MESSAGE_SCOPE))
         val channelLabel = intent.getStringExtra(EXTRA_CHANNEL_LABEL)
@@ -803,15 +926,17 @@ class TransferForegroundService : Service() {
             maxRetries = MAX_MESSAGE_RETRIES,
             nextAttemptAtMs = now,
             createdAtMs = now,
-            lastError = null
+            lastError = null,
+            expectedPeerId = _state.value.knownPeers.firstOrNull { it.ip == targetIp }?.id,
+            directGroupSessionId = if (requiresDirectGroupDelivery(message, scope, clientId)) _state.value.directGroup?.sessionId else null
         )
     }
 
     private fun enqueuePendingMessageTask(task: PendingMessageTask) {
+        PendingMessageStore.upsert(applicationContext, task)
         synchronized(messageLock) {
             pendingMessageTasks[task.id] = task
         }
-        PendingMessageStore.upsert(applicationContext, task)
     }
 
     private fun queueSilentMessage(
@@ -1033,9 +1158,13 @@ class TransferForegroundService : Service() {
     }
 
     private fun pumpSendQueue() {
+        if (shuttingDown || !UxPreferencesStore.load(applicationContext).sessionEnabled) return
         val toLaunch = mutableListOf<String>()
         synchronized(sendLock) {
-            val activeCount = sendJobs.values.count { it.isActive }
+            if (shuttingDown || !UxPreferencesStore.load(applicationContext).sessionEnabled) return
+            val activeCount = sendJobs.size + sendSnapshots.values.count {
+                it.status == SendQueueStatus.RUNNING && !it.done && it.id !in sendJobs
+            }
             val slots = (MAX_PARALLEL_SENDS - activeCount).coerceAtLeast(0)
             if (slots <= 0) return
             sendSnapshots.values
@@ -1060,24 +1189,50 @@ class TransferForegroundService : Service() {
     }
 
     private fun launchSendJob(transferId: String) {
-        val job = serviceScope.launch {
-            runSendJob(transferId)
-        }
-        synchronized(sendLock) {
-            sendJobs[transferId] = job
-        }
-        job.invokeOnCompletion {
-            synchronized(sendLock) {
-                sendJobs.remove(transferId)
-                if (sendJobs.isEmpty() && cancelCurrentTransfer) {
-                    cancelCurrentTransfer = false
+        val job = withSessionWorkerAdmission(sendLock, {
+            shuttingDown || !UxPreferencesStore.load(applicationContext).sessionEnabled
+        }) {
+            serviceScope.launch(start = CoroutineStart.LAZY) {
+                runSendJob(transferId)
+            }.also { admittedJob ->
+                sendJobs[transferId] = admittedJob
+                admittedJob.invokeOnCompletion { cause ->
+                    if (cause is CancellationException) markSendTaskCancelled(transferId, cause.message ?: "cancelado")
+                    synchronized(sendLock) {
+                        sendJobs.remove(transferId)
+                        if (sendJobs.isEmpty() && cancelCurrentTransfer) {
+                            cancelCurrentTransfer = false
+                        }
+                    }
+                    updateSendAggregateState()
+                    pumpSendQueue()
+                    updateForegroundNotification()
+                    syncWakeLockAndLifetime()
                 }
             }
-            updateSendAggregateState()
-            pumpSendQueue()
-            updateForegroundNotification()
-            syncWakeLockAndLifetime()
-        }
+        } ?: return
+        job.start()
+    }
+
+    private fun markSendTaskCancelled(transferId: String, reason: String) {
+        val canceled = synchronized(sendLock) {
+            val current = sendSnapshots[transferId] ?: return@synchronized null
+            if (current.done) return@synchronized null
+            sendBatchCanceled += 1
+            sendSnapshots[transferId] = current.copy(
+                status = SendQueueStatus.CANCELED, done = true, cancelRequested = true,
+                pauseRequested = false, instantBps = 0L, averageBps = 0L,
+                etaSeconds = null, lastError = reason
+            )
+            sendPayloads.remove(transferId)?.let { current to it }
+        } ?: return
+        val (snapshot, payload) = canceled
+        appendHistory(TransferHistoryStore.newEntry(
+            direction = TransferDirection.SENT, fileName = payload.fileName,
+            bytes = snapshot.totalBytes, outcome = TransferOutcome.CANCELED,
+            peerLabel = payload.peerLabel, peerIp = payload.targetIp,
+            route = payload.uri.toString(), errorCause = reason
+        ))
     }
 
     private suspend fun runSendJob(transferId: String) {
@@ -1092,6 +1247,8 @@ class TransferForegroundService : Service() {
                 context = applicationContext,
                 fileUri = payload.uri,
                 fileNameRaw = payload.fileName,
+                transferId = transferId,
+                expectedPeerId = _state.value.knownPeers.firstOrNull { it.ip == payload.targetIp }?.id,
                 hostAddress = payload.targetIp,
                 tokenRaw = payload.token,
                 pinRaw = payload.pin,
@@ -1474,40 +1631,46 @@ class TransferForegroundService : Service() {
         globalLanJoined: Boolean? = null,
         updateLastPeerHint: Boolean = true
     ) {
-        val now = System.currentTimeMillis()
-        if (trusted) {
-            TrustedPeerStore.updateSeen(applicationContext, peerId, label, ip)
-        }
-        val existing = knownPeersMap[peerId]
-        knownPeersMap[peerId] = KnownPeerSnapshot(
-            id = peerId,
-            label = label,
-            ip = ip,
-            trusted = trusted,
-            globalLanJoined = globalLanJoined ?: existing?.globalLanJoined ?: false,
-            lastSeenAtMs = now
-        )
-
-        val staleBefore = now - 15 * 60 * 1000L
-        val cleaned = knownPeersMap.values
-            .filter { it.lastSeenAtMs >= staleBefore }
-            .sortedWith(
-                compareByDescending<KnownPeerSnapshot> { it.trusted }
-                    .thenByDescending { it.lastSeenAtMs }
+        // A device can discover itself through another active network interface.
+        if (peerId == LocalDeviceIdentity.getOrCreate(applicationContext)) return
+        // Publish trust while holding the same monitor used by trust/remove. A callback that
+        // finishes after Forget must not restore a stale trusted flag or trustedPeers snapshot.
+        synchronized(TrustedPeerStore) {
+            val now = System.currentTimeMillis()
+            if (trusted) {
+                TrustedPeerStore.updateSeen(applicationContext, peerId, label, ip)
+            }
+            val currentTrusted = TrustedPeerStore.all(applicationContext)
+            val existing = knownPeersMap[peerId]
+            knownPeersMap[peerId] = KnownPeerSnapshot(
+                id = peerId,
+                label = label,
+                ip = ip,
+                trusted = trusted || (existing?.trusted == true && existing.ip == ip),
+                globalLanJoined = globalLanJoined ?: existing?.globalLanJoined ?: false,
+                lastSeenAtMs = now
             )
-
-        knownPeersMap.clear()
-        cleaned.forEach { knownPeersMap[it.id] = it }
-        val trustedPeers = TrustedPeerStore.all(applicationContext)
-
-        _state.update { s ->
-            s.copy(
-                knownPeers = cleaned,
-                lastPeerIp = if (updateLastPeerHint) ip else s.lastPeerIp,
-                lastPeerLabel = if (updateLastPeerHint) label else s.lastPeerLabel,
-                trustedPeers = trustedPeers,
-                favoritePeers = trustedPeers.filter { p -> p.favorite }
-            )
+            val staleBefore = now - 15 * 60 * 1000L
+            val cleaned = retainCurrentPeerTrust(
+                knownPeersMap.values.filter { it.lastSeenAtMs >= staleBefore }, currentTrusted
+            ).sortedWith(
+                compareByDescending<KnownPeerSnapshot> { it.trusted }.thenByDescending { it.lastSeenAtMs }
+            ).take(200)
+            knownPeersMap.clear()
+            cleaned.forEach { knownPeersMap[it.id] = it }
+            _state.update { state ->
+                state.copy(
+                    knownPeers = cleaned,
+                    authenticatedPeerRoutes = removeReassignedPeerRoutes(state.authenticatedPeerRoutes, peerId, ip),
+                    credentialSharedPeers = state.credentialSharedPeers.filterNot {
+                        (it.peerId == peerId && it.peerIp != ip) || (it.peerIp == ip && it.peerId != peerId)
+                    },
+                    lastPeerIp = if (updateLastPeerHint) ip else state.lastPeerIp,
+                    lastPeerLabel = if (updateLastPeerHint) label else state.lastPeerLabel,
+                    trustedPeers = currentTrusted,
+                    favoritePeers = currentTrusted.filter { it.favorite }
+                )
+            }
         }
         if (globalLanJoined == true) {
             dispatchGlobalLanBacklogToPeer(peerId = peerId, ip = ip, label = label)
@@ -1583,23 +1746,30 @@ class TransferForegroundService : Service() {
         peerId: String,
         ip: String,
         label: String,
-        message: String
+        message: String,
+        route: PeerRouteObservation
     ) {
         when (val decoded = ChatMessageScopeCodec.decodeFromTransport(message)) {
             is ChatMessageScopeCodec.DecodedChatPayload.User -> {
+                if (decoded.scope == ChatMessageScope.DIRECT_CHANNEL) requireDirectChannelSender(_state.value, route)
+                if (decoded.scope == ChatMessageScope.DIRECT && !decoded.senderId.isNullOrBlank() && decoded.senderId != peerId) {
+                    requireDirectChannelSender(_state.value, route)
+                    if (_state.value.directGroup?.isOwner != false) throw SecurityException("grupo_direct_no_acreditado")
+                }
                 val effectivePeerId = decoded.senderId?.ifBlank { null } ?: peerId
                 val effectivePeerLabel = decoded.senderLabel?.ifBlank { null } ?: label
                 val effectivePeerIp = decoded.senderIp?.ifBlank { null } ?: ip
-                onPeerSeen(
-                    peerId = effectivePeerId,
-                    ip = effectivePeerIp,
-                    label = effectivePeerLabel,
-                    trusted = true,
-                    globalLanJoined = if (decoded.scope == ChatMessageScope.GLOBAL_LAN) true else null
-                )
                 val shouldIgnoreGlobalMessage =
                     decoded.scope == ChatMessageScope.GLOBAL_LAN &&
                         !UxPreferencesStore.load(applicationContext).joinedGlobalLan
+                if (shouldIgnoreGlobalMessage) throw SecurityException("canal_no_unido")
+                onPeerSeen(
+                    peerId = peerId,
+                    ip = ip,
+                    label = label,
+                    trusted = true,
+                    globalLanJoined = if (decoded.scope == ChatMessageScope.GLOBAL_LAN) true else null
+                )
                 if (!shouldIgnoreGlobalMessage) {
                     val chatEntry = ChatMessageStore.newIncoming(
                         text = decoded.text,
@@ -1625,10 +1795,13 @@ class TransferForegroundService : Service() {
                     label = label,
                     trusted = true
                 )
-                relayDirectMessage(decoded, senderIp = ip)
+                require(decoded.senderId == peerId) { "identidad de remitente invalida" }
+                relayDirectMessage(decoded.copy(senderLabel = label), senderRoute = route)
             }
 
             is ChatMessageScopeCodec.DecodedChatPayload.ChannelRelayRequest -> {
+                requireDirectRelayTargets(_state.value, route)
+                require(decoded.senderId == peerId) { "identidad de remitente invalida" }
                 onPeerSeen(
                     peerId = peerId,
                     ip = ip,
@@ -1649,11 +1822,14 @@ class TransferForegroundService : Service() {
                         lastPeerLabel = decoded.senderLabel.ifBlank { label }
                     )
                 }
-                relayDirectChannelMessage(decoded, senderIp = ip)
+                relayDirectChannelMessage(decoded.copy(senderLabel = label), senderRoute = route)
             }
 
             is ChatMessageScopeCodec.DecodedChatPayload.DirectRoster -> {
-                mergeDirectRoster(decoded.peers)
+                requireDirectChannelSender(_state.value, route)
+                if (_state.value.directGroup?.isOwner != false) throw SecurityException("grupo_direct_no_acreditado")
+                // A roster from the owner is not evidence of a direct socket to its listed peers.
+                // Clients keep only their platform-reported owner as an automatic Direct destination.
             }
 
             is ChatMessageScopeCodec.DecodedChatPayload.FileOffer -> {
@@ -1667,6 +1843,7 @@ class TransferForegroundService : Service() {
 
             is ChatMessageScopeCodec.DecodedChatPayload.FileRequest -> {
                 handleIncomingChannelFileRequest(
+                    peerId = peerId,
                     ip = ip,
                     request = decoded.request
                 )
@@ -1681,11 +1858,13 @@ class TransferForegroundService : Service() {
         offer: ChannelFileOffer
     ) {
         if (offer.id.isBlank()) return
+        if (!UxPreferencesStore.load(applicationContext).joinedGlobalLan) throw SecurityException("canal_no_unido")
+        require(offer.senderId == peerId) { "identidad de oferta invalida" }
         val localDeviceId = LocalDeviceIdentity.getOrCreate(applicationContext)
         if (offer.senderId == localDeviceId) return
 
-        val senderIp = offer.senderIp?.takeIf { it.isNotBlank() } ?: ip
-        val senderLabel = offer.senderLabel.ifBlank { label.ifBlank { "Equipo" } }
+        val senderIp = ip
+        val senderLabel = label.ifBlank { "Equipo" }
         val effectiveOffer = offer.copy(
             senderIp = senderIp,
             senderLabel = senderLabel,
@@ -1738,16 +1917,19 @@ class TransferForegroundService : Service() {
     }
 
     private fun handleIncomingChannelFileRequest(
+        peerId: String,
         ip: String,
         request: ChannelFileRequest
     ) {
         if (request.offerId.isBlank()) return
+        if (!UxPreferencesStore.load(applicationContext).joinedGlobalLan) throw SecurityException("canal_no_unido")
+        require(request.requesterId == peerId) { "identidad de solicitud invalida" }
         val localDeviceId = LocalDeviceIdentity.getOrCreate(applicationContext)
         if (request.requesterId == localDeviceId) return
         val offer = ChannelFileOfferStore.find(applicationContext, request.offerId) ?: return
         if (offer.senderId != localDeviceId) return
         val uriRaw = offer.uri?.takeIf { it.isNotBlank() } ?: return
-        val targetIp = request.requesterIp?.takeIf { it.isNotBlank() } ?: ip
+        val targetIp = ip
         val deviceLabel = offer.senderLabel.ifBlank { "equipo" }
 
         val intent = Intent(this, TransferForegroundService::class.java).apply {
@@ -1789,10 +1971,11 @@ class TransferForegroundService : Service() {
 
     private fun relayDirectMessage(
         payload: ChatMessageScopeCodec.DecodedChatPayload.DirectRelayRequest,
-        senderIp: String
+        senderRoute: PeerRouteObservation
     ) {
+        val target = requireDirectRelayTargets(_state.value, senderRoute, payload.targetIp, payload.targetPeerId).single()
         queueSilentMessage(
-            targetIp = payload.targetIp,
+            targetIp = target.ip,
             peerLabel = payload.targetLabel ?: payload.targetIp,
             scope = ChatMessageScope.DIRECT,
             message = ChatMessageScopeCodec.encodeUserPayload(
@@ -1800,7 +1983,7 @@ class TransferForegroundService : Service() {
                 scope = ChatMessageScope.DIRECT,
                 senderId = payload.senderId,
                 senderLabel = payload.senderLabel,
-                senderIp = senderIp
+                senderIp = senderRoute.peerIp
             ),
             tokenRaw = currentToken,
             pinRaw = currentPin,
@@ -1812,19 +1995,16 @@ class TransferForegroundService : Service() {
 
     private fun relayDirectChannelMessage(
         payload: ChatMessageScopeCodec.DecodedChatPayload.ChannelRelayRequest,
-        senderIp: String
+        senderRoute: PeerRouteObservation
     ) {
-        val localDeviceId = LocalDeviceIdentity.getOrCreate(applicationContext)
         val encoded = ChatMessageScopeCodec.encodeUserPayload(
             textRaw = payload.text,
             scope = ChatMessageScope.DIRECT_CHANNEL,
             senderId = payload.senderId,
             senderLabel = payload.senderLabel,
-            senderIp = senderIp
+            senderIp = senderRoute.peerIp
         )
-        val targets = knownPeersMap.values
-            .filter { it.ip.isNotBlank() && it.id != payload.senderId && it.id != localDeviceId }
-            .distinctBy { it.ip }
+        val targets = requireDirectRelayTargets(_state.value, senderRoute)
 
         var queuedAny = false
         targets.forEach { peer ->
@@ -1842,21 +2022,6 @@ class TransferForegroundService : Service() {
             pumpMessageQueue()
             syncWakeLockAndLifetime()
         }
-    }
-
-    private fun mergeDirectRoster(peers: List<ChatTransportPeer>) {
-        val localDeviceId = LocalDeviceIdentity.getOrCreate(applicationContext)
-        peers
-            .filter { it.id.isNotBlank() && it.ip.isNotBlank() && it.id != localDeviceId }
-            .forEach { peer ->
-                onPeerSeen(
-                    peerId = peer.id,
-                    ip = peer.ip,
-                    label = peer.label.ifBlank { peer.ip },
-                    trusted = TrustedPeerStore.isTrusted(applicationContext, peer.id),
-                    updateLastPeerHint = false
-                )
-            }
     }
 
     private fun trustPeer(intent: Intent) {
@@ -1894,14 +2059,60 @@ class TransferForegroundService : Service() {
         updateForegroundNotification("Dispositivo confiado")
     }
 
+    private fun forgetPeer(intent: Intent) {
+        val peerId = intent.getStringExtra(EXTRA_TRUST_PEER_ID).orEmpty().trim()
+        if (peerId.isBlank()) return
+        val peer = TrustedPeerStore.all(applicationContext).firstOrNull { it.id == peerId }
+        val addresses = (_state.value.knownPeers.filter { it.id == peerId }.map { it.ip } +
+            listOfNotNull(peer?.lastKnownIp)).toSet()
+        TrustedPeerStore.remove(applicationContext, peerId)
+        knownPeersMap.computeIfPresent(peerId) { _, known -> known.copy(trusted = false) }
+        val canceledTransfers = synchronized(sendLock) {
+            sendSnapshots.values.filter { !it.done && it.targetIp in addresses }.map { it.id }
+        }
+        canceledTransfers.forEach { transferId ->
+            markSendTaskCancelled(transferId, "equipo olvidado")
+            synchronized(sendLock) { sendJobs[transferId] }?.cancel(CancellationException("equipo olvidado"))
+        }
+        val canceledMessages = synchronized(messageLock) {
+            val affected = pendingMessageTasks.values.filter { it.targetIp in addresses }
+            affected.forEach { pendingMessageTasks.remove(it.id) }
+            if (affected.isNotEmpty()) messageSenderJob?.cancel(CancellationException("equipo olvidado"))
+            affected
+        }
+        canceledMessages.forEach { task ->
+            PendingMessageStore.remove(applicationContext, task.id)
+            if (task.trackChatStatus) ChatMessageStore.updateStatus(
+                applicationContext, task.chatMessageId, ChatMessageStatus.CANCELED, "equipo olvidado"
+            )
+        }
+        deniedCredentialShareUntilMs.remove(peerId)
+        credentialRequestPromptedAtMs.remove(peerId)
+        val peers = TrustedPeerStore.all(applicationContext)
+        _state.update { state ->
+            revokePeerRouteEvidence(state, peerId, android.os.SystemClock.elapsedRealtime()).copy(
+                trustedPeers = peers,
+                favoritePeers = peers.filter { it.favorite },
+                knownPeers = state.knownPeers.map { if (it.id == peerId) it.copy(trusted = false) else it },
+                pendingTrust = state.pendingTrust?.takeUnless { it.id == peerId },
+                pendingCredentialShare = state.pendingCredentialShare?.takeUnless { it.id == peerId },
+                credentialSharedPeers = state.credentialSharedPeers.filterNot { it.peerId == peerId },
+                receiverStatus = "Equipo olvidado. Confirma su identidad para volver a emparejar."
+            )
+        }
+        updateSendAggregateState()
+        refreshMessageState()
+        updateForegroundNotification()
+    }
+
     private fun reportDiscoveredPeer(intent: Intent) {
         val peerId = intent.getStringExtra(EXTRA_TRUST_PEER_ID).orEmpty().trim()
         val peerLabel = intent.getStringExtra(EXTRA_TRUST_PEER_LABEL).orEmpty().trim()
         val peerIp = intent.getStringExtra(EXTRA_TARGET_IP).orEmpty().trim()
         if (peerId.isBlank() || peerIp.isBlank()) return
-        val trustedHint = intent.getBooleanExtra(EXTRA_DISCOVERED_TRUSTED, false)
         val globalLanJoined = intent.getBooleanExtra(EXTRA_DISCOVERED_GLOBAL_LAN_JOINED, false)
-        val trusted = trustedHint || TrustedPeerStore.isTrusted(applicationContext, peerId)
+        // Discovery is an unauthenticated hint even if the remote advertises trustedByHost.
+        val trusted = false
         onPeerSeen(
             peerId = peerId,
             ip = peerIp,
@@ -1911,16 +2122,32 @@ class TransferForegroundService : Service() {
         )
     }
 
+    private fun reportAuthenticatedPeer(intent: Intent) {
+        val peerId = intent.getStringExtra(EXTRA_TRUST_PEER_ID).orEmpty().trim()
+        val peerIp = intent.getStringExtra(EXTRA_TARGET_IP).orEmpty().trim()
+        val observedKey = intent.getStringExtra(EXTRA_CREDENTIAL_EXPECTED_KEY).orEmpty()
+        if (peerId.isBlank() || peerIp.isBlank() || observedKey.isBlank()) return
+        // Only a successful encrypted response can register this endpoint; a late report after
+        // forgetting or replacing the identity must not recreate trust or group membership.
+        val pinnedPeer = TrustedPeerStore.all(applicationContext).firstOrNull { it.id == peerId }
+        if (pinnedPeer?.noiseStaticKey != observedKey) return
+        onPeerSeen(peerId, peerIp, intent.getStringExtra(EXTRA_TRUST_PEER_LABEL).orEmpty(), trusted = true)
+    }
+
     private fun approveCredentialShare(intent: Intent) {
-        val pending = _state.value.pendingCredentialShare
-        val peerId = intent.getStringExtra(EXTRA_TRUST_PEER_ID).orEmpty().ifBlank { pending?.id.orEmpty() }
-        if (peerId.isBlank()) return
-
-        val peerLabel = intent.getStringExtra(EXTRA_TRUST_PEER_LABEL).orEmpty()
-            .ifBlank { pending?.label.orEmpty() }
-            .ifBlank { peerId }
-
-        TrustedPeerStore.trust(applicationContext, peerId, peerLabel)
+        val peerId = intent.getStringExtra(EXTRA_TRUST_PEER_ID).orEmpty()
+        val expectedKey = intent.getStringExtra(EXTRA_CREDENTIAL_EXPECTED_KEY).orEmpty()
+        val requestedAtMs = intent.getLongExtra(EXTRA_CREDENTIAL_REQUESTED_AT, -1L)
+        val pending = claimCredentialShareRequest(_state, peerId, expectedKey, requestedAtMs)
+        if (pending == null) {
+            _state.update { it.copy(receiverStatus = "La solicitud cambió. Revisa la huella del equipo antes de aprobar.") }
+            return
+        }
+        val peerLabel = pending.label.ifBlank { peerId }
+        if (!TrustedPeerStore.trustWithNoiseKey(applicationContext, peerId, peerLabel, expectedKey)) {
+            _state.update { it.copy(receiverStatus = "La identidad del equipo cambió. Comprueba su huella.") }
+            return
+        }
         deniedCredentialShareUntilMs.remove(peerId)
         credentialRequestPromptedAtMs.remove(peerId)
         val peers = TrustedPeerStore.all(applicationContext)
@@ -1933,14 +2160,13 @@ class TransferForegroundService : Service() {
 
         _state.update {
             it.copy(
-                pendingCredentialShare = if (pending?.id == peerId) null else pending,
                 trustedPeers = peers,
                 favoritePeers = peers.filter { p -> p.favorite },
                 knownPeers = updatedKnown,
-                receiverStatus = "Aprobado para compartir token/PIN con $peerLabel."
+                receiverStatus = "Conexion aprobada para $peerLabel. Vuelve a enviar desde ese equipo."
             )
         }
-        updateForegroundNotification("Credenciales autorizadas")
+        updateForegroundNotification("Conexion autorizada")
     }
 
     private fun rejectCredentialShare(intent: Intent) {
@@ -1952,10 +2178,10 @@ class TransferForegroundService : Service() {
         _state.update {
             it.copy(
                 pendingCredentialShare = if (pending.id == peerId) null else pending,
-                receiverStatus = "Solicitud de token/PIN rechazada para ${pending.label}."
+                receiverStatus = "Solicitud de conexion rechazada para ${pending.label}."
             )
         }
-        updateForegroundNotification("Solicitud de credenciales rechazada")
+        updateForegroundNotification("Solicitud de conexion rechazada")
     }
 
     private fun setPeerFavorite(intent: Intent) {
@@ -2149,7 +2375,10 @@ class TransferForegroundService : Service() {
     }
 
     private fun requestCancelActiveTransfer() {
+        receiveCancellationGeneration.incrementAndGet()
         cancelCurrentTransfer = true
+        // A paused receiver must leave its pause loop to release the file mutex and client slot.
+        pausedTransfers = false
         synchronized(sendLock) {
             sendSnapshots.values.toList().forEach { task ->
                 if (task.done) return@forEach
@@ -2173,6 +2402,7 @@ class TransferForegroundService : Service() {
 
         _state.update {
             it.copy(
+                paused = false,
                 sendStatus = if (it.sending) "Cancelando envios..." else it.sendStatus,
                 receiverStatus = if (it.receiving) "Cancelando transferencia recibida..." else it.receiverStatus
             )
@@ -2216,8 +2446,9 @@ class TransferForegroundService : Service() {
     private fun cancelAllSendJobs(
         cause: CancellationException = CancellationException("cancelado")
     ) {
-        val jobs = synchronized(sendLock) { sendJobs.values.toList() }
-        jobs.forEach { it.cancel(cause) }
+        val jobs = synchronized(sendLock) { sendJobs.toMap() }
+        jobs.keys.forEach { markSendTaskCancelled(it, cause.message ?: "cancelado") }
+        jobs.values.forEach { it.cancel(cause) }
     }
 
     private fun startMessageTicker() {
@@ -2231,35 +2462,30 @@ class TransferForegroundService : Service() {
     }
 
     private fun pumpMessageQueue() {
-        var nextTaskId: String? = null
-        synchronized(messageLock) {
-            if (messageSenderJob?.isActive == true) return
+        if (shuttingDown || !UxPreferencesStore.load(applicationContext).sessionEnabled) return
+        val job = withSessionWorkerAdmission(messageLock, {
+            shuttingDown || !UxPreferencesStore.load(applicationContext).sessionEnabled
+        }) {
+            if (messageSenderJob?.isCompleted == false) return
             val now = System.currentTimeMillis()
             val candidate = pendingMessageTasks.values
                 .filter { it.nextAttemptAtMs <= now }
-                .minByOrNull { it.nextAttemptAtMs }
-            nextTaskId = candidate?.id
-        }
-
-        val taskId = nextTaskId ?: return
-
-        val job = serviceScope.launch {
-            runPendingMessageTask(taskId)
-        }
-        synchronized(messageLock) {
-            messageSenderJob = job
-        }
-        job.invokeOnCompletion {
-            synchronized(messageLock) {
-                if (messageSenderJob === job) {
-                    messageSenderJob = null
+                .minByOrNull { it.nextAttemptAtMs } ?: return
+            serviceScope.launch(start = CoroutineStart.LAZY) {
+                runPendingMessageTask(candidate.id)
+            }.also { admittedJob ->
+                messageSenderJob = admittedJob
+                admittedJob.invokeOnCompletion {
+                    synchronized(messageLock) {
+                        if (messageSenderJob === admittedJob) messageSenderJob = null
+                    }
+                    refreshMessageState()
+                    syncWakeLockAndLifetime()
+                    pumpMessageQueue()
                 }
             }
-            refreshMessageState()
-            syncWakeLockAndLifetime()
-            pumpMessageQueue()
-        }
-
+        } ?: return
+        job.start()
         syncWakeLockAndLifetime()
     }
 
@@ -2275,14 +2501,23 @@ class TransferForegroundService : Service() {
         }
         refreshMessageState("Enviando mensaje a ${task.peerLabel ?: task.targetIp}...")
 
-        val result = FileTransfer.sendMessage(
+        val directDelivery = requiresDirectGroupDelivery(task.message, task.scope, task.clientId)
+        val groupAtSend = _state.value.directGroup
+        val validationError = runCatching { validateDirectGroupDelivery(task, _state.value) }.exceptionOrNull()
+        val result = if (validationError != null) Result.failure(validationError) else FileTransfer.sendMessage(
             context = applicationContext,
             hostAddress = task.targetIp,
+            expectedPeerId = task.expectedPeerId ?: _state.value.knownPeers.firstOrNull { it.ip == task.targetIp }?.id,
             tokenRaw = task.token,
             pinRaw = task.pin,
             clientIdRaw = task.clientId,
             clientLabelRaw = task.deviceLabel,
-            messageRaw = ChatMessageScopeCodec.encodeForTransport(task.message, task.scope)
+            messageRaw = ChatMessageScopeCodec.encodeForTransport(task.message, task.scope),
+            messageId = task.id,
+            localBindAddress = if (directDelivery) {
+                if (groupAtSend?.isOwner == true) groupAtSend.ownerIp else groupAtSend?.localAddresses?.sorted()?.firstOrNull()
+            } else null,
+            validateDestination = { validateDirectGroupDelivery(task, _state.value) }
         )
 
         result.fold(
@@ -2401,11 +2636,22 @@ class TransferForegroundService : Service() {
     }
 
     private fun stopSession() {
-        receiverJob?.cancel()
-        receiverJob = null
-
+        startForeground(NOTIFICATION_ID, buildNotification("Cerrando sesion..."))
+        val ticket = sessionLifecycle.beginStop()
+        shuttingDown = true
+        // Close admission before taking either lock. The only nested queue-lock order is
+        // sendLock -> messageLock; queue callbacks release their lock before checking the other.
+        // A child and its completion callback are registered atomically with this snapshot.
+        val drainingWorkers = synchronized(sendLock) {
+            synchronized(messageLock) {
+                serviceScope.coroutineContext[Job]?.children?.toList().orEmpty()
+            }
+        }
         cancelAllSendJobs(CancellationException("sesion detenida"))
-        messageSenderJob?.cancel(CancellationException("sesion detenida"))
+        drainingWorkers.forEach { it.cancel(CancellationException("sesion detenida")) }
+        receiverJob = null
+        messageSenderJob = null
+        messageTickerJob = null
         synchronized(sendLock) {
             sendJobs.clear()
             sendSnapshots.clear()
@@ -2432,6 +2678,7 @@ class TransferForegroundService : Service() {
         _state.update {
             it.copy(
                 receiving = false,
+                receiverListening = false,
                 receiverStatus = "Sesion detenida.",
                 receiverProgress = null,
                 receiverFileName = null,
@@ -2456,6 +2703,7 @@ class TransferForegroundService : Service() {
                 knownPeers = emptyList(),
                 pendingTrust = null,
                 pendingCredentialShare = null,
+                credentialSharedPeers = emptyList(),
                 paused = false,
                 trustedPeers = trusted,
                 favoritePeers = trusted.filter { p -> p.favorite },
@@ -2476,7 +2724,17 @@ class TransferForegroundService : Service() {
         releaseWakeLock()
         updateForegroundNotification("Sesion detenida")
         stopForeground(STOP_FOREGROUND_REMOVE)
-        stopSelf()
+        sessionStopBarrier = serviceScope.launch(start = CoroutineStart.LAZY) {
+            drainingWorkers.forEach { it.join() }
+            withContext(Dispatchers.Main.immediate) {
+                // A later START invalidates this ticket. A command queued by Android but not yet
+                // delivered is also protected by stopSelfResult's framework start-id check.
+                sessionLifecycle.stopStartId(ticket)?.let { stopStartId ->
+                    stopForeground(STOP_FOREGROUND_REMOVE)
+                    stopSelfResult(stopStartId)
+                }
+            }
+        }.also { it.start() }
     }
 
     private fun syncWakeLockAndLifetime() {
@@ -2632,7 +2890,9 @@ class TransferForegroundService : Service() {
         private const val ACTION_CANCEL_ACTIVE = "com.example.wifidrop.action.CANCEL_ACTIVE"
         private const val ACTION_OPEN_DOWNLOADS = "com.example.wifidrop.action.OPEN_DOWNLOADS"
         private const val ACTION_TRUST_PEER = "com.example.wifidrop.action.TRUST_PEER"
+        private const val ACTION_FORGET_PEER = "com.example.wifidrop.action.FORGET_PEER"
         private const val ACTION_REPORT_DISCOVERED_PEER = "com.example.wifidrop.action.REPORT_DISCOVERED_PEER"
+        private const val ACTION_REPORT_AUTHENTICATED_PEER = "com.example.wifidrop.action.REPORT_AUTHENTICATED_PEER"
         private const val ACTION_APPROVE_CREDENTIAL_SHARE = "com.example.wifidrop.action.APPROVE_CREDENTIAL_SHARE"
         private const val ACTION_REJECT_CREDENTIAL_SHARE = "com.example.wifidrop.action.REJECT_CREDENTIAL_SHARE"
         private const val ACTION_SET_PEER_FAVORITE = "com.example.wifidrop.action.SET_PEER_FAVORITE"
@@ -2642,6 +2902,13 @@ class TransferForegroundService : Service() {
         private const val ACTION_SEND_QUEUE_CANCEL_ITEM = "com.example.wifidrop.action.SEND_QUEUE_CANCEL_ITEM"
         private const val ACTION_SEND_QUEUE_MOVE_UP = "com.example.wifidrop.action.SEND_QUEUE_MOVE_UP"
         private const val ACTION_SEND_QUEUE_MOVE_DOWN = "com.example.wifidrop.action.SEND_QUEUE_MOVE_DOWN"
+
+        private val SESSION_NETWORK_ACTIONS = setOf(
+            ACTION_START_SESSION, ACTION_SEND_FILE, ACTION_SEND_MESSAGE, ACTION_SEND_GLOBAL_MESSAGE,
+            ACTION_SEND_SILENT_MESSAGE, ACTION_RETRY_MESSAGE, ACTION_RESUME_TRANSFERS,
+            ACTION_SEND_QUEUE_RESUME_ITEM, ACTION_REPORT_DISCOVERED_PEER,
+            ACTION_REPORT_AUTHENTICATED_PEER, ACTION_APPROVE_CREDENTIAL_SHARE
+        )
 
         private const val EXTRA_TOKEN = "extra_token"
         private const val EXTRA_PIN = "extra_pin"
@@ -2666,6 +2933,8 @@ class TransferForegroundService : Service() {
         private const val EXTRA_DISCOVERED_TRUSTED = "extra_discovered_trusted"
         private const val EXTRA_DISCOVERED_GLOBAL_LAN_JOINED = "extra_discovered_global_lan_joined"
         private const val EXTRA_PEER_ALIAS = "extra_peer_alias"
+        private const val EXTRA_CREDENTIAL_EXPECTED_KEY = "extra_credential_expected_key"
+        private const val EXTRA_CREDENTIAL_REQUESTED_AT = "extra_credential_requested_at"
         private const val EXTRA_SEND_QUEUE_ITEM_ID = "extra_send_queue_item_id"
 
         private val _state = MutableStateFlow(TransferRuntimeState())
@@ -2908,6 +3177,14 @@ class TransferForegroundService : Service() {
             ContextCompat.startForegroundService(context, intent)
         }
 
+        fun forgetPeer(context: Context, peerId: String) {
+            val intent = Intent(context, TransferForegroundService::class.java).apply {
+                action = ACTION_FORGET_PEER
+                putExtra(EXTRA_TRUST_PEER_ID, peerId)
+            }
+            ContextCompat.startForegroundService(context, intent)
+        }
+
         fun reportDiscoveredPeer(
             context: Context,
             peerId: String,
@@ -2927,11 +3204,29 @@ class TransferForegroundService : Service() {
             ContextCompat.startForegroundService(context, intent)
         }
 
-        fun approveCredentialShare(context: Context, peerId: String, peerLabel: String) {
+        internal fun reportAuthenticatedPeer(
+            context: Context, peerId: String, peerLabel: String, peerIp: String, noiseStaticKey: String
+        ) {
+            val intent = Intent(context, TransferForegroundService::class.java).apply {
+                action = ACTION_REPORT_AUTHENTICATED_PEER
+                putExtra(EXTRA_TRUST_PEER_ID, peerId)
+                putExtra(EXTRA_TRUST_PEER_LABEL, peerLabel)
+                putExtra(EXTRA_TARGET_IP, peerIp)
+                putExtra(EXTRA_CREDENTIAL_EXPECTED_KEY, noiseStaticKey)
+            }
+            ContextCompat.startForegroundService(context, intent)
+        }
+
+        fun approveCredentialShare(
+            context: Context, peerId: String, peerLabel: String,
+            expectedNoiseStaticKey: String, requestedAtMs: Long
+        ) {
             val intent = Intent(context, TransferForegroundService::class.java).apply {
                 action = ACTION_APPROVE_CREDENTIAL_SHARE
                 putExtra(EXTRA_TRUST_PEER_ID, peerId)
                 putExtra(EXTRA_TRUST_PEER_LABEL, peerLabel)
+                putExtra(EXTRA_CREDENTIAL_EXPECTED_KEY, expectedNoiseStaticKey)
+                putExtra(EXTRA_CREDENTIAL_REQUESTED_AT, requestedAtMs)
             }
             ContextCompat.startForegroundService(context, intent)
         }

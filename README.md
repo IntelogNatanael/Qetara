@@ -1,51 +1,54 @@
 # Qetara
 
-Qetara es una app local-first para transferir archivos y mensajes sin cables ni cuentas externas. El proyecto incluye una aplicación Android, una aplicación de escritorio para PC y un módulo compartido de protocolo.
+Comparte archivos y mensajes entre tus dispositivos, sin cuentas.
 
-## Módulos
+Qetara conecta Android y PC por tu red local. Entre dispositivos Android también admite Wi-Fi Direct. El código está disponible bajo la [licencia MIT](LICENSE).
 
-- `app`: aplicación Android con Wi-Fi Direct, LAN, chat, canal Wi-Fi, descargas y flujo de envío.
-- `pc`: Qetara PC, con interfaz Compose Desktop y modo CLI para automatización/debug.
-- `protocol`: contrato y utilidades compartidas del protocolo WDRP.
+## Empezar
 
-## Estado local rápido
+1. Abre Qetara en ambos dispositivos y conéctalos a la misma red Wi-Fi.
+2. En el equipo que recibirá, prepara una sesión y deja el receptor activo.
+3. En el equipo que envía, elige el destino y usa el código y PIN de esa sesión.
+4. Elige un archivo y envíalo. Comprueba la confirmación antes de cerrar la aplicación.
 
-Compilar Android:
+En Android puedes compartir hacia Qetara desde otras aplicaciones. Si tu red impide que los dispositivos se vean, usa la dirección local del receptor o, entre Android, Wi-Fi Direct.
+
+Consulta la [guía de uso](docs/USER_GUIDE.md) para conectar equipos, recuperar un envío y encontrar los archivos recibidos.
+
+## Qué incluye
+
+- **Android:** conexión por LAN y Wi-Fi Direct, compartir desde otras apps, mensajes directos, canal Wi-Fi y biblioteca de descargas.
+- **PC:** aplicación de escritorio Compose y modo de línea de comandos, con envío, recepción y mensajes en red local.
+- **Protocolo compartido:** validación de las transferencias y contrato WDRP utilizado por ambas aplicaciones.
+
+Los archivos viajan directamente entre los dispositivos. El descubrimiento local anuncia información necesaria para encontrarlos; consulta [privacidad](docs/PRIVACY.md) y [seguridad](SECURITY.md).
+
+## Compilar
+
+Necesitas JDK 17 o superior (JDK 21 usado para esta entrega). Android requiere el SDK con plataforma 36; el modo de compilación exclusivo de PC no requiere ese SDK. El wrapper incluido usa Gradle 9.1.0 y comprueba su descarga con SHA-256.
+
+En Windows:
 
 ```powershell
-.\gradlew.bat :app:assembleDebug --offline
+.\scripts\verify.ps1
+.\gradlew.bat :pc:run
 ```
 
-Compilar Qetara PC:
+En macOS o Linux:
 
-```powershell
-.\gradlew.bat :pc:classes --offline
+```sh
+./gradlew :protocol:test :pc:test :app:testDebugUnitTest :app:lintDebug :app:assembleDebug
+./gradlew :pc:run
 ```
 
-Ejecutar Qetara PC:
+Para compilar solamente PC usa `./gradlew -PqetaraDesktopOnly=true :pc:run` o, en Windows, `.\scripts\verify.ps1 -DesktopOnly`.
 
-```powershell
-.\gradlew.bat :pc:run --args="--gui"
-```
+Configura la variable de entorno ANDROID_HOME con la ubicación de tu SDK, o crea local.properties a partir de local.properties.example. La primera compilación descarga dependencias. Con caché completa puedes usar --offline.
 
-Verificacion completa local:
+Para crear los paquetes de distribución, consulta [la guía de publicación](docs/RELEASING.md). El empaquetado de PC incluye el runtime de Java; cada instalador se genera en su propio sistema operativo.
 
-```powershell
-.\scripts\verify.ps1 -Offline
-```
+## Contribuir
 
-## GitHub
+Las mejoras deben hacer más sencilla una tarea real y mantener los datos del usuario a salvo. Lee [CONTRIBUTING.md](CONTRIBUTING.md), la [arquitectura](ARCHITECTURE.md) y los [principios de experiencia](docs/EXPERIENCE.md).
 
-El repositorio incluye workflow en `.github/workflows/qetara-ci.yml` para compilar Android, ejecutar lint/tests unitarios y correr el self-test del módulo PC.
-
-Antes de subir:
-
-1. Verifica que `local.properties`, `.gradle/`, `.kotlin/`, `build/`, APK/AAB y capturas temporales no entren al commit.
-2. Ejecuta `.\scripts\verify.ps1 -Offline` si ya tienes dependencias en cache.
-3. Crea el primer commit local y conecta el remoto de GitHub.
-
-## Documentacion
-
-- Arquitectura general: `ARCHITECTURE.md`
-- Qetara PC: `pc/README.md`
-- Referencias de diseno: `design/penpot/README.md`
+Para problemas de seguridad, sigue [SECURITY.md](SECURITY.md). Los recursos y dependencias de terceros conservan sus propias licencias: [avisos de terceros](THIRD_PARTY_NOTICES.md).

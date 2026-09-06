@@ -20,7 +20,15 @@ data class PendingCredentialShareRequest(
     val id: String,
     val label: String,
     val ip: String,
-    val requestedAtMs: Long
+    val requestedAtMs: Long,
+    val noiseStaticKey: String? = null
+)
+
+/** A credential response was sent to this verified identity in the current session. */
+data class SessionCredentialShare(
+    val peerId: String,
+    val peerIp: String,
+    val sharedAtMs: Long
 )
 
 enum class SendQueueStatus {
@@ -51,6 +59,7 @@ data class TransferRuntimeState(
     val serviceRunning: Boolean = false,
     val paused: Boolean = false,
     val receiving: Boolean = false,
+    val receiverListening: Boolean = false,
     val receiverStatus: String = "Receptor inactivo.",
     val receiverProgress: Float? = null,
     val receiverFileName: String? = null,
@@ -72,8 +81,12 @@ data class TransferRuntimeState(
     val sendBatchCanceled: Int = 0,
     val sendQueue: List<SendQueueItemSnapshot> = emptyList(),
     val knownPeers: List<KnownPeerSnapshot> = emptyList(),
+    val directGroup: DirectGroupContext? = null,
+    val authenticatedPeerRoutes: List<PeerRouteObservation> = emptyList(),
+    val peerRouteRevocations: Map<String, Long> = emptyMap(),
     val pendingTrust: PendingTrustRequest? = null,
     val pendingCredentialShare: PendingCredentialShareRequest? = null,
+    val credentialSharedPeers: List<SessionCredentialShare> = emptyList(),
     val trustedPeers: List<TrustedPeer> = emptyList(),
     val favoritePeers: List<TrustedPeer> = emptyList(),
     val history: List<TransferHistoryEntry> = emptyList(),

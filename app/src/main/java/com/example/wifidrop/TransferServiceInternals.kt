@@ -53,40 +53,41 @@ internal data class SendAggregateSnapshot(
     val queue: List<SendQueueItemSnapshot>
 )
 
-internal class ThroughputTracker {
-    private var startedAtMs = 0L
+internal class ThroughputTracker(
+    private val clockMs: () -> Long = { System.nanoTime() / 1_000_000L }
+) {
+    private var startedAtMs: Long? = null
     private var lastAtMs = 0L
+    private var firstBytes = 0L
     private var lastBytes = 0L
 
     fun reset() {
-        startedAtMs = 0L
+        startedAtMs = null
         lastAtMs = 0L
+        firstBytes = 0L
         lastBytes = 0L
     }
 
     fun update(processedBytes: Long, totalBytes: Long): ThroughputSnapshot {
-        val now = System.currentTimeMillis()
-        if (startedAtMs == 0L) {
+        val now = clockMs()
+        val processed = processedBytes.coerceAtLeast(0L)
+        if (startedAtMs == null || processed < lastBytes) {
             startedAtMs = now
             lastAtMs = now
-            lastBytes = 0L
+            firstBytes = processed
+            lastBytes = processed
+            return ThroughputSnapshot(0L, 0L, null)
         }
-
         val deltaTimeMs = (now - lastAtMs).coerceAtLeast(1L)
-        val deltaBytes = (processedBytes - lastBytes).coerceAtLeast(0L)
-
-        val instant = (deltaBytes * 1000L) / deltaTimeMs
-        val elapsedMs = (now - startedAtMs).coerceAtLeast(1L)
-        val average = (processedBytes.coerceAtLeast(0L) * 1000L) / elapsedMs
-
-        val eta = if (totalBytes > 0 && average > 0 && processedBytes <= totalBytes) {
-            ((totalBytes - processedBytes) / average).coerceAtLeast(0L)
-        } else {
-            null
-        }
-
+        val deltaBytes = processed - lastBytes
+        val instant = (deltaBytes.toDouble() * 1000.0 / deltaTimeMs).toLong()
+        val elapsedMs = (now - requireNotNull(startedAtMs)).coerceAtLeast(1L)
+        val average = ((processed - firstBytes).toDouble() * 1000.0 / elapsedMs).toLong()
+        val eta = if (totalBytes >= processed && average > 0L) {
+            (totalBytes - processed) / average
+        } else null
         lastAtMs = now
-        lastBytes = processedBytes
-        return ThroughputSnapshot(instantBps = instant, averageBps = average, etaSeconds = eta)
+        lastBytes = processed
+        return ThroughputSnapshot(instant, average, eta)
     }
 }

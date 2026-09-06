@@ -1,83 +1,49 @@
-# Arquitectura
+# Arquitectura de Qetara
 
-## Objetivo
+Qetara contiene dos aplicaciones y un módulo JVM compartido. Android gestiona LAN y Wi-Fi Direct; PC usa LAN. El protocolo WDRP v4 conserva su identificador para interoperar en archivos y mensajes.
 
-Separar claramente `frontend`, `estado de pantalla` y `backend operativo` para que los cambios de UX no rompan transporte, sesión o cola de envíos.
+## Módulos
 
-## Capas
+| Módulo | Responsabilidad | Puntos de entrada |
+| --- | --- | --- |
+| app | Aplicación Android y servicio de transferencia | MainActivity, P2pScreenRoute, TransferForegroundService |
+| pc | Aplicación Compose Desktop y CLI | MainKt, DesktopWorkspace |
+| protocol | Contrato de paquetes, validaciones y almacenamiento de recepciones | WifiDropProtocol, TransferValidation, ReceivedFileStorage |
 
-### 1. UI Compose
+## Android
 
-Archivos principales:
+La UI Compose renderiza estado y emite acciones. Las pantallas de conexión, envío, mensajes, descargas, preferencias y confianza están separadas en archivos propios. `presentation/` contiene coordinación de permisos, importación de archivos, selección de destino, disponibilidad de sesión y política de envíos.
 
-- `app/src/main/java/com/example/wifidrop/P2pUi.kt`
-- `app/src/main/java/com/example/wifidrop/P2pMessagesTab.kt`
-- `app/src/main/java/com/example/wifidrop/P2pUiShared.kt`
+`P2pBackend` es el contrato entre presentación y los servicios Android. `WifiDirectController` administra el enlace del sistema; `TransferForegroundService` mantiene sesión, cola, receptor y progreso mediante estado observable. `FileTransfer` implementa conexiones, autenticación, mensajes y transferencia. Los stores locales conservan historial, mensajes y decisiones de confianza.
 
-Responsabilidad:
+La selección de archivos y el texto de un borrador pertenecen a su contexto de uso. Cambiar una pestaña no debe convertir un borrador de conversación en un envío a otro canal. La disponibilidad de un equipo requiere una sesión confirmada; ver un anuncio de descubrimiento no basta.
 
-- Renderizar pantalla
-- Emitir eventos de intención del usuario
-- No hablar directamente con servicios Android de transferencia o Wi-Fi Direct
+## PC
 
-### 2. Presentación
+`Main.kt` conserva el motor de red, el receptor, la CLI y la conexión de callbacks. `DesktopWorkspace.kt` organiza Compartir, Recibir, Mensajes, Actividad y Ajustes. `DesktopPreferences.kt` guarda preferencias de interfaz sin persistir código ni PIN. `DesktopConversations.kt` separa borradores y adjuntos por destinatario y contexto, conserva conversaciones de equipos desconectados y calcula avisos de mensajes nuevos.
 
-Archivos principales:
+La UI y la CLI comparten el mismo motor. Un error debe describir la fase que falló: preparar, enviar, recibir o verificar. La ventana empaquetada usa el runtime de Java incluido en su carpeta.
 
-- `app/src/main/java/com/example/wifidrop/MainActivity.kt`
-- `app/src/main/java/com/example/wifidrop/P2pScreenState.kt`
-- `app/src/main/java/com/example/wifidrop/P2pExperienceState.kt`
+## Transferencias y almacenamiento
 
-Responsabilidad:
+Antes de escribir se validan nombres, tamaños, offsets, hashes y límites de frames. Las recepciones usan archivos temporales; la publicación del resultado ocurre después de verificar el contenido. La selección de nombres evita sobrescribir un archivo existente. Los recibos de transferencias y mensajes ayudan a evitar duplicados al repetir una operación cuya confirmación se perdió.
 
-- Orquestar estado observable para UI
-- Traducir reglas de producto a `P2pScreenState`
-- Delegar operaciones al contrato backend
+Cada receptor limita sus clientes simultáneos. En Android, la publicación de archivos se serializa para conservar coherencia de estado y exportación. Cancelar o cambiar de generación cierra sockets bloqueados y libera trabajos; el estado distingue receptor disponible de una transferencia activa.
 
-### 3. Backend para UI
+La deduplicación no equivale a una transacción distribuida frente a un corte de energía en cualquier instrucción. El contrato y sus límites se detallan en [PROTOCOL.md](docs/PROTOCOL.md).
 
-Archivo principal:
+## Identidad y sesión
 
-- `app/src/main/java/com/example/wifidrop/backend/P2pBackend.kt`
+El descubrimiento anuncia información local y no prueba identidad. Android compatible puede solicitar credenciales por el paquete 12 y un canal Noise cifrado. La aprobación se vincula a la clave estática observada; una clave distinta para una identidad conocida se rechaza. El mecanismo antiguo de credenciales en claro se rechaza. PC requiere el mismo código y PIN introducidos manualmente.
 
-Responsabilidad:
+La confianza recordada de un equipo y la disponibilidad de una sesión concreta son estados diferentes. Los mensajes reenviados conservan metadatos útiles de origen, pero esos metadatos no acreditan por sí mismos una firma criptográfica del remitente original.
 
-- Ser el único punto de entrada del frontend hacia:
-  - `WifiDirectController`
-  - `TransferForegroundService`
-- Exponer estado backend con `StateFlow`
-- Encapsular detalles Android/runtime
+## Mantener y verificar
 
-Regla:
+- Mantén reglas de navegación, permisos y borradores fuera del transporte.
+- Añade al contrato backend una operación nueva que deba iniciar la UI.
+- Prueba invariantes de seguridad y datos con casos de error, cancelación y reintento.
+- Comprueba visualmente las pantallas y valida un intercambio real después de cambios de sesión o destino.
+- Conserva pruebas unitarias, pruebas de socket y evidencias de instalación como niveles distintos.
 
-- `MainActivity` y cualquier UI nueva deben usar `P2pBackend`, no `TransferForegroundService` ni `WifiDirectController` de forma directa.
-
-### 4. Runtime / transporte
-
-Archivos principales:
-
-- `app/src/main/java/com/example/wifidrop/TransferForegroundService.kt`
-- `app/src/main/java/com/example/wifidrop/WifiDirectController.kt`
-- `app/src/main/java/com/example/wifidrop/FileTransfer.kt`
-
-Responsabilidad:
-
-- Red
-- Protocolo
-- Cola de envío
-- Mensajería
-- Sesión segura
-
-## Reglas de mantenimiento
-
-1. Si un cambio es visual, debería tocar UI o presentación, no runtime.
-2. Si una pantalla necesita una nueva operación backend, se agrega primero al contrato `P2pBackend`.
-3. Si un dato es puramente visual, no debe vivir dentro de `TransferForegroundService`.
-4. Si una regla aplica a más de una tab, debe modelarse antes como estado de presentación o backend, no duplicarse en Compose.
-
-## Siguiente orden recomendado
-
-1. Extraer el armado de `P2pScreenState` desde `MainActivity` a un mapper/factory dedicado.
-2. Mover stores persistentes a un paquete `data/`.
-3. Separar `ui/`, `presentation/`, `backend/` y `runtime/` físicamente en paquetes.
-4. Añadir tests de reglas de producto para `Wi‑Fi Direct`, `Chat` y `Global LAN`.
+Las tareas reproducibles están en [CONTRIBUTING.md](CONTRIBUTING.md) y [RELEASING.md](docs/RELEASING.md). La matriz CI está configurada para Android y para PC en Windows, Linux y macOS; sus resultados se deben revisar en cada publicación.

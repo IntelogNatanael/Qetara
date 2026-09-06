@@ -22,6 +22,7 @@ object TrustedPeerStore {
     private const val KEY_JSON = "trusted_peers_json"
     private const val MAX_ITEMS = 200
 
+    @Synchronized
     fun all(context: Context): List<TrustedPeer> {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val json = prefs.getString(KEY_JSON, null).orEmpty()
@@ -69,6 +70,20 @@ object TrustedPeerStore {
         return all(context).any { it.id == peerId }
     }
 
+    @Synchronized
+    fun trustWithNoiseKey(context: Context, peerIdRaw: String, labelRaw: String, noiseKeyRaw: String): Boolean {
+        val peerId = sanitizeId(peerIdRaw)
+        val key = sanitizeNoiseKey(noiseKeyRaw)
+        if (peerId.isBlank() || key.isBlank()) return false
+        val existing = all(context).firstOrNull { it.id == peerId }?.noiseStaticKey
+        if (!existing.isNullOrBlank() && existing != key) return false
+        // Hold the same store monitor through trust and pin publication; readers never see an unpinned grant.
+        trust(context, peerId, labelRaw)
+        updateNoiseStaticKey(context, peerId, key)
+        return true
+    }
+
+    @Synchronized
     fun trust(context: Context, peerIdRaw: String, labelRaw: String) {
         val peerId = sanitizeId(peerIdRaw)
         if (peerId.isBlank()) return
@@ -98,6 +113,7 @@ object TrustedPeerStore {
         persist(context, trimmed)
     }
 
+    @Synchronized
     fun remove(context: Context, peerIdRaw: String) {
         val peerId = sanitizeId(peerIdRaw)
         if (peerId.isBlank()) return
@@ -106,6 +122,7 @@ object TrustedPeerStore {
         persist(context, next)
     }
 
+    @Synchronized
     fun setFavorite(context: Context, peerIdRaw: String, favorite: Boolean) {
         val peerId = sanitizeId(peerIdRaw)
         if (peerId.isBlank()) return
@@ -115,6 +132,7 @@ object TrustedPeerStore {
         persist(context, next)
     }
 
+    @Synchronized
     fun setAlias(context: Context, peerIdRaw: String, aliasRaw: String) {
         val peerId = sanitizeId(peerIdRaw)
         if (peerId.isBlank()) return
@@ -125,6 +143,7 @@ object TrustedPeerStore {
         persist(context, next)
     }
 
+    @Synchronized
     fun updateSeen(context: Context, peerIdRaw: String, labelRaw: String, ipRaw: String) {
         val peerId = sanitizeId(peerIdRaw)
         if (peerId.isBlank()) return
@@ -145,13 +164,16 @@ object TrustedPeerStore {
         persist(context, next)
     }
 
+    @Synchronized
     fun updateNoiseStaticKey(context: Context, peerIdRaw: String, noiseKeyRaw: String) {
         val peerId = sanitizeId(peerIdRaw)
         if (peerId.isBlank()) return
         val noiseKey = sanitizeNoiseKey(noiseKeyRaw)
         if (noiseKey.isBlank()) return
         val next = all(context).map { peer ->
-            if (peer.id == peerId) peer.copy(noiseStaticKey = noiseKey) else peer
+            if (peer.id == peerId && (peer.noiseStaticKey.isNullOrBlank() || peer.noiseStaticKey == noiseKey)) {
+                peer.copy(noiseStaticKey = noiseKey)
+            } else peer
         }
         persist(context, next)
     }
@@ -162,7 +184,7 @@ object TrustedPeerStore {
         if (peerId.isBlank() || noiseKey.isBlank()) return false
         val peer = all(context).firstOrNull { it.id == peerId } ?: return false
         val existing = peer.noiseStaticKey
-        return existing.isNullOrBlank() || existing == noiseKey
+        return com.example.wifidrop.protocol.isPinnedIdentityCompatible(existing, noiseKey)
     }
 
     fun displayName(peer: TrustedPeer): String {

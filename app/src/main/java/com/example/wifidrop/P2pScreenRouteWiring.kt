@@ -3,6 +3,7 @@ package com.example.wifidrop
 import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import com.example.wifidrop.presentation.P2pAttachmentContext
 import com.example.wifidrop.presentation.P2pFeedbackMessage
 import com.example.wifidrop.presentation.P2pOutboundOrchestrationResult
 import com.example.wifidrop.presentation.P2pUndoFeedbackPlan
@@ -45,7 +46,7 @@ data class P2pScreenEventWiringInput(
     val handleOutboundResult: (P2pOutboundOrchestrationResult) -> Unit,
     val handleLanSuggestedTarget: (String?) -> Unit,
     val requestWifiPermissions: () -> Unit,
-    val pickFiles: () -> Unit
+    val pickFiles: (P2pAttachmentContext) -> Unit
 )
 
 data class P2pScreenEventWiring(
@@ -75,14 +76,17 @@ data class P2pScreenEventWiring(
     val onGenerateToken: () -> Unit,
     val onGeneratePin: () -> Unit,
     val onRenewSession: () -> Unit,
+    val onSetSessionEnabled: (Boolean) -> Unit,
     val onCopyToken: () -> Unit,
     val onPasteToken: () -> Unit,
     val onSyncToken: () -> Unit,
+    val onConfirmManualSession: () -> Unit,
     val onSyncFromPeerIp: (String) -> Unit,
     val onTargetIpChange: (String) -> Unit,
     val onUseSuggestedTarget: () -> Unit,
-    val onPickFile: () -> Unit,
-    val onClearSelectedFiles: () -> Unit,
+    val onPickFile: (P2pAttachmentContext) -> Unit,
+    val onClearSelectedFiles: (P2pAttachmentContext) -> Unit,
+    val onAttachmentContextChange: (P2pAttachmentContext) -> Unit,
     val onSendFile: () -> Unit,
     val onRefreshReceived: () -> Unit,
     val onShareReceivedFile: (File) -> Unit,
@@ -92,6 +96,7 @@ data class P2pScreenEventWiring(
     val onSendToLastTarget: () -> Unit,
     val onSetPeerFavorite: (String, Boolean) -> Unit,
     val onSetPeerAlias: (String, String) -> Unit,
+    val onForgetPeer: (String) -> Unit,
     val onPauseQueueItem: (String) -> Unit,
     val onResumeQueueItem: (String) -> Unit,
     val onCancelQueueItem: (String) -> Unit,
@@ -120,6 +125,7 @@ data class P2pScreenEventWiring(
 fun buildP2pScreenEventWiring(
     input: P2pScreenEventWiringInput
 ): P2pScreenEventWiring {
+    val connectionTarget = input.routeState.routing.targets.resolvedTarget
     val backend = input.presenters.backend
     val lanDiscoveryPresenter = input.presenters.lanDiscoveryPresenter
     val sessionPresenter = input.presenters.sessionPresenter
@@ -140,7 +146,7 @@ fun buildP2pScreenEventWiring(
         }
     }
 
-    return P2pScreenEventWiring(
+    val wiring = P2pScreenEventWiring(
         initialFocusStage = input.uxPreferences.lastFocusStage,
         onRequestPermission = input.requestWifiPermissions,
         onOpenWifiSettings = input.openWifiSettings,
@@ -164,7 +170,7 @@ fun buildP2pScreenEventWiring(
         },
         onConnectionViewModeChange = input.applyConnectionViewMode,
         onConnectionModeChange = { mode ->
-            input.persistUxPreferences(input.uxPreferences.copy(activeConnectionMode = mode))
+            input.persistUxPreferences(adjustedPreferencesForConnectionMode(input.uxPreferences, mode))
             input.setChatChannel(normalizeRequestedChatChannel(mode, input.rawChatChannel))
             if (mode == ConnectionMode.LAN) {
                 input.setChatDirectWifiTargetIps(emptyList())
@@ -231,6 +237,13 @@ fun buildP2pScreenEventWiring(
         onGenerateToken = { sessionPresenter.generateToken() },
         onGeneratePin = { sessionPresenter.generatePin() },
         onRenewSession = { sessionPresenter.renewSession(minutes = 30) },
+        onSetSessionEnabled = { enabled ->
+            backend.setSessionEnabled(enabled)
+            input.persistUxPreferences(input.uxPreferences.copy(sessionEnabled = enabled))
+            sessionPresenter.clearSessionConfirmation()
+            if (!enabled) lanDiscoveryPresenter.cancelScan()
+            input.pushFeedback(if (enabled) "Sesión activada. Ya puedes conectar un equipo." else "Sesión cerrada. Recepción y operaciones detenidas.", false)
+        },
         onCopyToken = {
             val feedback = sessionPresenter.copyToken()
             input.pushFeedback(feedback.message, feedback.isError)
@@ -240,7 +253,8 @@ fun buildP2pScreenEventWiring(
             input.pushFeedback(feedback.message, feedback.isError)
         },
         onSyncToken = {
-            val connection = input.wifiState.connection
+            sessionPresenter.observeConnectionContext(input.routeState.sessionNetworkKey, connectionTarget)
+            val connection = input.wifiState.connection.takeIf { connectionTarget?.mode == ConnectionMode.WIFI_DIRECT }
             val hostIp = sessionPresenter.resolveManualSyncHost(
                 connection = connection,
                 resolvedTargetIp = input.routeState.routing.targets.resolvedTarget?.ip,
@@ -260,12 +274,20 @@ fun buildP2pScreenEventWiring(
                 }
             }
         },
+        onConfirmManualSession = {
+            val feedback = sessionPresenter.confirmManualSession(connectionTarget, input.routeState.sessionNetworkKey)
+            input.pushFeedback(feedback.message, feedback.isError)
+        },
         onSyncFromPeerIp = { peerIp ->
             val normalized = peerIp.trim()
             if (normalized.isBlank()) {
                 sessionPresenter.markInvalidPeerIp()
             } else {
+                val peer = input.transferState.knownPeers.firstOrNull { it.ip == normalized }
+                sessionPresenter.observeConnectionContext(input.routeState.sessionNetworkKey,
+                    com.example.wifidrop.presentation.P2pResolvedTarget(peerId = peer?.id, ip = normalized, label = peer?.label, mode = ConnectionMode.LAN))
                 input.setTargetIpInput(normalized)
+                input.setChatDirectLanTargetIp(normalized)
                 input.scope.launch {
                     sessionPresenter.syncTokenFromHost(
                         hostIp = normalized,
@@ -275,14 +297,21 @@ fun buildP2pScreenEventWiring(
                 }
             }
         },
-        onTargetIpChange = { input.setTargetIpInput(it.trim()) },
+        onTargetIpChange = { value ->
+            val target = value.trim()
+            input.setTargetIpInput(target)
+            if (input.uxPreferences.activeConnectionMode == ConnectionMode.LAN) {
+                input.setChatDirectLanTargetIp(target.takeIf { it.isNotBlank() })
+            }
+        },
         onUseSuggestedTarget = {
             connectionHintsPresenter.useSuggestedTarget(
                 input.routeState.routing.targets.suggestedTargetIp
             )?.let(input.setTargetIpInput)
         },
         onPickFile = input.pickFiles,
-        onClearSelectedFiles = { shareImportPresenter.clearSelectedFiles() },
+        onClearSelectedFiles = shareImportPresenter::clearSelectedFiles,
+        onAttachmentContextChange = shareImportPresenter::selectContext,
         onSendFile = {
             input.handleOutboundResult(
                 outboundPresenter.sendSelectedFiles(input.routeState.outboundInput)
@@ -315,6 +344,11 @@ fun buildP2pScreenEventWiring(
                     trustedPeers = input.transferState.trustedPeers
                 )
             )
+        },
+        onForgetPeer = { peerId ->
+            sessionPresenter.clearSessionConfirmation()
+            backend.forgetPeer(peerId)
+            input.pushFeedback("Equipo olvidado. Tendrás que aprobarlo de nuevo para conectar.", false)
         },
         onPauseQueueItem = { transferId -> backend.pauseQueueItem(transferId) },
         onResumeQueueItem = { transferId -> backend.resumeQueueItem(transferId) },
@@ -446,6 +480,30 @@ fun buildP2pScreenEventWiring(
         },
         onOpenHistoryItem = { item -> ExternalOpenUtils.openRoute(input.appContext, item.route) }
     )
+    fun sessionAllowed(): Boolean {
+        val enabled = UxPreferencesStore.load(input.appContext).sessionEnabled
+        if (!enabled) input.pushFeedback("Activa la sesión para conectar o enviar.", true)
+        return enabled
+    }
+    fun guardAction(action: () -> Unit): () -> Unit = { if (sessionAllowed()) action() }
+    fun <T> guardValueAction(action: (T) -> Unit): (T) -> Unit = { value -> if (sessionAllowed()) action(value) }
+    return wiring.copy(
+        onStartHost = guardAction(wiring.onStartHost),
+        onStartClient = guardAction(wiring.onStartClient),
+        onScanLanPeers = guardAction(wiring.onScanLanPeers),
+        onRefreshState = guardAction(wiring.onRefreshState),
+        onConnectToPeer = guardValueAction(wiring.onConnectToPeer),
+        onSyncToken = guardAction(wiring.onSyncToken),
+        onConfirmManualSession = guardAction(wiring.onConfirmManualSession),
+        onSyncFromPeerIp = guardValueAction(wiring.onSyncFromPeerIp),
+        onSendFile = guardAction(wiring.onSendFile),
+        onSendToLastTarget = guardAction(wiring.onSendToLastTarget),
+        onResumeTransfers = guardAction(wiring.onResumeTransfers),
+        onResumeQueueItem = guardValueAction(wiring.onResumeQueueItem),
+        onDownloadChannelFileOffer = guardValueAction(wiring.onDownloadChannelFileOffer),
+        onSendMessage = guardAction(wiring.onSendMessage),
+        onRetryMessage = guardValueAction(wiring.onRetryMessage)
+    )
 }
 
 @Composable
@@ -455,7 +513,7 @@ fun RenderP2pScreen(
     modifier: Modifier = Modifier
 ) {
     P2pScreen(
-        state = state,
+        screenState = state,
         onRequestPermission = wiring.onRequestPermission,
         onOpenWifiSettings = wiring.onOpenWifiSettings,
         onFontScaleChange = wiring.onFontScaleChange,
@@ -482,14 +540,17 @@ fun RenderP2pScreen(
         onGenerateToken = wiring.onGenerateToken,
         onGeneratePin = wiring.onGeneratePin,
         onRenewSession = wiring.onRenewSession,
+        onSetSessionEnabled = wiring.onSetSessionEnabled,
         onCopyToken = wiring.onCopyToken,
         onPasteToken = wiring.onPasteToken,
         onSyncToken = wiring.onSyncToken,
+        onConfirmManualSession = wiring.onConfirmManualSession,
         onSyncFromPeerIp = wiring.onSyncFromPeerIp,
         onTargetIpChange = wiring.onTargetIpChange,
         onUseSuggestedTarget = wiring.onUseSuggestedTarget,
         onPickFile = wiring.onPickFile,
         onClearSelectedFiles = wiring.onClearSelectedFiles,
+        onAttachmentContextChange = wiring.onAttachmentContextChange,
         onSendFile = wiring.onSendFile,
         onRefreshReceived = wiring.onRefreshReceived,
         onShareReceivedFile = wiring.onShareReceivedFile,
@@ -499,6 +560,7 @@ fun RenderP2pScreen(
         onSendToLastTarget = wiring.onSendToLastTarget,
         onSetPeerFavorite = wiring.onSetPeerFavorite,
         onSetPeerAlias = wiring.onSetPeerAlias,
+        onForgetPeer = wiring.onForgetPeer,
         onPauseQueueItem = wiring.onPauseQueueItem,
         onResumeQueueItem = wiring.onResumeQueueItem,
         onCancelQueueItem = wiring.onCancelQueueItem,

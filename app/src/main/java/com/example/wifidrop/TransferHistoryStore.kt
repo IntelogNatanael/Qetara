@@ -4,7 +4,7 @@ import android.content.Context
 import androidx.core.content.edit
 import org.json.JSONArray
 import org.json.JSONObject
-import kotlin.random.Random
+import java.util.UUID
 
 enum class TransferDirection {
     SENT,
@@ -36,6 +36,7 @@ object TransferHistoryStore {
     private const val KEY_JSON = "history_json"
     private const val MAX_ITEMS = 250
 
+    @Synchronized
     fun list(context: Context, limit: Int = 60): List<TransferHistoryEntry> {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val json = prefs.getString(KEY_JSON, null).orEmpty()
@@ -71,6 +72,7 @@ object TransferHistoryStore {
         }
     }
 
+    @Synchronized
     fun append(context: Context, item: TransferHistoryEntry) {
         val current = list(context, limit = MAX_ITEMS).toMutableList()
         current.add(0, item)
@@ -88,7 +90,7 @@ object TransferHistoryStore {
         errorCause: String?
     ): TransferHistoryEntry {
         val now = System.currentTimeMillis()
-        val id = "${now}_${Random.nextInt(1000, 9999)}"
+        val id = UUID.randomUUID().toString()
         return TransferHistoryEntry(
             id = id,
             direction = direction,
@@ -98,7 +100,7 @@ object TransferHistoryStore {
             timestampMs = now,
             peerLabel = peerLabel?.take(64),
             peerIp = peerIp?.take(64),
-            route = route?.take(300),
+            route = route,
             errorCause = errorCause?.take(240)
         )
     }

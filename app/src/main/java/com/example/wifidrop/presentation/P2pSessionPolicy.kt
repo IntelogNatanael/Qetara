@@ -12,7 +12,8 @@ data class P2pSessionServiceInput(
     val connection: ConnectionSnapshot?,
     val token: String,
     val pin: String,
-    val sessionExpired: Boolean
+    val sessionExpired: Boolean,
+    val sessionEnabled: Boolean = true
 )
 
 data class P2pPresenceAnnouncementInput(
@@ -62,7 +63,15 @@ fun shouldStartBackendSession(input: P2pSessionServiceInput): Boolean {
     val validSecurity = FileTransfer.isValidToken(input.token) &&
         TransferSecurity.isValidPin(input.pin) &&
         !input.sessionExpired
-    return connected && validSecurity
+    return input.sessionEnabled && connected && validSecurity
+}
+
+enum class P2pSessionServiceAction { START, STOP, NONE }
+
+fun resolveSessionServiceAction(input: P2pSessionServiceInput, serviceRunning: Boolean): P2pSessionServiceAction = when {
+    shouldStartBackendSession(input) -> P2pSessionServiceAction.START
+    serviceRunning -> P2pSessionServiceAction.STOP
+    else -> P2pSessionServiceAction.NONE
 }
 
 fun resolvePresenceAnnouncementHost(input: P2pPresenceAnnouncementInput): String? {
@@ -115,7 +124,8 @@ fun resolveLanAutoSyncPlan(
     lastAutoSyncedPeerIp: String?
 ): P2pAutoSyncPlan? {
     val targetIp = resolvedTarget?.ip?.trim().takeUnless { it.isNullOrBlank() } ?: return null
-    val shouldAutoSyncLan = lanConnected &&
+    val shouldAutoSyncLan = isAutomaticConnectionAddress(targetIp) &&
+        lanConnected &&
         resolvedTarget?.mode == ConnectionMode.LAN &&
         !sessionExpired &&
         lastAutoSyncedPeerIp != targetIp
@@ -175,4 +185,50 @@ fun buildSessionSyncSuccess(
 
 fun buildSessionSyncFailureStatus(errorMessage: String?): String {
     return actionableSessionSyncFailure(errorMessage)
+}
+
+/** Retrying cannot resolve compatibility or a changed cryptographic identity. */
+fun sessionSyncRequiresUserAction(error: String): Boolean = listOf(
+    "sesion_cerrada",
+    "grupo_direct_no_acreditado",
+    "grupo_direct_renovado",
+    "destino_fuera_grupo_direct",
+    "secure_credentials_required",
+    "emparejamiento_manual_requerido",
+    "noise_key_mismatch",
+    "clave noise"
+).any { error.contains(it, ignoreCase = true) }
+
+/** Bind a successful exchange to the authenticated identity at the requested socket endpoint. */
+internal fun applySessionSyncResult(
+    current: P2pSessionState,
+    started: P2pSessionState,
+    hostIp: String,
+    payload: SessionCredentialsPayload
+): P2pSessionState {
+    if (current.connectionNetworkKey != started.connectionNetworkKey ||
+        current.connectionTargetIp != hostIp ||
+        current.token != started.token || current.pin != started.pin ||
+        current.expiresAtMs != started.expiresAtMs) return current
+    val verifiedPeerId = payload.peerId?.takeIf { it.isNotBlank() }
+        ?: started.connectionTargetPeerId.takeIf { started.connectionTargetIp == hostIp }
+    if (current.connectionTargetPeerId != null && verifiedPeerId != null &&
+        current.connectionTargetPeerId != verifiedPeerId) return current
+    val synced = buildSessionSyncSuccess(payload, started.token, started.pin)
+    val pin = synced.pin ?: current.pin
+    return current.copy(
+        token = synced.token,
+        pin = pin,
+        expiresAtMs = synced.expiresAtMs,
+        syncStatus = synced.statusMessage,
+        lastAutoSyncedPeerIp = hostIp,
+        connectionTargetPeerId = verifiedPeerId,
+        confirmation = P2pSessionConfirmation(
+            peerIp = hostIp,
+            peerId = verifiedPeerId,
+            networkKey = started.connectionNetworkKey,
+            token = synced.token,
+            pin = pin
+        )
+    )
 }

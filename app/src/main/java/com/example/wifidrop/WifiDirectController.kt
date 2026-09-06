@@ -239,6 +239,20 @@ class WifiDirectController(context: Context) {
         }
     }
 
+    @SuppressLint("MissingPermission")
+    fun stopDiscoveryAndNegotiation() {
+        withManagerAndPermission { mgr, ch ->
+            // These requests stop discovery/negotiation while leaving an established network intact.
+            mgr.stopPeerDiscovery(ch, null)
+            mgr.cancelConnect(ch, null)
+            _state.update { it.copy(
+                discoveringPeers = false,
+                connectingToPeer = false,
+                creatingGroup = false
+            ) }
+        }
+    }
+
     fun cancelDirectAttempt() {
         val snapshot = state.value
         val hasGroupToUndo = snapshot.connection?.groupFormed == true ||

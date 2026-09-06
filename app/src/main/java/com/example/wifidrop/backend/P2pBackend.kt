@@ -13,6 +13,7 @@ import com.example.wifidrop.TransferRuntimeState
 import com.example.wifidrop.WifiDirectBroadcastReceiver
 import com.example.wifidrop.WifiDirectController
 import com.example.wifidrop.WifiDirectState
+import com.example.wifidrop.UxPreferencesStore
 import kotlinx.coroutines.flow.StateFlow
 
 /**
@@ -62,6 +63,7 @@ interface P2pBackend {
     )
 
     fun stopSession()
+    fun setSessionEnabled(enabled: Boolean)
     fun sendFile(
         fileUri: Uri,
         fileName: String,
@@ -127,6 +129,7 @@ interface P2pBackend {
     fun cancelActiveTransfer()
     fun openDownloads()
     fun trustPeer(peerId: String, peerLabel: String)
+    fun forgetPeer(peerId: String)
     fun reportDiscoveredPeer(
         peerId: String,
         peerLabel: String,
@@ -135,7 +138,7 @@ interface P2pBackend {
         globalLanJoined: Boolean = false
     )
 
-    fun approveCredentialShare(peerId: String, peerLabel: String)
+    fun approveCredentialShare(peerId: String, peerLabel: String, expectedNoiseStaticKey: String, requestedAtMs: Long)
     fun rejectCredentialShare(peerId: String)
     fun setPeerFavorite(peerId: String, favorite: Boolean)
     fun setPeerAlias(peerId: String, alias: String)
@@ -152,6 +155,20 @@ class AndroidP2pBackend(
 ) : P2pBackend {
 
     private val appContext = context.applicationContext
+    private val networkGate = SessionNetworkGate(
+        isEnabled = { UxPreferencesStore.load(appContext).sessionEnabled },
+        persistEnabled = { UxPreferencesStore.setSessionEnabled(appContext, it) }
+    )
+
+    private fun sessionEnabled(): Boolean = UxPreferencesStore.load(appContext).sessionEnabled
+
+    override fun setSessionEnabled(enabled: Boolean) {
+        networkGate.setEnabled(enabled)
+        if (!enabled) {
+            TransferForegroundService.stopSession(appContext)
+            wifiDirectController.stopDiscoveryAndNegotiation()
+        }
+    }
 
     override val wifiState: StateFlow<WifiDirectState> = wifiDirectController.state
     override val transferState: StateFlow<TransferRuntimeState> = TransferForegroundService.state
@@ -169,14 +186,17 @@ class AndroidP2pBackend(
     }
 
     override fun discoverPeers() {
+        if (!sessionEnabled()) return
         wifiDirectController.discoverPeers()
     }
 
     override fun createGroup() {
+        if (!sessionEnabled()) return
         wifiDirectController.createGroup()
     }
 
     override fun connect(deviceAddress: String) {
+        if (!sessionEnabled()) return
         wifiDirectController.connect(deviceAddress)
     }
 
@@ -203,11 +223,20 @@ class AndroidP2pBackend(
         clientId: String,
         deviceLabel: String
     ): Result<SessionCredentialsPayload> {
-        return FileTransfer.requestSessionCredentials(
-            hostAddress = hostAddress,
-            clientIdRaw = clientId,
-            deviceLabelRaw = deviceLabel
-        )
+        return networkGate.run {
+            FileTransfer.requestSessionCredentials(
+                context = appContext,
+                hostAddress = hostAddress,
+                clientIdRaw = clientId,
+                deviceLabelRaw = deviceLabel
+            )
+        }.onSuccess { credentials ->
+            val peerId = credentials.peerId ?: return@onSuccess
+            val noiseKey = credentials.noiseStaticKey ?: return@onSuccess
+            TransferForegroundService.reportAuthenticatedPeer(
+                appContext, peerId, credentials.peerLabel.orEmpty(), hostAddress, noiseKey
+            )
+        }
     }
 
     override suspend fun announcePresence(
@@ -217,14 +246,15 @@ class AndroidP2pBackend(
         clientId: String,
         deviceLabel: String
     ): Result<Unit> {
-        return FileTransfer.announcePresence(
+        return networkGate.run { FileTransfer.announcePresence(
             context = appContext,
             hostAddress = hostAddress,
+            expectedPeerId = transferState.value.knownPeers.firstOrNull { it.ip == hostAddress }?.id,
             tokenRaw = token,
             pinRaw = pin,
             clientIdRaw = clientId,
             deviceLabelRaw = deviceLabel
-        )
+        ) }
     }
 
     override suspend fun probePeer(
@@ -232,11 +262,11 @@ class AndroidP2pBackend(
         clientId: String,
         deviceLabel: String
     ): Result<PeerDiscoveryPayload> {
-        return FileTransfer.probePeer(
+        return networkGate.run { FileTransfer.probePeer(
             hostAddress = hostAddress,
             clientIdRaw = clientId,
             deviceLabelRaw = deviceLabel
-        )
+        ) }
     }
 
     override fun startSession(
@@ -245,6 +275,7 @@ class AndroidP2pBackend(
         sessionExpiresAtMs: Long,
         receiveDirPath: String
     ) {
+        if (!sessionEnabled()) return
         TransferForegroundService.startSession(
             context = appContext,
             token = token,
@@ -255,7 +286,7 @@ class AndroidP2pBackend(
     }
 
     override fun stopSession() {
-        TransferForegroundService.stopSession(appContext)
+        if (transferState.value.serviceRunning) TransferForegroundService.stopSession(appContext)
     }
 
     override fun sendFile(
@@ -266,6 +297,7 @@ class AndroidP2pBackend(
         pin: String,
         deviceLabel: String
     ) {
+        if (!sessionEnabled()) return
         TransferForegroundService.sendFile(
             context = appContext,
             fileUri = fileUri,
@@ -286,6 +318,7 @@ class AndroidP2pBackend(
         peerLabelOverride: String?,
         scope: ChatMessageScope
     ) {
+        if (!sessionEnabled()) return
         TransferForegroundService.sendMessage(
             context = appContext,
             targetIp = targetIp,
@@ -309,6 +342,7 @@ class AndroidP2pBackend(
         targetIps: List<String>,
         targetLabels: List<String>
     ) {
+        if (!sessionEnabled()) return
         TransferForegroundService.sendBroadcastMessage(
             context = appContext,
             token = token,
@@ -329,6 +363,7 @@ class AndroidP2pBackend(
         deviceLabel: String,
         senderIp: String?
     ): ChannelFileOffer {
+        check(sessionEnabled()) { "sesion_cerrada" }
         return ChannelFileOfferStore.register(
             context = appContext,
             uri = fileUri,
@@ -347,6 +382,7 @@ class AndroidP2pBackend(
         pin: String,
         deviceLabel: String
     ) {
+        if (!sessionEnabled()) return
         TransferForegroundService.requestChannelFileOffer(
             context = appContext,
             offer = offer,
@@ -366,6 +402,7 @@ class AndroidP2pBackend(
         peerLabelOverride: String?,
         scope: ChatMessageScope
     ) {
+        if (!sessionEnabled()) return
         TransferForegroundService.sendSilentMessage(
             context = appContext,
             targetIp = targetIp,
@@ -379,6 +416,7 @@ class AndroidP2pBackend(
     }
 
     override fun retryMessage(messageId: String, deviceLabel: String) {
+        if (!sessionEnabled()) return
         TransferForegroundService.retryMessage(
             context = appContext,
             messageId = messageId,
@@ -412,6 +450,7 @@ class AndroidP2pBackend(
     }
 
     override fun resumeTransfers() {
+        if (!sessionEnabled()) return
         TransferForegroundService.resumeTransfers(appContext)
     }
 
@@ -431,6 +470,10 @@ class AndroidP2pBackend(
         )
     }
 
+    override fun forgetPeer(peerId: String) {
+        TransferForegroundService.forgetPeer(appContext, peerId)
+    }
+
     override fun reportDiscoveredPeer(
         peerId: String,
         peerLabel: String,
@@ -438,6 +481,7 @@ class AndroidP2pBackend(
         trusted: Boolean,
         globalLanJoined: Boolean
     ) {
+        if (!sessionEnabled()) return
         TransferForegroundService.reportDiscoveredPeer(
             context = appContext,
             peerId = peerId,
@@ -448,11 +492,14 @@ class AndroidP2pBackend(
         )
     }
 
-    override fun approveCredentialShare(peerId: String, peerLabel: String) {
+    override fun approveCredentialShare(peerId: String, peerLabel: String, expectedNoiseStaticKey: String, requestedAtMs: Long) {
+        if (!sessionEnabled()) return
         TransferForegroundService.approveCredentialShare(
             context = appContext,
             peerId = peerId,
-            peerLabel = peerLabel
+            peerLabel = peerLabel,
+            expectedNoiseStaticKey = expectedNoiseStaticKey,
+            requestedAtMs = requestedAtMs
         )
     }
 
@@ -484,6 +531,7 @@ class AndroidP2pBackend(
     }
 
     override fun resumeQueueItem(transferId: String) {
+        if (!sessionEnabled()) return
         TransferForegroundService.resumeQueueItem(appContext, transferId)
     }
 

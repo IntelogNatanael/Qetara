@@ -18,6 +18,7 @@ object GlobalLanOutboxStore {
     private const val KEY_JSON = "global_lan_outbox_json"
     private const val MAX_ITEMS = 200
 
+    @Synchronized
     fun list(context: Context): List<GlobalLanOutboxEntry> {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val raw = prefs.getString(KEY_JSON, null).orEmpty()
@@ -29,7 +30,7 @@ object GlobalLanOutboxStore {
                 for (index in 0 until arr.length()) {
                     val obj = arr.optJSONObject(index) ?: continue
                     val chatMessageId = obj.optString("chat_message_id").trim()
-                    val text = obj.optString("text").trim().replace(Regex("\\s+"), " ").take(2_000)
+                    val text = obj.optString("text").trim().take(2_000)
                     if (chatMessageId.isBlank() || text.isBlank()) continue
                     val peerIds = obj.optJSONArray("dispatched_peer_ids")?.let { peerArr ->
                         buildList {
@@ -53,6 +54,7 @@ object GlobalLanOutboxStore {
         }
     }
 
+    @Synchronized
     fun upsert(context: Context, entry: GlobalLanOutboxEntry) {
         val next = list(context)
             .filterNot { it.chatMessageId == entry.chatMessageId }
@@ -60,7 +62,7 @@ object GlobalLanOutboxStore {
         next.add(
             entry.copy(
                 chatMessageId = entry.chatMessageId.trim().take(80),
-                text = entry.text.trim().replace(Regex("\\s+"), " ").take(2_000),
+                text = entry.text.trim().take(2_000),
                 createdAtMs = entry.createdAtMs.coerceAtLeast(0L),
                 dispatchedPeerIds = entry.dispatchedPeerIds.map { it.trim() }.filter { it.isNotBlank() }.distinct()
             )
@@ -68,12 +70,14 @@ object GlobalLanOutboxStore {
         persist(context, next)
     }
 
+    @Synchronized
     fun remove(context: Context, chatMessageIdRaw: String) {
         val chatMessageId = chatMessageIdRaw.trim()
         if (chatMessageId.isBlank()) return
         persist(context, list(context).filterNot { it.chatMessageId == chatMessageId })
     }
 
+    @Synchronized
     fun clear(context: Context) {
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit { remove(KEY_JSON) }
     }

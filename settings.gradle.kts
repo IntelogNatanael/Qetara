@@ -14,7 +14,9 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "WifiDrop"
+rootProject.name = "Qetara"
 include(":protocol")
-include(":app")
+if (!providers.gradleProperty("qetaraDesktopOnly").map(String::toBoolean).getOrElse(false)) {
+    include(":app")
+}
 include(":pc")

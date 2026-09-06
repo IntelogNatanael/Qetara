@@ -23,12 +23,16 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
+import kotlinx.coroutines.withContext
+import java.net.Inet4Address
+import java.net.NetworkInterface
 
 data class P2pLanDiscoveryState(
     val connected: Boolean,
     val localIp: String?,
     val scanStatus: String = "",
-    val scanning: Boolean = false
+    val scanning: Boolean = false,
+    val localIpv4Addresses: Set<String> = emptySet()
 )
 
 class P2pLanDiscoveryPresenter(
@@ -145,7 +149,9 @@ class P2pLanDiscoveryPresenter(
         }
 
         return try {
-            val candidates = NetworkUtils.subnetCandidates(localIp)
+            val candidates = NetworkUtils.subnetCandidates(localIp).filter {
+                isAutomaticConnectionAddress(it, localIp) && it !in _state.value.localIpv4Addresses
+            }
             if (candidates.isEmpty()) {
                 _state.update {
                     it.copy(scanStatus = "No pude resolver el rango de red local.")
@@ -166,7 +172,7 @@ class P2pLanDiscoveryPresenter(
                                 clientId = localDeviceId,
                                 deviceLabel = sanitizedLabel
                             )
-                            result.getOrNull()?.let { payload ->
+                            result.getOrNull()?.takeIf { it.peerId != localDeviceId }?.let { payload ->
                                 backend.reportDiscoveredPeer(
                                     peerId = payload.peerId,
                                     peerLabel = payload.peerLabel,
@@ -206,12 +212,22 @@ class P2pLanDiscoveryPresenter(
         }
     }
 
-    private fun refreshSnapshot(): WifiLanSnapshot {
+    private suspend fun refreshSnapshot(): WifiLanSnapshot {
         val snapshot = NetworkUtils.currentWifiLanSnapshot(appContext)
+        val localAddresses = withContext(Dispatchers.IO) {
+            runCatching {
+                NetworkInterface.getNetworkInterfaces()?.toList().orEmpty()
+                    .flatMap { it.inetAddresses.toList() }
+                    .filterIsInstance<Inet4Address>()
+                    .mapNotNull { it.hostAddress }
+                    .toSet()
+            }.getOrDefault(emptySet())
+        }
         _state.update { current ->
             current.copy(
                 connected = snapshot.connected,
-                localIp = snapshot.ipv4
+                localIp = snapshot.ipv4,
+                localIpv4Addresses = localAddresses + listOfNotNull(snapshot.ipv4)
             )
         }
         return snapshot

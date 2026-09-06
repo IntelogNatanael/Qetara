@@ -25,11 +25,13 @@ internal fun buildTransferNotificationText(
             "Recibiendo $pct% · ${formatTransferRate(state.receiverAverageBps)}"
         }
 
+        state.receiverListening -> "Esperando archivos."
+
         state.pendingMessageCount > 0 -> {
             "Mensajes en cola: ${state.pendingMessageCount}"
         }
 
-        else -> "Sesion segura activa."
+        else -> "Qetara lista."
     }
 }
 

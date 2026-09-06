@@ -17,9 +17,13 @@ data class P2pOutboundSelection(
 )
 
 data class P2pShareImportState(
-    val selectedFiles: List<P2pOutboundSelection> = emptyList(),
-    val shareImportStatus: String = ""
-)
+    val attachments: P2pAttachmentDrafts<P2pOutboundSelection> = P2pAttachmentDrafts(),
+    val incomingShareEventId: Long? = null
+) {
+    val selectedFiles: List<P2pOutboundSelection> get() = attachments.draft().files
+    val shareImportStatus: String get() = attachments.draft().status
+    val attachmentContext: P2pAttachmentContext get() = attachments.activeContext
+}
 
 class P2pShareImportPresenter(
     context: Context
@@ -28,15 +32,17 @@ class P2pShareImportPresenter(
     private val _state = MutableStateFlow(P2pShareImportState())
     val state: StateFlow<P2pShareImportState> = _state.asStateFlow()
 
-    fun importPickedUris(uris: List<Uri>) {
+    fun selectContext(context: P2pAttachmentContext) {
+        _state.update { it.copy(attachments = it.attachments.select(context)) }
+    }
+
+    fun selectedFiles(context: P2pAttachmentContext): List<P2pOutboundSelection> =
+        _state.value.attachments.draft(context).files
+
+    fun importPickedUris(uris: List<Uri>, context: P2pAttachmentContext) {
         val loaded = loadOutboundSelections(uris)
         if (loaded.isNotEmpty()) {
-            _state.update {
-                it.copy(
-                    selectedFiles = loaded,
-                    shareImportStatus = "${loaded.size} archivo(s) seleccionado(s)."
-                )
-            }
+            updateDraft(context) { it.copy(files = loaded, status = "${loaded.size} archivo(s) seleccionado(s).") }
         }
     }
 
@@ -46,56 +52,48 @@ class P2pShareImportPresenter(
         if (loaded.isNotEmpty()) {
             _state.update {
                 it.copy(
-                    selectedFiles = loaded,
-                    shareImportStatus = "Recibidos ${loaded.size} archivo(s) desde Compartir."
+                    attachments = it.attachments.update(P2pAttachmentContext.FILES) { draft ->
+                        draft.copy(files = loaded, status = "Recibidos ${loaded.size} archivo(s) desde Compartir.")
+                    }.select(P2pAttachmentContext.FILES),
+                    incomingShareEventId = sharePayload.eventId
                 )
             }
         }
         IncomingShareBus.consume(sharePayload.eventId)
     }
 
-    fun clearSelectedFiles() {
-        _state.update {
-            it.copy(
-                selectedFiles = emptyList(),
-                shareImportStatus = ""
-            )
-        }
+    fun clearSelectedFiles(context: P2pAttachmentContext) {
+        updateDraft(context) { P2pAttachmentDraft() }
     }
 
     fun updateStatus(status: String) {
-        _state.update { it.copy(shareImportStatus = status) }
+        updateDraft(P2pAttachmentContext.FILES) { it.copy(status = status) }
     }
 
     fun markFilesQueued(status: String, clearSelectionAfterSend: Boolean) {
-        _state.update {
-            it.copy(
-                selectedFiles = if (clearSelectionAfterSend) emptyList() else it.selectedFiles,
-                shareImportStatus = status
-            )
+        updateDraft(P2pAttachmentContext.FILES) {
+            it.copy(files = if (clearSelectionAfterSend) emptyList() else it.files, status = status)
         }
     }
 
     fun markDirectComposerFilesQueued(fileCount: Int) {
-        _state.update {
-            it.copy(
-                selectedFiles = emptyList(),
-                shareImportStatus = "Enviando $fileCount archivo(s)."
-            )
+        updateDraft(P2pAttachmentContext.DIRECT_CHAT) {
+            P2pAttachmentDraft(status = "Enviando $fileCount archivo(s).")
         }
     }
 
     fun markChannelComposerFilesQueued(fileCount: Int) {
-        _state.update {
-            it.copy(
-                selectedFiles = emptyList(),
-                shareImportStatus = if (fileCount == 1) {
-                    "Publicado 1 archivo en el canal Wi‑Fi."
-                } else {
-                    "Publicados $fileCount archivos en el canal Wi‑Fi."
-                }
-            )
+        updateDraft(P2pAttachmentContext.CHANNEL) {
+            P2pAttachmentDraft(status = if (fileCount == 1) "Publicado 1 archivo en el canal Wi‑Fi."
+                else "Publicados $fileCount archivos en el canal Wi‑Fi.")
         }
+    }
+
+    private fun updateDraft(
+        context: P2pAttachmentContext,
+        transform: (P2pAttachmentDraft<P2pOutboundSelection>) -> P2pAttachmentDraft<P2pOutboundSelection>
+    ) {
+        _state.update { it.copy(attachments = it.attachments.update(context, transform)) }
     }
 
     private fun loadOutboundSelections(uris: List<Uri>): List<P2pOutboundSelection> {

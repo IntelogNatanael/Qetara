@@ -9,6 +9,7 @@ internal enum class P2pExperienceCommand {
     CANCEL_LAN_SCAN,
     USE_SUGGESTED_TARGET,
     REFRESH_STATE,
+    REVIEW_TRUST,
     RENEW_SESSION,
     OPEN_DOWNLOADS,
     SYNC_TOKEN,
@@ -63,7 +64,7 @@ internal fun deriveP2pExperienceState(state: P2pScreenState): P2pExperienceState
     val connected = state.connection?.groupFormed == true
     val isHost = state.connection?.isGroupOwner == true
     val directBusy = state.directDiscovering || state.directConnecting || state.directCreatingGroup
-    val directReadyForExchange = !state.directTargetIp.isNullOrBlank()
+    val directReadyForExchange = state.sessionReady && !state.directTargetIp.isNullOrBlank()
     val directTargetLabel = state.directTargetLabel ?: state.directTargetIp
     val queueRunningCount = state.sendQueue.count { it.status == SendQueueStatus.RUNNING }
     val queueFailedCount = state.sendQueue.count { it.status == SendQueueStatus.FAILED }
@@ -82,7 +83,7 @@ internal fun deriveP2pExperienceState(state: P2pScreenState): P2pExperienceState
         ConnectionMode.WIFI_DIRECT -> state.wifiDirectModeEnabled
         ConnectionMode.LAN -> state.lanModeEnabled
     }
-    val lanReadyForExchange = state.lanConnected && (
+    val lanReadyForExchange = state.sessionReady && state.lanConnected && (
         !state.resolvedTargetIp.isNullOrBlank() ||
             !state.suggestedTargetIp.isNullOrBlank() ||
             state.knownServicePeers.any { it.ip.isNotBlank() }
@@ -274,9 +275,9 @@ internal fun deriveP2pExperienceState(state: P2pScreenState): P2pExperienceState
         )
 
         state.pendingCredentialShare != null -> P2pSupportBannerState(
-            title = "Aprobacion pendiente",
+            title = "Solicitud de conexión",
             body = "${state.pendingCredentialShare.label} quiere compartir la sesión.",
-            action = P2pExperienceAction("Revisar solicitud", P2pExperienceCommand.REFRESH_STATE)
+            action = P2pExperienceAction("Revisar solicitud", P2pExperienceCommand.REVIEW_TRUST)
         )
 
         state.sessionExpired -> P2pSupportBannerState(

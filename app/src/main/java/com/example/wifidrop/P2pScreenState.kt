@@ -96,5 +96,11 @@ data class P2pScreenState(
     val vibrateOnConnect: Boolean,
     val vibrateOnError: Boolean,
     val silentSuccessFeedback: Boolean,
-    val autoDownloadChannelFiles: Boolean
+    val autoDownloadChannelFiles: Boolean,
+    val attachmentContext: com.example.wifidrop.presentation.P2pAttachmentContext = com.example.wifidrop.presentation.P2pAttachmentContext.FILES,
+    val incomingShareEventId: Long? = null,
+    val sessionReady: Boolean = false,
+    val chatSessionReady: Boolean = false,
+    val sessionEnabled: Boolean = true,
+    val sessionSyncing: Boolean = false
 )

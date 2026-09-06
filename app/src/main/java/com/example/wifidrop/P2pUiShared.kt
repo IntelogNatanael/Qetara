@@ -2,6 +2,11 @@ package com.example.wifidrop
 
 import android.net.wifi.p2p.WifiP2pDevice
 import androidx.compose.foundation.border
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Arrangement
@@ -97,6 +102,7 @@ internal fun EmptyStateBlock(
         ) {
             Text(
                 text = title,
+                modifier = Modifier.semantics { heading() },
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold,
                 textAlign = TextAlign.Center
@@ -151,7 +157,7 @@ internal fun PrimaryActionBar(
                 modifier = if (primaryHeight != null) Modifier.height(primaryHeight) else Modifier,
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp)
             ) {
-                Text("Mas")
+                Text("Más")
             }
             DropdownMenu(
                 expanded = menuExpanded,
@@ -267,7 +273,11 @@ internal fun PreferenceToggleRow(
     subtitle: String? = null
 ) {
     Row(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .heightIn(min = 56.dp)
+            .toggleable(value = checked, role = Role.Switch, onValueChange = onCheckedChange)
+            .padding(vertical = 6.dp),
         horizontalArrangement = Arrangement.spacedBy(UiSpaceS),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -290,7 +300,7 @@ internal fun PreferenceToggleRow(
         }
         Switch(
             checked = checked,
-            onCheckedChange = onCheckedChange
+            onCheckedChange = null
         )
     }
 }
@@ -452,9 +462,9 @@ internal fun historyDirectionLabel(direction: TransferDirection): String {
 
 internal fun historyOutcomeLabel(outcome: TransferOutcome): String {
     return when (outcome) {
-        TransferOutcome.SUCCESS -> "OK"
-        TransferOutcome.FAILED -> "FALLIDO"
-        TransferOutcome.CANCELED -> "CANCELADO"
+        TransferOutcome.SUCCESS -> "Completado"
+        TransferOutcome.FAILED -> "No se completó"
+        TransferOutcome.CANCELED -> "Cancelado"
     }
 }
 

@@ -15,14 +15,21 @@ import com.example.wifidrop.protocol.NOISE_PROTOCOL_NO_PSK
 import com.example.wifidrop.protocol.NOISE_PROTOCOL_WITH_PSK
 import com.example.wifidrop.protocol.PACKET_CHALLENGE
 import com.example.wifidrop.protocol.PACKET_CREDENTIALS_REQUEST
-import com.example.wifidrop.protocol.PACKET_CREDENTIALS_RESPONSE
+import com.example.wifidrop.protocol.PACKET_SECURE_CREDENTIALS_REQUEST
+import com.example.wifidrop.protocol.SECURE_FRAME_CREDENTIALS_RESPONSE
+import com.example.wifidrop.protocol.digestMatches
+import com.example.wifidrop.protocol.requireValidFileChunk
+import com.example.wifidrop.protocol.requireValidFileHash
+import com.example.wifidrop.protocol.requireValidResumeOffset
+import com.example.wifidrop.protocol.publishReceivedFile
+import com.example.wifidrop.protocol.CompletedTransferReceipts
+import com.example.wifidrop.protocol.requireReceiveCapacity
 import com.example.wifidrop.protocol.PACKET_DISCOVERY_REQUEST
 import com.example.wifidrop.protocol.PACKET_DISCOVERY_RESPONSE
 import com.example.wifidrop.protocol.PACKET_FILE
 import com.example.wifidrop.protocol.PACKET_HELLO
 import com.example.wifidrop.protocol.PACKET_MESSAGE
 import com.example.wifidrop.protocol.PACKET_RESULT
-import com.example.wifidrop.protocol.PACKET_TOKEN_RESPONSE
 import com.example.wifidrop.protocol.PROTOCOL_MAGIC
 import com.example.wifidrop.protocol.PROTOCOL_VERSION
 import com.example.wifidrop.protocol.SECURE_FRAME_FILE_CHUNK
@@ -32,10 +39,10 @@ import com.example.wifidrop.protocol.SECURE_FRAME_FILE_RESUME
 import com.example.wifidrop.protocol.SECURE_FRAME_HELLO
 import com.example.wifidrop.protocol.SECURE_FRAME_MESSAGE
 import com.example.wifidrop.protocol.SECURE_FRAME_RESULT
-import com.example.wifidrop.protocol.isSha256Hex
 import com.example.wifidrop.protocol.normalizeToken
 import com.example.wifidrop.protocol.randomToken
-import com.example.wifidrop.protocol.requireValidMessage
+import com.example.wifidrop.protocol.requireValidTransportMessage
+import com.example.wifidrop.protocol.ReceivedMessageReceipts
 import com.example.wifidrop.protocol.requireValidPin
 import com.example.wifidrop.protocol.requireValidToken
 import com.example.wifidrop.protocol.sanitizeClientId
@@ -64,17 +71,26 @@ import javax.crypto.ShortBufferException
 import kr.jclab.noise.protocol.CipherState
 import kr.jclab.noise.protocol.HandshakeState
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 data class SessionCredentialsPayload(
     val token: String,
     val pin: String,
-    val expiresAtMs: Long
+    val expiresAtMs: Long,
+    val peerId: String? = null,
+    val peerLabel: String? = null,
+    val noiseStaticKey: String? = null
 )
 
 data class PeerDiscoveryPayload(
@@ -88,6 +104,7 @@ data class PeerDiscoveryPayload(
 object FileTransfer {
 
     const val DEFAULT_PORT = WDRP_DEFAULT_PORT
+    private val receivedFileMutex = Mutex()
 
     suspend fun sendFile(
         context: Context,
@@ -101,7 +118,9 @@ object FileTransfer {
         port: Int = DEFAULT_PORT,
         onProgress: (sentBytes: Long, totalBytes: Long) -> Unit,
         awaitIfPaused: suspend () -> Unit = {},
-        isCancelled: () -> Boolean = { false }
+        isCancelled: () -> Boolean = { false },
+        transferId: String = TransferSecurity.randomNonce(32),
+        expectedPeerId: String? = null
     ): Result<String> = withContext(Dispatchers.IO) {
         runCatching {
             val token = requireValidToken(tokenRaw)
@@ -111,11 +130,15 @@ object FileTransfer {
             val safeName = sanitizeFileName(
                 fileNameRaw.ifBlank { "file_${System.currentTimeMillis()}" }
             )
-            val (total, fileHash) = computeUriSha256AndLength(context, fileUri)
-            val clientNonce = TransferSecurity.randomNonce()
+            val (total, fileHash) = computeUriSha256AndLength(context, fileUri) {
+                awaitIfPaused()
+                currentCoroutineContext().ensureActive()
+                if (isCancelled()) throw CancellationException("cancelado por usuario")
+            }
+            val clientNonce = transferId.take(64).also { require(it.isNotBlank()) { "id de transferencia invalido" } }
 
             withRetry {
-                Socket().use { socket ->
+                withSocketCancellation(Socket(), isCancelled) { socket ->
                     configureSocket(socket)
                     socket.connect(InetSocketAddress(hostAddress, port), 10_000)
                     socket.soTimeout = 120_000
@@ -153,6 +176,7 @@ object FileTransfer {
                         usePsk = true,
                         purpose = "FILE"
                     ).use { channel ->
+                        verifyReceiverIdentity(context, hostAddress, expectedPeerId, channel.remoteStaticKeyBase64)
                         channel.writeFrame { frame ->
                             frame.writeInt(SECURE_FRAME_FILE_META)
                             frame.writeUTF(safeName)
@@ -173,7 +197,9 @@ object FileTransfer {
                                 currentCoroutineContext().ensureActive()
                                 if (isCancelled()) throw CancellationException("cancelado por usuario")
                                 val read = fileInput.read(buffer)
-                                if (read <= 0) break
+                                if (read < 0) break
+                                if (read == 0) continue
+                                requireValidFileChunk(total, sent, read)
 
                                 channel.writeFrame { frame ->
                                     frame.writeInt(SECURE_FRAME_FILE_CHUNK)
@@ -183,6 +209,7 @@ object FileTransfer {
                                 sent += read
                                 onProgress(sent, total)
                             }
+                            check(sent == total) { "El archivo cambio durante el envio. Vuelve a seleccionarlo." }
                         } ?: error("No se pudo abrir InputStream del archivo")
 
                         channel.writeFrame { it.writeInt(SECURE_FRAME_FILE_DONE) }
@@ -204,19 +231,25 @@ object FileTransfer {
         clientIdRaw: String,
         clientLabelRaw: String,
         messageRaw: String,
-        port: Int = DEFAULT_PORT
+        port: Int = DEFAULT_PORT,
+        expectedPeerId: String? = null,
+        messageId: String = TransferSecurity.randomNonce(32),
+        localBindAddress: String? = null,
+        validateDestination: () -> Unit = {}
     ): Result<String> = withContext(Dispatchers.IO) {
         runCatching {
             val token = requireValidToken(tokenRaw)
             val pin = requireValidPin(pinRaw)
             val clientId = sanitizeClientId(clientIdRaw)
             val clientLabel = sanitizePeerLabel(clientLabelRaw)
-            val message = requireValidMessage(messageRaw)
-            val clientNonce = TransferSecurity.randomNonce()
+            val message = requireValidTransportMessage(messageRaw)
+            val clientNonce = messageId.take(64).also { require(it.isNotBlank()) { "id de mensaje invalido" } }
 
             withRetry {
-                Socket().use { socket ->
+                withSocketCancellation(Socket()) { socket ->
+                    validateDestination()
                     configureSocket(socket)
+                    if (localBindAddress != null) socket.bind(InetSocketAddress(localBindAddress, 0))
                     socket.connect(InetSocketAddress(hostAddress, port), 8_000)
                     socket.soTimeout = 60_000
 
@@ -253,6 +286,8 @@ object FileTransfer {
                         usePsk = true,
                         purpose = "MESSAGE"
                     ).use { channel ->
+                        verifyReceiverIdentity(context, hostAddress, expectedPeerId, channel.remoteStaticKeyBase64)
+                        validateDestination()
                         channel.writeFrame { frame ->
                             frame.writeInt(SECURE_FRAME_MESSAGE)
                             frame.writeLong(System.currentTimeMillis())
@@ -275,7 +310,8 @@ object FileTransfer {
         pinRaw: String,
         clientIdRaw: String,
         deviceLabelRaw: String,
-        port: Int = DEFAULT_PORT
+        port: Int = DEFAULT_PORT,
+        expectedPeerId: String? = null
     ): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
             val token = requireValidToken(tokenRaw)
@@ -285,7 +321,7 @@ object FileTransfer {
             val clientNonce = TransferSecurity.randomNonce()
 
             withRetry {
-                Socket().use { socket ->
+                withSocketCancellation(Socket()) { socket ->
                     configureSocket(socket)
                     socket.connect(InetSocketAddress(hostAddress, port), 8_000)
                     socket.soTimeout = 20_000
@@ -323,6 +359,7 @@ object FileTransfer {
                         usePsk = true,
                         purpose = "HELLO"
                     ).use { channel ->
+                        verifyReceiverIdentity(context, hostAddress, expectedPeerId, channel.remoteStaticKeyBase64)
                         channel.writeFrame { frame ->
                             frame.writeInt(SECURE_FRAME_HELLO)
                             frame.writeLong(System.currentTimeMillis())
@@ -336,12 +373,14 @@ object FileTransfer {
     }
 
     suspend fun requestSessionToken(
+        context: Context,
         hostAddress: String,
         clientIdRaw: String,
         deviceLabelRaw: String,
         port: Int = DEFAULT_PORT
     ): Result<SessionCredentialsPayload> = withContext(Dispatchers.IO) {
         requestSessionCredentials(
+            context = context,
             hostAddress = hostAddress,
             clientIdRaw = clientIdRaw,
             deviceLabelRaw = deviceLabelRaw,
@@ -350,6 +389,7 @@ object FileTransfer {
     }
 
     suspend fun requestSessionCredentials(
+        context: Context,
         hostAddress: String,
         clientIdRaw: String,
         deviceLabelRaw: String,
@@ -361,7 +401,7 @@ object FileTransfer {
             val clientNonce = TransferSecurity.randomNonce()
 
             withRetry {
-                Socket().use { socket ->
+                withSocketCancellation(Socket()) { socket ->
                     configureSocket(socket)
                     socket.connect(InetSocketAddress(hostAddress, port), 8_000)
                     socket.soTimeout = 12_000
@@ -371,15 +411,58 @@ object FileTransfer {
 
                     writeClientEnvelope(
                         output = out,
-                        packetType = PACKET_CREDENTIALS_REQUEST,
+                        packetType = PACKET_SECURE_CREDENTIALS_REQUEST,
                         clientId = clientId,
                         clientLabel = label,
                         clientNonce = clientNonce
                     )
 
                     out.flush()
-                    socket.shutdownOutput()
-                    readCredentialsResponseOrFailure(input)
+                    require(input.readInt() == PROTOCOL_MAGIC && input.readInt() == PROTOCOL_VERSION) {
+                        "Version de Qetara incompatible. Introduce token y PIN manualmente."
+                    }
+                    require(input.readInt() == PACKET_RESULT) { "respuesta de emparejamiento invalida" }
+                    val ready = input.readBoolean()
+                    val readyMessage = input.readUTF()
+                    check(ready && readyMessage == "secure_credentials_v1") {
+                        "emparejamiento_manual_requerido: $readyMessage"
+                    }
+                    establishSecureChannel(
+                        context = context, input = input, output = out, initiator = true,
+                        token = "", pin = "", usePsk = false, purpose = "CREDENTIALS"
+                    ).use { channel ->
+                        val remoteKey = channel.remoteStaticKeyBase64
+                            ?: throw SecurityException("identidad Noise ausente")
+                        val frame = channel.readFrameInput()
+                        when (frame.readInt()) {
+                            SECURE_FRAME_RESULT -> {
+                                frame.readBoolean()
+                                throw SecurityException(frame.readUTF())
+                            }
+                            SECURE_FRAME_CREDENTIALS_RESPONSE -> {
+                                val peerId = sanitizeClientId(frame.readUTF())
+                                val peerLabel = sanitizePeerLabel(frame.readUTF())
+                                val savedPeers = TrustedPeerStore.all(context)
+                                val knownPeer = savedPeers.firstOrNull { it.id == peerId }
+                                    ?: savedPeers.firstOrNull { it.lastKnownIp == hostAddress }
+                                if (knownPeer?.noiseStaticKey?.let { it != remoteKey } == true) {
+                                    throw SecurityException("noise_key_mismatch")
+                                }
+                                val receivedToken = requireValidToken(frame.readUTF())
+                                val receivedPin = requireValidPin(frame.readUTF())
+                                val expiry = frame.readLong()
+                                check(!TransferSecurity.isExpired(expiry)) { "sesion_expirada" }
+                                require(frame.available() == 0) { "respuesta de credenciales invalida" }
+                                // TOFU: subsequent sessions must present this same cryptographic identity.
+                                check(TrustedPeerStore.trustWithNoiseKey(context, peerId, peerLabel, remoteKey)) {
+                                    "noise_key_mismatch"
+                                }
+                                TrustedPeerStore.updateSeen(context, peerId, peerLabel, hostAddress)
+                                SessionCredentialsPayload(receivedToken, receivedPin, expiry, peerId, peerLabel, remoteKey)
+                            }
+                            else -> throw SecurityException("respuesta de credenciales cifradas invalida")
+                        }
+                    }
                 }
             }
         }
@@ -396,7 +479,7 @@ object FileTransfer {
             val label = sanitizePeerLabel(deviceLabelRaw)
             val clientNonce = TransferSecurity.randomNonce()
 
-            Socket().use { socket ->
+            withSocketCancellation(Socket()) { socket ->
                 configureSocket(socket)
                 socket.connect(InetSocketAddress(hostAddress, port), 450)
                 socket.soTimeout = 900
@@ -431,73 +514,119 @@ object FileTransfer {
         port: Int = DEFAULT_PORT,
         onStatus: (String) -> Unit,
         onPeerSeen: (peerId: String, peerAddress: String, peerLabel: String, trusted: Boolean) -> Unit,
-        onCredentialsRequested: (peerId: String, peerAddress: String, peerLabel: String, trusted: Boolean) -> Boolean,
+        onCredentialsRequested: (peerId: String, peerAddress: String, peerLabel: String, trusted: Boolean, noiseStaticKey: String) -> Boolean,
         onTrustRequired: (peerId: String, peerAddress: String, peerLabel: String) -> Unit,
-        onMessageReceived: (peerId: String, peerAddress: String, peerLabel: String, message: String) -> Unit = { _, _, _, _ -> },
+        onMessageReceived: (peerId: String, peerAddress: String, peerLabel: String, message: String, route: PeerRouteObservation) -> Unit = { _, _, _, _, _ -> },
         onProgress: (fileName: String, receivedBytes: Long, totalBytes: Long) -> Unit,
-        onFileReceived: (File) -> Unit,
+        onFileReceived: (File, peerId: String, peerAddress: String, peerLabel: String) -> Unit,
         awaitIfPaused: suspend () -> Unit = {},
-        isCancelled: () -> Boolean = { false }
+        isCancelled: () -> Boolean = { false },
+        cancellationGeneration: () -> Long = { 0L },
+        onListening: () -> Unit = {},
+        onReceiveFailed: (Throwable) -> Unit = {},
+        onCredentialsShared: (peerId: String, peerAddress: String, peerLabel: String) -> Unit = { _, _, _ -> },
+        onAuthenticatedPeerRoute: (PeerRouteObservation) -> Unit = {}
     ) = withContext(Dispatchers.IO) {
         val expectedToken = requireValidToken(expectedTokenRaw)
         val expectedPin = requireValidPin(expectedPinRaw)
 
-        receiveDir.mkdirs()
+        check(receiveDir.isDirectory || receiveDir.mkdirs()) { "No se pudo crear la carpeta de recepcion" }
 
-        ServerSocket().use { server ->
-            server.reuseAddress = true
-            server.bind(InetSocketAddress(port))
-            server.soTimeout = 1_000
+        val messageReceipts = ReceivedMessageReceipts(receiveDir)
+        coroutineScope {
+            val clientSlots = Semaphore(4)
+            ServerSocket().use { server ->
+                server.reuseAddress = true
+                server.bind(InetSocketAddress(port))
+                server.soTimeout = 1_000
+                onListening()
+                onStatus("Esperando archivos en puerto $port")
 
-            onStatus("Escuchando en puerto $port")
-
-            while (currentCoroutineContext().isActive) {
-                awaitIfPaused()
-                currentCoroutineContext().ensureActive()
-
-                try {
-                    val client = server.accept()
-                    client.use { socket ->
-                        configureSocket(socket)
-                        socket.soTimeout = 120_000
-
-                        val remoteIp = socket.inetAddress?.hostAddress ?: "desconocido"
+                while (currentCoroutineContext().isActive) {
+                    currentCoroutineContext().ensureActive()
+                    val client = try {
+                        server.accept()
+                    } catch (_: SocketTimeoutException) {
+                        continue
+                    } catch (error: SocketException) {
+                        currentCoroutineContext().ensureActive()
+                        throw error
+                    }
+                    if (!clientSlots.tryAcquire()) {
+                        client.close()
+                        continue
+                    }
+                    val acceptedAtElapsedMs = android.os.SystemClock.elapsedRealtime()
+                    val acceptedGeneration = cancellationGeneration()
+                    val worker = launch(Dispatchers.IO, start = CoroutineStart.LAZY) {
                         try {
-                            receiveOne(
-                                context = context,
-                                socket = socket,
-                                remoteIp = remoteIp,
-                                receiveDir = receiveDir,
-                                expectedToken = expectedToken,
-                                expectedPin = expectedPin,
-                                sessionExpiresAtMs = sessionExpiresAtMs,
-                                isPeerTrusted = isPeerTrusted,
-                                isGlobalLanJoined = isGlobalLanJoined,
-                                isNoiseKeyCompatible = isNoiseKeyCompatible,
-                                onNoiseKeyObserved = onNoiseKeyObserved,
-                                onPeerSeen = onPeerSeen,
-                                onCredentialsRequested = onCredentialsRequested,
-                                onTrustRequired = onTrustRequired,
-                                onMessageReceived = onMessageReceived,
-                                onProgress = onProgress,
-                                onFileReceived = onFileReceived,
-                                awaitIfPaused = awaitIfPaused,
-                                isCancelled = isCancelled
-                            )
-                        } catch (se: SecurityException) {
-                            onStatus("Conexion rechazada de $remoteIp: ${se.message ?: "no autorizada"}")
-                        } catch (_: CancellationException) {
-                            onStatus("Transferencia cancelada por usuario.")
-                        } catch (e: Exception) {
-                            onStatus("Error procesando cliente $remoteIp: ${e.message ?: e::class.java.simpleName}")
+                            val isClientCancelled = { isCancelled() || cancellationGeneration() != acceptedGeneration }
+                            withSocketCancellation(client, isClientCancelled) { socket ->
+                                configureSocket(socket)
+                                socket.soTimeout = 10_000
+                                val remoteIp = socket.inetAddress?.hostAddress ?: "desconocido"
+                                var fileStarted = false
+                                try {
+                                    receiveOne(
+                                        context = context, socket = socket, remoteIp = remoteIp,
+                                        acceptedAtElapsedMs = acceptedAtElapsedMs, onAuthenticatedPeerRoute = onAuthenticatedPeerRoute,
+                                        receiveDir = receiveDir, messageReceipts = messageReceipts,
+                                        expectedToken = expectedToken, expectedPin = expectedPin,
+                                        sessionExpiresAtMs = sessionExpiresAtMs,
+                                        isPeerTrusted = isPeerTrusted, isGlobalLanJoined = isGlobalLanJoined,
+                                        isNoiseKeyCompatible = isNoiseKeyCompatible, onNoiseKeyObserved = onNoiseKeyObserved,
+                                        onPeerSeen = onPeerSeen, onCredentialsRequested = onCredentialsRequested,
+                                        onCredentialsShared = onCredentialsShared,
+                                        onTrustRequired = onTrustRequired, onMessageReceived = onMessageReceived,
+                                        onProgress = { name, received, total ->
+                                            fileStarted = true
+                                            onProgress(name, received, total)
+                                        },
+                                        onFileReceived = { file, peerId, peerAddress, peerLabel ->
+                                            fileStarted = false
+                                            onFileReceived(file, peerId, peerAddress, peerLabel)
+                                        },
+                                        onFileTransferFailed = { error ->
+                                            if (fileStarted) {
+                                                fileStarted = false
+                                                val failure = if (isClientCancelled()) {
+                                                    CancellationException("cancelado por usuario")
+                                                } else error
+                                                onReceiveFailed(failure)
+                                            }
+                                        },
+                                        awaitIfPaused = awaitIfPaused, isCancelled = isClientCancelled
+                                    )
+                                } catch (error: CancellationException) {
+                                    if (fileStarted) onReceiveFailed(error)
+                                    currentCoroutineContext().ensureActive()
+                                    onStatus("Transferencia cancelada por usuario.")
+                                } catch (error: Exception) {
+                                    currentCoroutineContext().ensureActive()
+                                    val failure = if (isClientCancelled()) CancellationException("cancelado por usuario") else error
+                                    if (fileStarted) onReceiveFailed(failure)
+                                    if (failure is CancellationException) {
+                                        onStatus("Transferencia cancelada por usuario.")
+                                    } else if (error is SecurityException) {
+                                        onStatus("Conexion rechazada de $remoteIp: ${error.message ?: "no autorizada"}")
+                                    } else {
+                                        onStatus("Error procesando cliente $remoteIp: ${error.message ?: error::class.java.simpleName}")
+                                    }
+                                }
+                            }
+                        } catch (cancel: CancellationException) {
+                            currentCoroutineContext().ensureActive()
+                        } catch (error: Exception) {
+                            // A failed client must not cancel the listening scope and other transfers.
+                            onStatus("Conexion cerrada: ${error.message ?: error::class.java.simpleName}")
                         }
                     }
-                } catch (_: SocketTimeoutException) {
-                    // Loop heartbeat for cancellation + pause checks.
-                } catch (e: SocketException) {
-                    if (currentCoroutineContext().isActive) {
-                        throw e
+                    // Also runs if cancellation happens before the worker's body starts.
+                    worker.invokeOnCompletion {
+                        runCatching { client.close() }
+                        clientSlots.release()
                     }
+                    worker.start()
                 }
             }
         }
@@ -536,7 +665,10 @@ object FileTransfer {
         context: Context,
         socket: Socket,
         remoteIp: String,
+        acceptedAtElapsedMs: Long,
+        onAuthenticatedPeerRoute: (PeerRouteObservation) -> Unit,
         receiveDir: File,
+        messageReceipts: ReceivedMessageReceipts,
         expectedToken: String,
         expectedPin: String,
         sessionExpiresAtMs: Long,
@@ -545,11 +677,13 @@ object FileTransfer {
         isNoiseKeyCompatible: (peerId: String, noiseStaticKey: String) -> Boolean,
         onNoiseKeyObserved: (peerId: String, noiseStaticKey: String) -> Unit,
         onPeerSeen: (peerId: String, peerAddress: String, peerLabel: String, trusted: Boolean) -> Unit,
-        onCredentialsRequested: (peerId: String, peerAddress: String, peerLabel: String, trusted: Boolean) -> Boolean,
+        onCredentialsRequested: (peerId: String, peerAddress: String, peerLabel: String, trusted: Boolean, noiseStaticKey: String) -> Boolean,
         onTrustRequired: (peerId: String, peerAddress: String, peerLabel: String) -> Unit,
-        onMessageReceived: (peerId: String, peerAddress: String, peerLabel: String, message: String) -> Unit,
+        onMessageReceived: (peerId: String, peerAddress: String, peerLabel: String, message: String, route: PeerRouteObservation) -> Unit,
         onProgress: (fileName: String, receivedBytes: Long, totalBytes: Long) -> Unit,
-        onFileReceived: (File) -> Unit,
+        onFileReceived: (File, peerId: String, peerAddress: String, peerLabel: String) -> Unit,
+        onFileTransferFailed: (Throwable) -> Unit,
+        onCredentialsShared: (peerId: String, peerAddress: String, peerLabel: String) -> Unit,
         awaitIfPaused: suspend () -> Unit,
         isCancelled: () -> Boolean
     ) {
@@ -571,12 +705,14 @@ object FileTransfer {
             val clientId = sanitizeClientId(input.readUTF())
             val clientLabel = sanitizePeerLabel(input.readUTF())
             val clientNonce = input.readUTF().take(64)
+            val route = PeerRouteObservation(clientId, remoteIp, socket.localAddress?.hostAddress.orEmpty(), acceptedAtElapsedMs)
 
             val trusted = isPeerTrusted(clientId)
-            val isCredentialsRequest = packetType == PACKET_CREDENTIALS_REQUEST
-            onPeerSeen(clientId, remoteIp, clientLabel, trusted)
+            val isCredentialsRequest = packetType == PACKET_SECURE_CREDENTIALS_REQUEST
 
             if (packetType == PACKET_DISCOVERY_REQUEST) {
+                // Discovery carries no identity proof; never overwrite a trusted peer's address from it.
+                onPeerSeen(clientId, remoteIp, clientLabel, false)
                 val localPeerId = LocalDeviceIdentity.getOrCreate(context)
                 val localLabel = sanitizePeerLabel(Build.MODEL ?: "android")
                 val sessionActive = !TransferSecurity.isExpired(sessionExpiresAtMs)
@@ -591,10 +727,10 @@ object FileTransfer {
                 return
             }
 
-            if (!trusted && !isCredentialsRequest) {
-                onTrustRequired(clientId, remoteIp, clientLabel)
-                writeResultPacket(output, false, "dispositivo_no_confiable")
-                throw SecurityException("dispositivo no confiable")
+            if (com.example.wifidrop.protocol.requiresEncryptedCredentials(packetType)) {
+                // Retire the unauthenticated plaintext exchange, including for previously trusted IDs.
+                writeResultPacket(output, false, "secure_credentials_required")
+                return
             }
 
             if (TransferSecurity.isExpired(sessionExpiresAtMs)) {
@@ -603,22 +739,40 @@ object FileTransfer {
             }
 
             if (isCredentialsRequest) {
-                val allowCredentials = onCredentialsRequested(clientId, remoteIp, clientLabel, trusted)
-                if (!allowCredentials) {
-                    writeResultPacket(output, false, "confirmacion_host_requerida")
-                    return
+                writeResultPacket(output, true, "secure_credentials_v1")
+                establishSecureChannel(
+                    context = context, input = input, output = output, initiator = false,
+                    token = "", pin = "", usePsk = false, purpose = "CREDENTIALS"
+                ).use { channel ->
+                    val noiseKey = channel.remoteStaticKeyBase64
+                        ?: throw SecurityException("identidad Noise ausente")
+                    val pinnedKey = TrustedPeerStore.all(context).firstOrNull { it.id == clientId }?.noiseStaticKey
+                    if (!pinnedKey.isNullOrBlank() && pinnedKey != noiseKey) {
+                        writeSecureResult(channel, false, "noise_key_mismatch")
+                        throw SecurityException("noise_key_mismatch")
+                    }
+                    val keyApproved = trusted && pinnedKey == noiseKey
+                    if (!onCredentialsRequested(clientId, remoteIp, clientLabel, keyApproved, noiseKey)) {
+                        writeSecureResult(channel, false, "confirmacion_host_requerida")
+                        return
+                    }
+                    if (!isPeerTrusted(clientId) || !isNoiseKeyCompatible(clientId, noiseKey)) {
+                        writeSecureResult(channel, false, "dispositivo_no_confiable")
+                        return
+                    }
+                    onNoiseKeyObserved(clientId, noiseKey)
+                    onPeerSeen(clientId, remoteIp, clientLabel, true)
+                    onAuthenticatedPeerRoute(route.copy(noiseStaticKey = noiseKey))
+                    channel.writeFrame { frame ->
+                        frame.writeInt(SECURE_FRAME_CREDENTIALS_RESPONSE)
+                        frame.writeUTF(LocalDeviceIdentity.getOrCreate(context))
+                        frame.writeUTF(sanitizePeerLabel(Build.MODEL ?: "android"))
+                        frame.writeUTF(expectedToken)
+                        frame.writeUTF(expectedPin)
+                        frame.writeLong(sessionExpiresAtMs)
+                    }
+                    onCredentialsShared(clientId, remoteIp, clientLabel)
                 }
-                val trustedAfterApproval = trusted || isPeerTrusted(clientId)
-                if (!trustedAfterApproval) {
-                    writeResultPacket(output, false, "dispositivo_no_confiable")
-                    return
-                }
-                writeCredentialsResponsePacket(
-                    output = output,
-                    token = expectedToken,
-                    pin = expectedPin,
-                    expiresAtMs = sessionExpiresAtMs
-                )
                 return
             }
 
@@ -644,7 +798,7 @@ object FileTransfer {
                 tokenOrBlank = expectedToken,
                 pin = expectedPin
             )
-            if (responseDigest != expectedDigest) {
+            if (!digestMatches(responseDigest, expectedDigest)) {
                 writeResultPacket(output, false, "auth_invalida")
                 throw SecurityException("autenticacion invalida")
             }
@@ -659,14 +813,37 @@ object FileTransfer {
                 usePsk = true,
                 purpose = purpose
             ).use { channel ->
+                socket.soTimeout = 120_000
                 val noiseKey = channel.remoteStaticKeyBase64
-                if (!noiseKey.isNullOrBlank()) {
+                    ?: throw SecurityException("identidad Noise ausente")
+                val authorized = try {
+                    authorizeAuthenticatedPeer(
+                        remoteNoiseKey = noiseKey,
+                        isTrusted = { isPeerTrusted(clientId) },
+                        pinnedNoiseKey = {
+                            TrustedPeerStore.all(context).firstOrNull { it.id == clientId }?.noiseStaticKey
+                        },
+                        requestApproval = {
+                            onCredentialsRequested(clientId, remoteIp, clientLabel, false, noiseKey)
+                        }
+                    )
+                } catch (error: SecurityException) {
+                    writeSecureResult(channel, false, error.message ?: "dispositivo_no_confiable")
+                    throw error
+                }
+                if (!authorized) {
+                    writeSecureResult(channel, false, "confirmacion_host_requerida")
+                    return
+                }
+                if (noiseKey.isNotBlank()) {
                     if (!isNoiseKeyCompatible(clientId, noiseKey)) {
                         writeSecureResult(channel, false, "noise_key_mismatch")
                         throw SecurityException("clave Noise no coincide para peer confiado")
                     }
                     onNoiseKeyObserved(clientId, noiseKey)
                 }
+                onPeerSeen(clientId, remoteIp, clientLabel, true)
+                onAuthenticatedPeerRoute(route.copy(noiseStaticKey = noiseKey))
 
                 when (packetType) {
                     PACKET_HELLO -> {
@@ -676,19 +853,23 @@ object FileTransfer {
                         writeSecureResult(channel, true, "hello_ok")
                     }
 
-                    PACKET_FILE -> {
+                    PACKET_FILE -> receivedFileMutex.withLock {
                         try {
                             val saved = receiveEncryptedFilePayload(
                                 channel = channel,
                                 receiveDir = receiveDir,
+                                peerId = clientId,
+                                attemptId = clientNonce,
                                 onProgress = onProgress,
-                                onFileReceived = onFileReceived,
+                                onFileReceived = { file -> onFileReceived(file, clientId, remoteIp, clientLabel) },
                                 awaitIfPaused = awaitIfPaused,
                                 isCancelled = isCancelled
                             )
                             writeSecureResult(channel, true, "saved:${saved.name}")
                         } catch (e: Exception) {
-                            writeSecureResult(channel, false, e.message ?: "file_error")
+                            // Clear this file's progress before the next file can acquire the mutex.
+                            onFileTransferFailed(e)
+                            runCatching { writeSecureResult(channel, false, e.message ?: "file_error") }
                             throw e
                         }
                     }
@@ -699,8 +880,11 @@ object FileTransfer {
                             val frameType = frame.readInt()
                             require(frameType == SECURE_FRAME_MESSAGE) { "frame MESSAGE invalido" }
                             frame.readLong()
-                            val message = requireValidMessage(frame.readUTF())
-                            onMessageReceived(clientId, remoteIp, clientLabel, message)
+                            val message = requireValidTransportMessage(frame.readUTF())
+                            require(frame.available() == 0) { "frame MESSAGE invalido" }
+                            messageReceipts.deliverOnce(clientId, clientNonce, message) {
+                                onMessageReceived(clientId, remoteIp, clientLabel, message, route.copy(noiseStaticKey = noiseKey))
+                            }
                             writeSecureResult(channel, true, "message_ok")
                         } catch (e: Exception) {
                             writeSecureResult(channel, false, e.message ?: "message_error")
@@ -717,6 +901,8 @@ object FileTransfer {
     private suspend fun receiveEncryptedFilePayload(
         channel: SecureChannel,
         receiveDir: File,
+        peerId: String,
+        attemptId: String,
         onProgress: (fileName: String, receivedBytes: Long, totalBytes: Long) -> Unit,
         onFileReceived: (File) -> Unit,
         awaitIfPaused: suspend () -> Unit,
@@ -729,15 +915,34 @@ object FileTransfer {
         val incomingName = sanitizeFileName(metaFrame.readUTF())
         val total = metaFrame.readLong()
         require(total >= 0L) { "tamano invalido para archivo" }
-        val expectedHash = metaFrame.readUTF().lowercase().take(64)
-        require(isSha256Hex(expectedHash)) { "hash de archivo invalido" }
+        val expectedHash = requireValidFileHash(metaFrame.readUTF())
+        require(metaFrame.available() == 0) { "metadatos de archivo invalidos" }
 
-        val partialDir = File(receiveDir, ".partial").apply { mkdirs() }
-        val partial = partialFileFor(partialDir, incomingName, total, expectedHash)
-        if (partial.exists() && partial.length() > total) {
-            partial.delete()
+        val receiveContext = currentCoroutineContext()
+        fun checkActive() {
+            receiveContext.ensureActive()
+            if (isCancelled()) throw CancellationException("cancelado por usuario")
         }
-        var received = if (partial.exists()) partial.length().coerceIn(0L, total) else 0L
+        val receipts = CompletedTransferReceipts(receiveDir)
+        val alreadySaved = receipts.find(peerId, attemptId, incomingName, total, expectedHash, ::checkActive)
+        if (alreadySaved != null) {
+            writeResumeOffset(channel, total)
+            val done = channel.readFrameInput()
+            require(done.readInt() == SECURE_FRAME_FILE_DONE && done.available() == 0) {
+                "se esperaba confirmacion de archivo completado"
+            }
+            return alreadySaved
+        }
+
+        val partialDir = File(receiveDir, ".partial")
+        check(partialDir.isDirectory || partialDir.mkdirs()) { "carpeta temporal no disponible" }
+        val partial = partialFileFor(partialDir, incomingName, total, expectedHash)
+        require(partial.canonicalFile.parentFile == partialDir.canonicalFile) { "ruta temporal no permitida" }
+        if (partial.exists() && partial.length() > total) {
+            check(partial.delete()) { "no se pudo restablecer el archivo parcial" }
+        }
+        var received = if (partial.exists()) partial.length() else 0L
+        requireReceiveCapacity(total, received, partialDir.usableSpace)
         writeResumeOffset(channel, received)
         onProgress(incomingName, received, total)
 
@@ -755,9 +960,8 @@ object FileTransfer {
                     when (frame.readInt()) {
                         SECURE_FRAME_FILE_CHUNK -> {
                             val chunkLen = frame.readInt()
-                            require(chunkLen in 0..MAX_SECURE_FILE_CHUNK_BYTES) {
-                                "chunk invalido: $chunkLen"
-                            }
+                            requireValidFileChunk(total, received, chunkLen)
+                            require(frame.available() == chunkLen) { "longitud de chunk invalida" }
 
                             if (chunkLen > 0) {
                                 val chunk = ByteArray(chunkLen)
@@ -767,7 +971,7 @@ object FileTransfer {
                                 onProgress(incomingName, received, total)
                             }
 
-                            if (total > 0 && received > total) {
+                            if (received > total) {
                                 throw EOFException("transferencia excede tamano esperado")
                             }
                         }
@@ -778,38 +982,30 @@ object FileTransfer {
                 }
 
                 out.flush()
+                fos.fd.sync()
             }
 
-        if (total >= 0 && received != total) {
+        if (received != total) {
             throw EOFException("transferencia incompleta para $incomingName: $received/$total")
         }
 
-        val actualHash = sha256OfFile(partial)
+        val actualHash = com.example.wifidrop.protocol.sha256File(partial, ::checkActive)
         if (actualHash != expectedHash) {
             partial.delete()
             throw SecurityException("integridad SHA-256 invalida para $incomingName")
         }
 
-        val target = uniqueDestination(receiveDir, incomingName)
-        moveFileAtomically(partial, target)
+        val target = publishReceivedFile(partial, receiveDir, incomingName)
+        receipts.remember(peerId, attemptId, incomingName, total, expectedHash, target)
         onFileReceived(target)
         return target
     }
 
-    private fun uniqueDestination(dir: File, name: String): File {
-        val base = name.substringBeforeLast('.', name)
-        val ext = name.substringAfterLast('.', "")
-        var candidate = File(dir, name)
-        var i = 1
-        while (candidate.exists()) {
-            val nextName = if (ext.isBlank()) "$base ($i)" else "$base ($i).$ext"
-            candidate = File(dir, nextName)
-            i++
-        }
-        return candidate
-    }
-
-    private suspend fun computeUriSha256AndLength(context: Context, uri: Uri): Pair<Long, String> {
+    private suspend fun computeUriSha256AndLength(
+        context: Context,
+        uri: Uri,
+        awaitReady: suspend () -> Unit = {}
+    ): Pair<Long, String> {
         val digest = MessageDigest.getInstance("SHA-256")
         val buffer = ByteArray(64 * 1024)
         var total = 0L
@@ -818,28 +1014,17 @@ object FileTransfer {
 
         input.use { stream ->
             while (true) {
+                awaitReady()
                 currentCoroutineContext().ensureActive()
                 val read = stream.read(buffer)
-                if (read <= 0) break
+                if (read < 0) break
+                if (read == 0) continue
                 digest.update(buffer, 0, read)
                 total += read
             }
         }
 
         return total to digest.digest().toHexLower()
-    }
-
-    private fun sha256OfFile(file: File): String {
-        val digest = MessageDigest.getInstance("SHA-256")
-        val buffer = ByteArray(64 * 1024)
-        FileInputStream(file).use { input ->
-            while (true) {
-                val read = input.read(buffer)
-                if (read <= 0) break
-                digest.update(buffer, 0, read)
-            }
-        }
-        return digest.digest().toHexLower()
     }
 
     private fun writeResumeOffset(channel: SecureChannel, resumeOffset: Long) {
@@ -853,9 +1038,14 @@ object FileTransfer {
     private fun readResumeOffset(channel: SecureChannel, totalBytes: Long): Long {
         val frame = channel.readFrameInput()
         val frameType = frame.readInt()
+        if (frameType == SECURE_FRAME_RESULT) {
+            frame.readBoolean()
+            throw SecurityException(frame.readUTF().take(200))
+        }
         require(frameType == SECURE_FRAME_FILE_RESUME) { "frame FILE_RESUME invalido" }
         val requested = frame.readLong()
-        return requested.coerceIn(0L, totalBytes.coerceAtLeast(0L))
+        require(frame.available() == 0) { "frame FILE_RESUME invalido" }
+        return requireValidResumeOffset(requested, totalBytes)
     }
 
     private fun skipExactly(input: InputStream, bytesToSkip: Long) {
@@ -886,27 +1076,6 @@ object FileTransfer {
         return File(partialDir, "${prefix}_${totalBytes}_$digest.part")
     }
 
-    private fun moveFileAtomically(source: File, target: File) {
-        if (source.renameTo(target)) return
-
-        try {
-            FileInputStream(source).use { input ->
-                FileOutputStream(target).use { output ->
-                    input.copyTo(output, 64 * 1024)
-                    output.flush()
-                    output.fd.sync()
-                }
-            }
-        } catch (e: Exception) {
-            target.delete()
-            throw e
-        }
-
-        if (!source.delete()) {
-            source.deleteOnExit()
-        }
-    }
-
     private fun contentLength(context: Context, uri: Uri): Long {
         return try {
             context.contentResolver.openFileDescriptor(uri, "r")?.use { pfd ->
@@ -915,6 +1084,31 @@ object FileTransfer {
             } ?: -1L
         } catch (_: Exception) {
             -1L
+        }
+    }
+
+    /** A canceled coroutine must release blocking java.net I/O, not wait for the read timeout. */
+    internal suspend fun <T> withSocketCancellation(
+        socket: Socket,
+        isCancelled: () -> Boolean = { false },
+        block: suspend (Socket) -> T
+    ): T = coroutineScope {
+        val guard = launch(Dispatchers.IO) {
+            while (isActive && !isCancelled()) delay(100)
+        }
+        // Completion also runs if cancellation happens before the guard's body gets scheduled.
+        guard.invokeOnCompletion { runCatching { socket.close() } }
+        try {
+            currentCoroutineContext().ensureActive()
+            if (isCancelled()) throw CancellationException("cancelado por usuario")
+            block(socket)
+        } catch (error: Exception) {
+            currentCoroutineContext().ensureActive()
+            if (isCancelled()) throw CancellationException("cancelado por usuario")
+            throw error
+        } finally {
+            guard.cancel()
+            runCatching { socket.close() }
         }
     }
 
@@ -1009,21 +1203,6 @@ object FileTransfer {
         }
     }
 
-    private fun writeCredentialsResponsePacket(
-        output: DataOutputStream,
-        token: String,
-        pin: String,
-        expiresAtMs: Long
-    ) {
-        output.writeInt(PROTOCOL_MAGIC)
-        output.writeInt(PROTOCOL_VERSION)
-        output.writeInt(PACKET_CREDENTIALS_RESPONSE)
-        output.writeUTF(token)
-        output.writeUTF(pin)
-        output.writeLong(expiresAtMs)
-        output.flush()
-    }
-
     private fun writeDiscoveryResponsePacket(
         output: DataOutputStream,
         peerId: String,
@@ -1041,37 +1220,6 @@ object FileTransfer {
         output.writeBoolean(trustedByHost)
         output.writeBoolean(globalLanJoined)
         output.flush()
-    }
-
-    private fun readCredentialsResponseOrFailure(input: DataInputStream): SessionCredentialsPayload {
-        val magic = input.readInt()
-        require(magic == PROTOCOL_MAGIC) { "respuesta invalida (magic)" }
-        val version = input.readInt()
-        require(version == PROTOCOL_VERSION) { "respuesta invalida (version)" }
-
-        return when (val packetType = input.readInt()) {
-            PACKET_CREDENTIALS_RESPONSE -> {
-                val token = requireValidToken(input.readUTF())
-                val pin = requireValidPin(input.readUTF())
-                val expiresAt = input.readLong()
-                SessionCredentialsPayload(token = token, pin = pin, expiresAtMs = expiresAt)
-            }
-
-            PACKET_TOKEN_RESPONSE -> {
-                val token = requireValidToken(input.readUTF())
-                val expiresAt = input.readLong()
-                SessionCredentialsPayload(token = token, pin = "", expiresAtMs = expiresAt)
-            }
-
-            PACKET_RESULT -> {
-                val ok = input.readBoolean()
-                val message = input.readUTF()
-                if (!ok) throw IllegalStateException(message)
-                throw IllegalStateException("respuesta inesperada")
-            }
-
-            else -> throw IllegalStateException("respuesta invalida (packet=$packetType)")
-        }
     }
 
     private fun readDiscoveryResponseOrFailure(input: DataInputStream): PeerDiscoveryPayload {
@@ -1151,6 +1299,20 @@ object FileTransfer {
         return ok to message
     }
 
+    private fun verifyReceiverIdentity(context: Context, hostAddress: String, expectedPeerId: String?, observedKey: String?) {
+        val key = observedKey ?: throw SecurityException("identidad Noise ausente")
+        val trusted = TrustedPeerStore.all(context)
+        val peer = expectedPeerId?.let { id -> trusted.firstOrNull { it.id == id } }
+            ?: trusted.firstOrNull { it.lastKnownIp == hostAddress }
+        if (peer != null) {
+            if (!TrustedPeerStore.isNoiseKeyCompatible(context, peer.id, key)) {
+                throw SecurityException("noise_key_mismatch")
+            }
+            TrustedPeerStore.updateNoiseStaticKey(context, peer.id, key)
+            TrustedPeerStore.updateSeen(context, peer.id, peer.label, hostAddress)
+        }
+    }
+
     private fun establishSecureChannel(
         context: Context,
         input: DataInputStream,
@@ -1164,8 +1326,6 @@ object FileTransfer {
         val role = if (initiator) HandshakeState.INITIATOR else HandshakeState.RESPONDER
         val protocol = if (usePsk) NOISE_PROTOCOL_WITH_PSK else NOISE_PROTOCOL_NO_PSK
         val handshake = HandshakeState(protocol, role)
-        var success = false
-
         try {
             handshake.localKeyPair?.let { local ->
                 val identity = NoiseIdentityStore.getOrCreate(context)
@@ -1220,7 +1380,6 @@ object FileTransfer {
                 }
             }
 
-            success = true
             return SecureChannel(
                 input = input,
                 output = output,
@@ -1231,9 +1390,7 @@ object FileTransfer {
                 }
             )
         } finally {
-            if (!success) {
-                handshake.destroy()
-            }
+            handshake.destroy()
         }
     }
 
@@ -1279,7 +1436,7 @@ object FileTransfer {
 
         fun readFrameInput(): DataInputStream {
             val cipherLen = input.readInt()
-            require(cipherLen in 0..(MAX_SECURE_FRAME_BYTES + 128)) {
+            require(cipherLen in receiver.macLength..(MAX_SECURE_FRAME_BYTES + receiver.macLength)) {
                 "frame seguro invalido: $cipherLen"
             }
 

@@ -3,6 +3,16 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
+val signingStorePath = providers.environmentVariable("QETARA_SIGNING_STORE").orNull
+val signingStorePassword = providers.environmentVariable("QETARA_SIGNING_STORE_PASSWORD").orNull
+val signingKeyAlias = providers.environmentVariable("QETARA_SIGNING_ALIAS").orNull
+val signingKeyPassword = providers.environmentVariable("QETARA_SIGNING_KEY_PASSWORD").orNull
+val signingValues = listOf(signingStorePath, signingStorePassword, signingKeyAlias, signingKeyPassword)
+val signingConfigured = signingValues.all { !it.isNullOrBlank() }
+require(signingValues.all { it.isNullOrBlank() } || signingConfigured) {
+    "Configure all four QETARA_SIGNING_* variables, or leave all unset for an unsigned release."
+}
+
 android {
     namespace = "com.example.wifidrop"
     compileSdk = 36
@@ -11,12 +21,24 @@ android {
         applicationId = "com.example.wifidrop"
         minSdk = 24
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = providers.gradleProperty("qetaraVersionCode").getOrElse("2").toInt()
+        versionName = project.version.toString()
+    }
+
+    signingConfigs {
+        if (signingConfigured) {
+            create("distribution") {
+                storeFile = file(signingStorePath!!)
+                storePassword = signingStorePassword
+                keyAlias = signingKeyAlias
+                keyPassword = signingKeyPassword
+            }
+        }
     }
 
     buildTypes {
         release {
+            signingConfig = signingConfigs.findByName("distribution")
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -31,6 +53,7 @@ android {
     }
 
     buildFeatures {
+        buildConfig = true
         compose = true
     }
 

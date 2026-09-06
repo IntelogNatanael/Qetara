@@ -33,7 +33,8 @@ data class P2pScreenRouteDerivationInput(
     val chatDirectLanTargetIp: String?,
     val chatDirectWifiTargetIps: List<String>,
     val uxPreferences: UxPreferences,
-    val receivedFiles: List<File>
+    val receivedFiles: List<File>,
+    val localDeviceId: String? = null
 )
 
 data class P2pScreenRouteDerivedState(
@@ -51,27 +52,41 @@ data class P2pScreenRouteDerivedState(
     val outboundInput: P2pOutboundOrchestrationInput,
     val localDeviceLabel: String,
     val latestLanDeviceLabel: String,
-    val latestSessionDeviceLabel: String
+    val latestSessionDeviceLabel: String,
+    val sessionNetworkKey: String
 )
 
 fun deriveP2pScreenRouteState(
     input: P2pScreenRouteDerivationInput
 ): P2pScreenRouteDerivedState {
+    val localAddresses = com.example.wifidrop.presentation.localDiscoveryAddresses(
+        input.transferState, input.localDeviceId,
+        input.lanDiscoveryState.localIpv4Addresses + listOfNotNull(input.lanDiscoveryState.localIp)
+    )
+    val targetIp = input.targetIpInput.trim().takeUnless { it in localAddresses }.orEmpty()
+    val transferState = com.example.wifidrop.presentation.withoutLocalDiscovery(
+        input.transferState, input.localDeviceId,
+        input.lanDiscoveryState.localIpv4Addresses + listOfNotNull(input.lanDiscoveryState.localIp)
+    )
     val lanConnected = input.lanDiscoveryState.connected
     val selectedFiles = input.shareImportState.selectedFiles
     val shareImportStatus = input.shareImportState.shareImportStatus
     val latestLanDeviceLabel = input.wifiState.thisDeviceName.ifBlank { "cliente" }
     val latestSessionDeviceLabel = latestLanDeviceLabel
 
+    val verifiedDirectParticipants = resolveVerifiedDirectParticipants(input.wifiState.connection, transferState)
     val chatSelection = normalizeChatSelection(
         P2pChatSelectionInput(
             activeConnectionMode = input.uxPreferences.activeConnectionMode,
             lanConnected = lanConnected,
             wifiState = input.wifiState,
-            knownPeers = input.transferState.knownPeers,
+            knownPeers = transferState.knownPeers,
+            directParticipants = verifiedDirectParticipants,
+            manualLanTargetIp = targetIp.takeIf { input.uxPreferences.connectionViewMode != ConnectionViewMode.WIFI_DIRECT },
             chatChannel = input.chatChannel,
             chatDirectLanTargetIp = input.chatDirectLanTargetIp,
-            chatDirectWifiTargetIps = input.chatDirectWifiTargetIps
+            chatDirectWifiTargetIps = input.chatDirectWifiTargetIps,
+            lanLocalIp = input.lanDiscoveryState.localIp
         )
     )
     val effectiveChatChannel = chatSelection.chatChannel
@@ -81,14 +96,51 @@ fun deriveP2pScreenRouteState(
     val routing = resolveP2pRouting(
         P2pRoutingInput(
             wifiState = input.wifiState,
-            transferState = input.transferState,
+            transferState = transferState,
             lanConnected = lanConnected,
             activeConnectionMode = input.uxPreferences.activeConnectionMode,
-            manualTargetIp = input.targetIpInput,
+            connectionViewMode = input.uxPreferences.connectionViewMode,
+            manualTargetIp = targetIp,
             chatDirectLanTargetIp = effectiveChatDirectLanTargetIp,
-            chatDirectWifiTargetIps = effectiveChatDirectWifiTargetIps
+            chatDirectWifiTargetIps = effectiveChatDirectWifiTargetIps,
+            lanLocalIp = input.lanDiscoveryState.localIp
         )
     )
+
+    val effectiveConnectionMode = routing.targets.resolvedTarget?.mode ?: input.uxPreferences.activeConnectionMode
+    val sessionNetworkKey = when (effectiveConnectionMode) {
+        ConnectionMode.LAN -> "lan:" + lanConnected + ":" + input.lanDiscoveryState.localIp.orEmpty()
+        ConnectionMode.WIFI_DIRECT -> "direct:" + input.wifiState.connection?.groupFormed + ":" +
+            input.wifiState.connection?.groupOwnerAddress.orEmpty() + ":" + input.wifiState.connection?.isGroupOwner
+    }
+    val connectionTarget = routing.targets.resolvedTarget
+    val currentCredentialShares = transferState.credentialSharedPeers.takeIf {
+        transferState.activeToken == input.sessionState.token &&
+            transferState.sessionExpiresAtMs == input.sessionState.expiresAtMs
+    }.orEmpty()
+    val sessionReady = input.uxPreferences.sessionEnabled && com.example.wifidrop.presentation.isSessionReadyForTarget(
+        target = connectionTarget,
+        token = input.sessionState.token,
+        pin = input.sessionState.pin,
+        sessionExpired = input.sessionExpired,
+        networkKey = sessionNetworkKey,
+        networkChangedAtMs = input.sessionState.readinessChangedAtMs,
+        confirmation = input.sessionState.confirmation,
+        sharedCredentials = currentCredentialShares
+    )
+
+    val chatSessionReady = input.uxPreferences.sessionEnabled && routing.targets.chatDirectTargets.isNotEmpty() && routing.targets.chatDirectTargets.all { target ->
+        com.example.wifidrop.presentation.isSessionReadyForTarget(
+            target = target,
+            token = input.sessionState.token,
+            pin = input.sessionState.pin,
+            sessionExpired = input.sessionExpired,
+            networkKey = sessionNetworkKey,
+            networkChangedAtMs = input.sessionState.readinessChangedAtMs,
+            confirmation = input.sessionState.confirmation,
+            sharedCredentials = currentCredentialShares
+        )
+    }
 
     val localDeviceLabel = input.wifiState.thisDeviceName.ifBlank { "equipo" }
     val outboundInput = P2pOutboundOrchestrationInput(
@@ -112,7 +164,7 @@ fun deriveP2pScreenRouteState(
         activeConnectionMode = input.uxPreferences.activeConnectionMode,
         chatChannel = effectiveChatChannel,
         globalLanJoined = input.uxPreferences.joinedGlobalLan,
-        lastSendTargetIp = input.transferState.lastSendTargetIp,
+        lastSendTargetIp = transferState.lastSendTargetIp,
         globalChatTargets = routing.globalChatTargets,
         directChannelTargets = routing.directChannelTargets
     )
@@ -122,7 +174,7 @@ fun deriveP2pScreenRouteState(
             permissionGranted = input.hasPermission,
             permissionName = requiredPermissionHumanLabel(),
             wifiState = input.wifiState,
-            transferState = input.transferState,
+            transferState = transferState,
             lanConnected = lanConnected,
             lanLocalIp = input.lanDiscoveryState.localIp,
             lanScanStatus = input.lanDiscoveryState.scanStatus,
@@ -134,14 +186,19 @@ fun deriveP2pScreenRouteState(
                 nowMs = input.nowMs,
                 sessionExpired = input.sessionExpired,
                 localDeviceIdShort = input.sessionState.localDeviceIdShort,
-                tokenSyncStatus = input.sessionState.syncStatus
+                tokenSyncStatus = input.sessionState.syncStatus,
+                sessionReady = sessionReady,
+                chatSessionReady = chatSessionReady,
+                sessionSyncing = input.uxPreferences.sessionEnabled && input.sessionState.syncing
             ),
             draft = P2pScreenDraftState(
-                targetIp = input.targetIpInput,
+                targetIp = targetIp,
                 selectedFileNames = selectedFiles.map { it.name },
                 receivedFiles = input.receivedFiles,
                 shareImportStatus = shareImportStatus,
-                chatDraft = input.chatDraft
+                chatDraft = input.chatDraft,
+                attachmentContext = input.shareImportState.attachmentContext,
+                incomingShareEventId = input.shareImportState.incomingShareEventId
             ),
             chatChannel = effectiveChatChannel,
             globalLanJoined = input.uxPreferences.joinedGlobalLan,
@@ -169,6 +226,7 @@ fun deriveP2pScreenRouteState(
         outboundInput = outboundInput,
         localDeviceLabel = localDeviceLabel,
         latestLanDeviceLabel = latestLanDeviceLabel,
-        latestSessionDeviceLabel = latestSessionDeviceLabel
+        latestSessionDeviceLabel = latestSessionDeviceLabel,
+        sessionNetworkKey = sessionNetworkKey
     )
 }

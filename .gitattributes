@@ -11,3 +11,9 @@
 *.pdf binary
 *.penpot binary
 *.ttf binary
+
+# Preserve original third-party notices byte for byte, including their whitespace.
+licenses/** -text -whitespace
+app/src/main/assets/open_source_licenses/** -text -whitespace
+pc/src/main/resources/open_source_licenses/** -text -whitespace
+design/brand/fonts/OFL.txt -text -whitespace

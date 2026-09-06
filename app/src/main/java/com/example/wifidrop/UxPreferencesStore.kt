@@ -58,7 +58,8 @@ data class UxPreferences(
     val wifiDirectModeEnabled: Boolean = true,
     val lanModeEnabled: Boolean = true,
     val joinedGlobalLan: Boolean = false,
-    val autoDownloadChannelFiles: Boolean = false
+    val autoDownloadChannelFiles: Boolean = false,
+    val sessionEnabled: Boolean = true
 )
 
 object UxPreferencesStore {
@@ -75,7 +76,9 @@ object UxPreferencesStore {
     private const val KEY_LAN_MODE_ENABLED = "lan_mode_enabled"
     private const val KEY_JOINED_GLOBAL_LAN = "joined_global_lan"
     private const val KEY_AUTO_DOWNLOAD_CHANNEL_FILES = "auto_download_channel_files"
+    private const val KEY_SESSION_ENABLED = "session_enabled"
 
+    @Synchronized
     fun load(context: Context): UxPreferences {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         return normalize(
@@ -97,13 +100,17 @@ object UxPreferencesStore {
                 wifiDirectModeEnabled = prefs.getBoolean(KEY_WIFI_DIRECT_MODE_ENABLED, true),
                 lanModeEnabled = prefs.getBoolean(KEY_LAN_MODE_ENABLED, true),
                 joinedGlobalLan = prefs.getBoolean(KEY_JOINED_GLOBAL_LAN, false),
-                autoDownloadChannelFiles = prefs.getBoolean(KEY_AUTO_DOWNLOAD_CHANNEL_FILES, false)
+                autoDownloadChannelFiles = prefs.getBoolean(KEY_AUTO_DOWNLOAD_CHANNEL_FILES, false),
+                sessionEnabled = prefs.getBoolean(KEY_SESSION_ENABLED, true)
             )
         )
     }
 
+    @Synchronized
     fun save(context: Context, preferences: UxPreferences): UxPreferences {
-        val normalized = normalize(preferences)
+        // General preference saves may carry an old UI snapshot. Only explicit session actions
+        // can change this flag, so changing theme or network mode cannot reopen a closed session.
+        val normalized = prepareForSave(preferences, load(context).sessionEnabled)
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             .edit {
                 putFloat(KEY_FONT_SCALE, normalized.fontScale)
@@ -120,6 +127,16 @@ object UxPreferencesStore {
                 putBoolean(KEY_AUTO_DOWNLOAD_CHANNEL_FILES, normalized.autoDownloadChannelFiles)
             }
         return normalized
+    }
+
+    internal fun prepareForSave(preferences: UxPreferences, currentSessionEnabled: Boolean): UxPreferences =
+        normalize(preferences).copy(sessionEnabled = currentSessionEnabled)
+
+    @Synchronized
+    fun setSessionEnabled(context: Context, enabled: Boolean) {
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit {
+            putBoolean(KEY_SESSION_ENABLED, enabled)
+        }
     }
 
     fun normalizeFontScale(raw: Float): Float {

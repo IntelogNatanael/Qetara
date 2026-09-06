@@ -42,11 +42,12 @@ class P2pOutboundPresenter(
         announce: Boolean = true,
         clearSelectionAfterSend: Boolean = false
     ): P2pOutboundOrchestrationResult {
+        val selectionInput = input.copy(selectedFiles = shareImportPresenter.selectedFiles(P2pAttachmentContext.FILES))
         val decision = buildFileBatchSendPlan(
-            context = input.outboundContext,
+            context = selectionInput.outboundContext,
             targetIp = targetIpOverride?.trim().takeUnless { it.isNullOrBlank() }
-                ?: input.resolvedTargetIp,
-            fileCount = input.selectedFiles.size
+                ?: selectionInput.resolvedTargetIp,
+            fileCount = selectionInput.selectedFiles.size
         )
         val plan = when (decision) {
             is P2pOutboundDecision.Blocked -> {
@@ -57,7 +58,7 @@ class P2pOutboundPresenter(
             is P2pOutboundDecision.Ready -> decision.plan
         }
 
-        queueSelectedFiles(input, plan.targetIp)
+        queueSelectedFiles(selectionInput, plan.targetIp)
         shareImportPresenter.markFilesQueued(
             status = plan.shareImportStatus,
             clearSelectionAfterSend = clearSelectionAfterSend
@@ -82,12 +83,13 @@ class P2pOutboundPresenter(
     }
 
     fun sendGlobalMessage(input: P2pOutboundOrchestrationInput): P2pOutboundOrchestrationResult {
+        val selectionInput = input.copy(selectedFiles = shareImportPresenter.selectedFiles(P2pAttachmentContext.CHANNEL))
         val decision = buildGlobalMessageSendPlan(
-            context = input.outboundContext,
-            draft = input.chatDraft,
-            selectedFilesCount = input.selectedFiles.size,
-            globalLanJoined = input.globalLanJoined,
-            targetCount = input.globalChatTargets.size
+            context = selectionInput.outboundContext,
+            draft = selectionInput.chatDraft,
+            selectedFilesCount = selectionInput.selectedFiles.size,
+            globalLanJoined = selectionInput.globalLanJoined,
+            targetCount = selectionInput.globalChatTargets.size
         )
         val plan = when (decision) {
             is P2pOutboundDecision.Blocked -> {
@@ -100,38 +102,38 @@ class P2pOutboundPresenter(
 
         plan.message?.let { message ->
             backend.sendBroadcastMessage(
-                token = input.sessionToken,
-                pin = input.sessionPin,
-                deviceLabel = input.deviceLabel,
+                token = selectionInput.sessionToken,
+                pin = selectionInput.sessionPin,
+                deviceLabel = selectionInput.deviceLabel,
                 message = message,
                 scope = ChatMessageScope.GLOBAL_LAN,
                 channelLabel = "Canal Wi‑Fi",
-                targetPeerIds = input.globalChatTargets.map { it.id },
-                targetIps = input.globalChatTargets.map { it.ip },
-                targetLabels = input.globalChatTargets.map { it.label.ifBlank { it.ip } }
+                targetPeerIds = selectionInput.globalChatTargets.map { it.id },
+                targetIps = selectionInput.globalChatTargets.map { it.ip },
+                targetLabels = selectionInput.globalChatTargets.map { it.label.ifBlank { it.ip } }
             )
         }
         if (plan.includeFiles) {
-            input.selectedFiles.forEach { item ->
+            selectionInput.selectedFiles.forEach { item ->
                 val offer = backend.registerChannelFileOffer(
                     fileUri = item.uri,
                     fileName = item.name,
-                    deviceLabel = input.deviceLabel
+                    deviceLabel = selectionInput.deviceLabel
                 )
                 backend.sendBroadcastMessage(
-                    token = input.sessionToken,
-                    pin = input.sessionPin,
-                    deviceLabel = input.deviceLabel,
+                    token = selectionInput.sessionToken,
+                    pin = selectionInput.sessionPin,
+                    deviceLabel = selectionInput.deviceLabel,
                     message = ChatMessageScopeCodec.encodeChannelFileOffer(offer),
                     scope = ChatMessageScope.GLOBAL_LAN,
                     channelLabel = "Canal Wi‑Fi",
-                    targetPeerIds = input.globalChatTargets.map { it.id },
-                    targetIps = input.globalChatTargets.map { it.ip },
-                    targetLabels = input.globalChatTargets.map { it.label.ifBlank { it.ip } }
+                    targetPeerIds = selectionInput.globalChatTargets.map { it.id },
+                    targetIps = selectionInput.globalChatTargets.map { it.ip },
+                    targetLabels = selectionInput.globalChatTargets.map { it.label.ifBlank { it.ip } }
                 )
             }
             shareImportPresenter.markChannelComposerFilesQueued(
-                input.selectedFiles.size
+                selectionInput.selectedFiles.size
             )
         }
         return P2pOutboundOrchestrationResult(
@@ -164,12 +166,13 @@ class P2pOutboundPresenter(
     private fun sendDirectChatPayload(
         input: P2pOutboundOrchestrationInput
     ): P2pOutboundOrchestrationResult {
+        val selectionInput = input.copy(selectedFiles = shareImportPresenter.selectedFiles(P2pAttachmentContext.DIRECT_CHAT))
         val decision = buildDirectChatComposerPlan(
-            context = input.outboundContext,
-            draft = input.chatDraft,
-            selectedFilesCount = input.selectedFiles.size,
-            targetIps = input.chatDirectTargetIps.ifEmpty {
-                listOfNotNull(input.chatDirectTargetIp)
+            context = selectionInput.outboundContext,
+            draft = selectionInput.chatDraft,
+            selectedFilesCount = selectionInput.selectedFiles.size,
+            targetIps = selectionInput.chatDirectTargetIps.ifEmpty {
+                listOfNotNull(selectionInput.chatDirectTargetIp)
             }
         )
         val plan = when (decision) {
@@ -181,15 +184,15 @@ class P2pOutboundPresenter(
             is P2pOutboundDecision.Ready -> decision.plan
         }
 
-        val connection = input.outboundContext.connection
-        val isWifiDirectOwner = input.activeConnectionMode == ConnectionMode.WIFI_DIRECT &&
+        val connection = selectionInput.outboundContext.connection
+        val isWifiDirectOwner = selectionInput.activeConnectionMode == ConnectionMode.WIFI_DIRECT &&
             connection?.groupFormed == true &&
             connection.isGroupOwner
         val ownerIp = connection?.groupOwnerAddress?.trim().takeUnless { it.isNullOrBlank() }
-        val selectedTargets = input.chatDirectTargets.associateBy { it.ip }
+        val selectedTargets = selectionInput.chatDirectTargets.associateBy { it.ip }
 
         if (
-            input.activeConnectionMode == ConnectionMode.WIFI_DIRECT &&
+            selectionInput.activeConnectionMode == ConnectionMode.WIFI_DIRECT &&
             plan.includeFiles &&
             !canSendDirectWifiFiles(
                 isGroupOwner = isWifiDirectOwner,
@@ -214,7 +217,7 @@ class P2pOutboundPresenter(
                 val resolvedTarget = selectedTargets[targetIp]
                 val targetLabel = resolvedTarget?.label ?: targetIp
                 val relayViaOwner = shouldRelayDirectMessageViaOwner(
-                    activeConnectionMode = input.activeConnectionMode,
+                    activeConnectionMode = selectionInput.activeConnectionMode,
                     isGroupOwner = isWifiDirectOwner,
                     ownerIp = ownerIp,
                     targetIp = targetIp
@@ -223,13 +226,13 @@ class P2pOutboundPresenter(
                 if (relayViaOwner) {
                     backend.sendMessage(
                         targetIp = ownerIp.orEmpty(),
-                        token = input.sessionToken,
-                        pin = input.sessionPin,
-                        deviceLabel = input.deviceLabel,
+                        token = selectionInput.sessionToken,
+                        pin = selectionInput.sessionPin,
+                        deviceLabel = selectionInput.deviceLabel,
                         message = ChatMessageScopeCodec.encodeDirectRelayRequest(
                             textRaw = message,
                             senderId = localDeviceId,
-                            senderLabel = input.deviceLabel,
+                            senderLabel = selectionInput.deviceLabel,
                             targetPeerId = resolvedTarget?.peerId,
                             targetIp = targetIp,
                             targetLabel = targetLabel
@@ -240,9 +243,9 @@ class P2pOutboundPresenter(
                 } else {
                     backend.sendMessage(
                         targetIp = targetIp,
-                        token = input.sessionToken,
-                        pin = input.sessionPin,
-                        deviceLabel = input.deviceLabel,
+                        token = selectionInput.sessionToken,
+                        pin = selectionInput.sessionPin,
+                        deviceLabel = selectionInput.deviceLabel,
                         message = message,
                         peerLabelOverride = targetLabel,
                         scope = ChatMessageScope.DIRECT
@@ -253,9 +256,9 @@ class P2pOutboundPresenter(
 
         if (plan.includeFiles) {
             plan.targetIps.forEach { targetIp ->
-                queueSelectedFiles(input, targetIp)
+                queueSelectedFiles(selectionInput, targetIp)
             }
-            shareImportPresenter.markDirectComposerFilesQueued(input.selectedFiles.size * plan.targetIps.size)
+            shareImportPresenter.markDirectComposerFilesQueued(selectionInput.selectedFiles.size * plan.targetIps.size)
         }
 
         return P2pOutboundOrchestrationResult(

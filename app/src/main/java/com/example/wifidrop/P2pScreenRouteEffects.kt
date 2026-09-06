@@ -8,6 +8,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleOwner
 import com.example.wifidrop.presentation.BindP2pSessionRuntimeEffects
 import com.example.wifidrop.presentation.P2pFeedbackMessage
 import com.example.wifidrop.presentation.P2pResolvedTarget
@@ -36,6 +38,7 @@ data class P2pScreenRouteEffectsInput(
     val shareImportStatus: String,
     val directChatAvailablePeers: List<KnownPeerSnapshot>,
     val resolvedTarget: P2pResolvedTarget?,
+    val sessionNetworkKey: String,
     val targetIpInput: String,
     val wifiPermissionAsked: Boolean,
     val notificationPermissionAsked: Boolean
@@ -47,7 +50,7 @@ fun BindP2pScreenRouteEffects(
     onNowTick: (Long) -> Unit,
     onSuggestedTarget: (String?) -> Unit,
     onApplyTransientUiEffect: (P2pTransientUiEffect?) -> Unit,
-    onApplyWifiPermissionPlan: (Boolean) -> Unit,
+    onApplyWifiPermissionPlan: () -> Unit,
     onRequestNotificationPermission: () -> Unit,
     onReceivedFilesChanged: () -> Unit,
     onShowFeedback: suspend (P2pFeedbackMessage) -> Unit,
@@ -84,13 +87,14 @@ fun BindP2pScreenRouteEffects(
     }
 
     LaunchedEffect(
+        input.uxPreferences.sessionEnabled,
         input.sessionState.token,
         input.sessionState.pin,
         input.sessionExpired,
         input.uxPreferences.lanModeEnabled
     ) {
         input.presenters.lanDiscoveryPresenter.runAutoRefreshLoop(
-            autoScanEnabled = input.uxPreferences.lanModeEnabled,
+            autoScanEnabled = input.uxPreferences.sessionEnabled && input.uxPreferences.lanModeEnabled,
             sessionToken = input.sessionState.token,
             sessionPin = input.sessionState.pin,
             sessionExpired = input.sessionExpired,
@@ -100,11 +104,13 @@ fun BindP2pScreenRouteEffects(
     }
 
     LaunchedEffect(
+        input.uxPreferences.sessionEnabled,
         input.hasPermission,
         input.uxPreferences.wifiDirectModeEnabled,
         input.wifiState.p2pEnabled
     ) {
         if (
+            input.uxPreferences.sessionEnabled &&
             input.hasPermission &&
             input.uxPreferences.wifiDirectModeEnabled &&
             input.wifiState.p2pEnabled
@@ -120,10 +126,13 @@ fun BindP2pScreenRouteEffects(
     }
 
     LaunchedEffect(input.hasPermission, input.lanConnected) {
-        onApplyWifiPermissionPlan(input.wifiPermissionAsked)
+        onApplyWifiPermissionPlan()
     }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(input.transferState.sending, input.transferState.receiving) {
+        val activityVisible = (input.activity as? LifecycleOwner)?.lifecycle?.currentState
+            ?.isAtLeast(Lifecycle.State.RESUMED) == true
+        if (!activityVisible) return@LaunchedEffect
         val notificationPermission = postNotificationsPermission()
         val hasNotificationPermission = notificationPermission == null ||
             ContextCompat.checkSelfPermission(
@@ -133,6 +142,7 @@ fun BindP2pScreenRouteEffects(
 
         if (
             com.example.wifidrop.presentation.shouldRequestNotificationPermission(
+                transferInProgress = input.transferState.sending || input.transferState.receiving,
                 sdkInt = Build.VERSION.SDK_INT,
                 notificationPermissionGranted = hasNotificationPermission,
                 permissionAlreadyRequested = input.notificationPermissionAsked
@@ -177,6 +187,7 @@ fun BindP2pScreenRouteEffects(
     }
 
     LaunchedEffect(
+        input.uxPreferences.sessionEnabled,
         input.wifiState.connection?.groupFormed,
         input.wifiState.connection?.isGroupOwner,
         input.sessionState.token,
@@ -185,6 +196,7 @@ fun BindP2pScreenRouteEffects(
         input.directChatAvailablePeers.joinToString("|") { "${it.id}:${it.ip}:${it.label}" }
     ) {
         if (
+            input.uxPreferences.sessionEnabled &&
             input.wifiState.connection?.groupFormed == true &&
             input.wifiState.connection.isGroupOwner &&
             !input.sessionExpired &&
@@ -220,6 +232,9 @@ fun BindP2pScreenRouteEffects(
     BindP2pSessionRuntimeEffects(
         sessionPresenter = input.presenters.sessionPresenter,
         input = P2pSessionRuntimeBindingsInput(
+            activeConnectionMode = input.resolvedTarget?.mode ?: input.uxPreferences.activeConnectionMode,
+            sessionEnabled = input.uxPreferences.sessionEnabled,
+            serviceRunning = input.transferState.serviceRunning,
             permissionGranted = input.hasPermission,
             lanConnected = input.lanConnected,
             connection = input.wifiState.connection,
@@ -231,6 +246,7 @@ fun BindP2pScreenRouteEffects(
             syncing = input.sessionState.syncing,
             receiveDirPath = input.receiveDirPath,
             resolvedTarget = input.resolvedTarget,
+            networkKey = input.sessionNetworkKey,
             deviceLabel = input.latestSessionDeviceLabel,
             nowMs = input.nowMs
         )
@@ -240,12 +256,12 @@ fun BindP2pScreenRouteEffects(
         input.wifiState.connection?.groupFormed,
         input.wifiState.connection?.isGroupOwner,
         input.wifiState.connection?.groupOwnerAddress,
-        input.transferState.knownPeers,
+        input.directChatAvailablePeers,
         input.transferState.trustedPeers
     ) {
         input.presenters.connectionHintsPresenter.onConnectionStateChanged(
             connection = input.wifiState.connection,
-            knownPeers = input.transferState.knownPeers,
+            knownPeers = input.directChatAvailablePeers,
             trustedPeers = input.transferState.trustedPeers,
             currentTargetIp = input.targetIpInput
         )?.let(onConnectionHintTargetResolved)

@@ -1,10 +1,12 @@
 package com.example.wifidrop.presentation
 
 import com.example.wifidrop.ChatChannel
+import com.example.wifidrop.ConnectionViewMode
 import com.example.wifidrop.ConnectionMode
 import com.example.wifidrop.KnownPeerSnapshot
 import com.example.wifidrop.TransferRuntimeState
 import com.example.wifidrop.WifiDirectState
+import com.example.wifidrop.resolveVerifiedDirectParticipants
 
 data class P2pChatSelectionInput(
     val activeConnectionMode: ConnectionMode,
@@ -13,7 +15,10 @@ data class P2pChatSelectionInput(
     val knownPeers: List<KnownPeerSnapshot>,
     val chatChannel: ChatChannel,
     val chatDirectLanTargetIp: String?,
-    val chatDirectWifiTargetIps: List<String>
+    val chatDirectWifiTargetIps: List<String>,
+    val lanLocalIp: String? = null,
+    val directParticipants: List<KnownPeerSnapshot> = emptyList(),
+    val manualLanTargetIp: String? = null
 )
 
 data class P2pChatSelectionState(
@@ -29,7 +34,9 @@ data class P2pRoutingInput(
     val activeConnectionMode: ConnectionMode,
     val manualTargetIp: String,
     val chatDirectLanTargetIp: String?,
-    val chatDirectWifiTargetIps: List<String>
+    val chatDirectWifiTargetIps: List<String>,
+    val lanLocalIp: String? = null,
+    val connectionViewMode: ConnectionViewMode = ConnectionViewMode.ADVANCED
 )
 
 data class P2pRoutingState(
@@ -52,23 +59,22 @@ fun normalizeChatSelection(input: P2pChatSelectionInput): P2pChatSelectionState 
         null
     } else {
         val directLanPeers = input.knownPeers
-            .filter { it.ip.isNotBlank() }
+            .filter { isAutomaticConnectionAddress(it.ip, input.lanLocalIp) }
             .distinctBy { it.ip }
+        val manualIp = input.manualLanTargetIp?.trim().takeUnless { it.isNullOrBlank() }
         val selectedIp = input.chatDirectLanTargetIp?.trim().takeUnless { it.isNullOrBlank() }
         when {
-            !selectedIp.isNullOrBlank() && directLanPeers.none { it.ip == selectedIp } -> null
-            selectedIp.isNullOrBlank() && directLanPeers.size == 1 -> directLanPeers.first().ip
-            else -> selectedIp
+            selectedIp != null && (selectedIp == manualIp || directLanPeers.any { it.ip == selectedIp }) -> selectedIp
+            manualIp != null -> manualIp
+            directLanPeers.size == 1 -> directLanPeers.first().ip
+            else -> null
         }
     }
 
     val normalizedWifiTargets = if (input.activeConnectionMode != ConnectionMode.WIFI_DIRECT) {
         emptyList()
     } else {
-        val availableDirectPeers = resolveDirectParticipants(
-            wifiState = input.wifiState,
-            transferState = input.knownPeers
-        )
+        val availableDirectPeers = input.directParticipants
         val selectedIps = input.chatDirectWifiTargetIps
             .map { it.trim() }
             .filter { it.isNotBlank() }
@@ -91,19 +97,20 @@ fun normalizeChatSelection(input: P2pChatSelectionInput): P2pChatSelectionState 
 }
 
 fun resolveP2pRouting(input: P2pRoutingInput): P2pRoutingState {
-    val directParticipants = resolveDirectParticipants(
-        wifiState = input.wifiState,
-        transferState = input.transferState.knownPeers
-    )
+    val directParticipants = resolveVerifiedDirectParticipants(input.wifiState.connection, input.transferState)
     val directTarget = resolveDirectTarget(
         wifiState = input.wifiState,
-        transferState = input.transferState
+        transferState = input.transferState,
+        participants = directParticipants
     )
     val lanTarget = resolveLanTarget(
         transferState = input.transferState,
-        lanConnected = input.lanConnected
+        lanConnected = input.lanConnected,
+        localIp = input.lanLocalIp
     )
     val resolvedTarget = resolvePreferredTarget(
+        viewMode = input.connectionViewMode,
+        activeConnectionMode = input.activeConnectionMode,
         manualTargetIp = input.manualTargetIp,
         transferState = input.transferState,
         lanConnected = input.lanConnected,
@@ -117,12 +124,14 @@ fun resolveP2pRouting(input: P2pRoutingInput): P2pRoutingState {
         )
         ConnectionMode.LAN -> resolveExplicitLanChatTarget(
             explicitIp = input.chatDirectLanTargetIp,
-            transferState = input.transferState
+            transferState = input.transferState,
+            selectedConnection = resolvedTarget?.takeIf { it.mode == ConnectionMode.LAN }
         )?.let(::listOf).orEmpty()
     }
     val globalChatTargets = resolveGlobalChatTargets(
         lanConnected = input.lanConnected,
-        knownPeers = input.transferState.knownPeers
+        knownPeers = input.transferState.knownPeers,
+        localIp = input.lanLocalIp
     )
 
     return P2pRoutingState(
@@ -141,59 +150,10 @@ fun resolveP2pRouting(input: P2pRoutingInput): P2pRoutingState {
     )
 }
 
-private fun resolveDirectParticipants(
-    wifiState: WifiDirectState,
-    transferState: TransferRuntimeState
-): List<KnownPeerSnapshot> {
-    return resolveDirectParticipants(
-        wifiState = wifiState,
-        transferState = transferState.knownPeers
-    )
-}
-
-private fun resolveDirectParticipants(
-    wifiState: WifiDirectState,
-    transferState: List<KnownPeerSnapshot>
-): List<KnownPeerSnapshot> {
-    val connection = wifiState.connection ?: return emptyList()
-    if (!connection.groupFormed) return emptyList()
-
-    val ownerIp = connection.groupOwnerAddress?.trim().takeUnless { it.isNullOrBlank() }
-    val knownPeers = transferState
-        .filter { it.ip.isNotBlank() }
-        .distinctBy { it.ip }
-        .sortedWith(
-            compareByDescending<KnownPeerSnapshot> { it.trusted }
-                .thenByDescending { it.lastSeenAtMs }
-        )
-
-    val normalized = if (connection.isGroupOwner) {
-        knownPeers.filterNot { peer -> !ownerIp.isNullOrBlank() && peer.ip == ownerIp }
-    } else {
-        val ownerPeer = ownerIp?.let { ip ->
-            knownPeers.firstOrNull { it.ip == ip } ?: KnownPeerSnapshot(
-                id = "direct_owner_$ip",
-                label = knownPeers.firstOrNull { it.ip == ip }?.label ?: "Anfitrión Wi‑Fi Direct",
-                ip = ip,
-                trusted = false,
-                globalLanJoined = false,
-                lastSeenAtMs = System.currentTimeMillis()
-            )
-        }
-        buildList {
-            ownerPeer?.let(::add)
-            knownPeers
-                .filterNot { peer -> ownerPeer != null && peer.ip == ownerPeer.ip }
-                .forEach(::add)
-        }
-    }
-
-    return normalized.distinctBy { it.ip }
-}
-
 private fun resolveDirectTarget(
     wifiState: WifiDirectState,
-    transferState: TransferRuntimeState
+    transferState: TransferRuntimeState,
+    participants: List<KnownPeerSnapshot>
 ): P2pResolvedTarget? {
     val connection = wifiState.connection ?: return null
     if (!connection.groupFormed) return null
@@ -214,11 +174,11 @@ private fun resolveDirectTarget(
         ?.trim()
         ?.takeUnless { it.isNullOrBlank() }
         ?.let { lastIp ->
-            transferState.knownPeers.firstOrNull { peer ->
+            participants.firstOrNull { peer ->
                 peer.ip == lastIp && peer.lastSeenAtMs >= recentCutoff
             }
         }
-        ?: resolveDirectParticipants(wifiState, transferState).firstOrNull()
+        ?: participants.firstOrNull()
 
     return recentDirectPeer?.let { peer ->
         P2pResolvedTarget(
@@ -232,20 +192,21 @@ private fun resolveDirectTarget(
 
 private fun resolveLanTarget(
     transferState: TransferRuntimeState,
-    lanConnected: Boolean
+    lanConnected: Boolean,
+    localIp: String?
 ): P2pResolvedTarget? {
     if (!lanConnected) return null
 
     val preferredPeer = transferState.knownPeers
         .asSequence()
-        .filter { it.ip.isNotBlank() }
+        .filter { isAutomaticConnectionAddress(it.ip, localIp) }
         .sortedWith(
             compareByDescending<KnownPeerSnapshot> { it.trusted }
                 .thenByDescending { it.lastSeenAtMs }
         )
         .firstOrNull()
 
-    val fallbackIp = transferState.lastPeerIp?.trim().takeUnless { it.isNullOrBlank() }
+    val fallbackIp = transferState.lastPeerIp?.trim()?.takeIf { isAutomaticConnectionAddress(it, localIp) }
     val fallbackLabel = transferState.lastPeerLabel?.trim().takeUnless { it.isNullOrBlank() }
 
     return when {
@@ -267,15 +228,20 @@ private fun resolveLanTarget(
 }
 
 private fun resolvePreferredTarget(
+    viewMode: ConnectionViewMode,
+    activeConnectionMode: ConnectionMode,
     manualTargetIp: String,
     transferState: TransferRuntimeState,
     lanConnected: Boolean,
     directTarget: P2pResolvedTarget?,
     lanTarget: P2pResolvedTarget?
 ): P2pResolvedTarget? {
+    // A simple transport view must never send through an address left by the other transport.
+    if (viewMode == ConnectionViewMode.WIFI_DIRECT) return directTarget
     val manual = manualTargetIp.trim()
     if (manual.isNotBlank()) {
         val mode = when {
+            viewMode == ConnectionViewMode.LAN -> ConnectionMode.LAN
             directTarget?.ip == manual -> ConnectionMode.WIFI_DIRECT
             lanConnected -> ConnectionMode.LAN
             directTarget != null -> ConnectionMode.WIFI_DIRECT
@@ -284,12 +250,16 @@ private fun resolvePreferredTarget(
         return P2pResolvedTarget(
             peerId = transferState.knownPeers.firstOrNull { it.ip == manual }?.id,
             ip = manual,
-            label = knownPeerLabel(manual, transferState) ?: directTarget?.label,
+            label = knownPeerLabel(manual, transferState) ?: directTarget?.label?.takeIf { directTarget?.ip == manual },
             mode = mode
         )
     }
 
-    return directTarget ?: lanTarget
+    return when {
+        viewMode == ConnectionViewMode.LAN -> lanTarget
+        activeConnectionMode == ConnectionMode.WIFI_DIRECT -> directTarget
+        else -> lanTarget
+    }
 }
 
 private fun resolveExplicitDirectChatTargets(
@@ -319,7 +289,8 @@ private fun resolveExplicitDirectChatTargets(
 
 private fun resolveExplicitLanChatTarget(
     explicitIp: String?,
-    transferState: TransferRuntimeState
+    transferState: TransferRuntimeState,
+    selectedConnection: P2pResolvedTarget?
 ): P2pResolvedTarget? {
     val normalizedIp = explicitIp?.trim().takeUnless { it.isNullOrBlank() } ?: return null
     val peer = transferState.knownPeers.firstOrNull { it.ip == normalizedIp }
@@ -330,6 +301,8 @@ private fun resolveExplicitLanChatTarget(
             label = peer.label.ifBlank { null },
             mode = ConnectionMode.LAN
         )
+
+        selectedConnection?.ip == normalizedIp -> selectedConnection
 
         knownPeerLabel(normalizedIp, transferState) != null -> P2pResolvedTarget(
             ip = normalizedIp,
@@ -343,11 +316,12 @@ private fun resolveExplicitLanChatTarget(
 
 private fun resolveGlobalChatTargets(
     lanConnected: Boolean,
-    knownPeers: List<KnownPeerSnapshot>
+    knownPeers: List<KnownPeerSnapshot>,
+    localIp: String?
 ): List<KnownPeerSnapshot> {
     if (!lanConnected) return emptyList()
     return knownPeers
-        .filter { it.ip.isNotBlank() && it.globalLanJoined }
+        .filter { isAutomaticConnectionAddress(it.ip, localIp) && it.globalLanJoined }
         .distinctBy { it.ip }
         .sortedWith(
             compareByDescending<KnownPeerSnapshot> { it.trusted }

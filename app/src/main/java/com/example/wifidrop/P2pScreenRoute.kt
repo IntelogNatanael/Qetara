@@ -6,10 +6,31 @@ import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.Row
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.ExpandMore
+import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.TextButton
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.unit.dp
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -22,6 +43,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.LifecycleOwner
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -42,6 +67,8 @@ import com.example.wifidrop.presentation.P2pOutboundOrchestrationResult
 import com.example.wifidrop.presentation.P2pUndoFeedbackPlan
 import com.example.wifidrop.presentation.normalizeRequestedChatChannel
 import com.example.wifidrop.presentation.resolveWifiPermissionPlan
+import com.example.wifidrop.presentation.resolveWifiPermissionRequestAction
+import com.example.wifidrop.presentation.WifiPermissionRequestAction
 import java.io.File
 import kotlinx.coroutines.launch
 
@@ -85,8 +112,13 @@ fun P2pScreenRoute() {
     var receivedFiles by remember { mutableStateOf(loadReceivedFiles(receiveDir)) }
     var nowMs by remember { mutableLongStateOf(System.currentTimeMillis()) }
     var targetIpInput by rememberSaveable { mutableStateOf("") }
-    var chatDraft by rememberSaveable { mutableStateOf("") }
+    var directChatDraft by rememberSaveable { mutableStateOf("") }
+    var channelChatDraft by rememberSaveable { mutableStateOf("") }
     var chatChannel by rememberSaveable { mutableStateOf(ChatChannel.DIRECT) }
+    val chatDraft = if (chatChannel == ChatChannel.GLOBAL) channelChatDraft else directChatDraft
+    fun updateChatDraft(value: String) {
+        if (chatChannel == ChatChannel.GLOBAL) channelChatDraft = value else directChatDraft = value
+    }
     var chatDirectLanTargetIp by rememberSaveable { mutableStateOf<String?>(null) }
     var chatDirectWifiTargetIps by rememberSaveable(stateSaver = directWifiTargetsSaver) {
         mutableStateOf(emptyList<String>())
@@ -96,6 +128,16 @@ fun P2pScreenRoute() {
     val sessionExpired = sessionPresenter.isSessionExpired(nowMs)
     val requiredPermissions = remember { requiredWifiDirectPermissions() }
     var hasPermission by remember { mutableStateOf(hasRequiredPermissions(appContext)) }
+    DisposableEffect(activity, appContext) {
+        val lifecycleOwner = activity as? LifecycleOwner
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                hasPermission = hasRequiredPermissions(appContext)
+            }
+        }
+        lifecycleOwner?.lifecycle?.addObserver(observer)
+        onDispose { lifecycleOwner?.lifecycle?.removeObserver(observer) }
+    }
     var wifiPermissionAsked by rememberSaveable { mutableStateOf(false) }
     var notificationPermissionAsked by rememberSaveable { mutableStateOf(false) }
 
@@ -116,7 +158,8 @@ fun P2pScreenRoute() {
             chatDirectLanTargetIp = chatDirectLanTargetIp,
             chatDirectWifiTargetIps = chatDirectWifiTargetIps,
             uxPreferences = uxPreferences,
-            receivedFiles = receivedFiles
+            receivedFiles = receivedFiles,
+            localDeviceId = localDeviceId
         )
     )
 
@@ -127,7 +170,14 @@ fun P2pScreenRoute() {
     val latestSessionDeviceLabel by rememberUpdatedState(routeState.latestSessionDeviceLabel)
 
     fun persistUxPreferences(next: UxPreferences) {
-        uxPreferences = UxPreferencesStore.save(appContext, next)
+        val saved = UxPreferencesStore.save(appContext, next)
+        if (saved.activeConnectionMode != uxPreferences.activeConnectionMode) {
+            targetIpInput = ""
+            chatDirectLanTargetIp = null
+            chatDirectWifiTargetIps = emptyList()
+            sessionPresenter.clearSessionConfirmation()
+        }
+        uxPreferences = saved
     }
 
     fun applyConnectionViewMode(next: ConnectionViewMode) {
@@ -244,8 +294,7 @@ fun P2pScreenRoute() {
         hasPermission = hasRequiredPermissions(appContext)
         val plan = resolveWifiPermissionPlan(
             permissionGranted = hasPermission,
-            lanConnected = latestLanConnected,
-            permissionAlreadyRequested = true
+            lanConnected = latestLanConnected
         )
         if (plan.refreshWifiDirectState) {
             backend.refreshWifiDirectState()
@@ -261,21 +310,23 @@ fun P2pScreenRoute() {
         // Notification permission is optional for functionality.
     }
 
+    var pendingPickerContext by rememberSaveable { mutableStateOf(com.example.wifidrop.presentation.P2pAttachmentContext.FILES) }
     val pickFileLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenMultipleDocuments()
     ) { uris ->
-        shareImportPresenter.importPickedUris(uris)
+        shareImportPresenter.importPickedUris(uris, pendingPickerContext)
     }
 
     fun handleOutboundResult(result: P2pOutboundOrchestrationResult) {
         applyOutboundResult(
             result = result,
-            clearChatDraft = { chatDraft = "" },
+            clearChatDraft = { updateChatDraft("") },
             pushFeedback = ::pushFeedback
         )
     }
 
     fun handleLanSuggestedTarget(suggestedIp: String?) {
+        if (!canUseLanTargetSuggestion(uxPreferences.connectionViewMode)) return
         applyLanSuggestedTarget(
             presenter = connectionHintsPresenter,
             currentTargetIp = latestTargetIpInput,
@@ -292,21 +343,16 @@ fun P2pScreenRoute() {
         )
     }
 
-    fun applyWifiPermissionPlan(permissionAlreadyRequested: Boolean) {
+    fun applyWifiPermissionPlan() {
         val plan = resolveWifiPermissionPlan(
             permissionGranted = hasPermission,
-            lanConnected = latestLanConnected,
-            permissionAlreadyRequested = permissionAlreadyRequested
+            lanConnected = latestLanConnected
         )
         if (plan.refreshWifiDirectState) {
             backend.refreshWifiDirectState()
         }
         if (plan.markPermissionMissing) {
             backend.markWifiDirectPermissionMissing()
-        }
-        if (plan.requestPermission) {
-            wifiPermissionAsked = true
-            wifiPermissionLauncher.launch(requiredPermissions)
         }
     }
 
@@ -347,6 +393,7 @@ fun P2pScreenRoute() {
             shareImportStatus = routeState.shareImportStatus,
             directChatAvailablePeers = routeState.uiState.chatDirectAvailablePeers,
             resolvedTarget = routeState.routing.targets.resolvedTarget,
+            sessionNetworkKey = routeState.sessionNetworkKey,
             targetIpInput = targetIpInput,
             wifiPermissionAsked = wifiPermissionAsked,
             notificationPermissionAsked = notificationPermissionAsked
@@ -361,7 +408,9 @@ fun P2pScreenRoute() {
         },
         onReceivedFilesChanged = ::refreshReceivedFiles,
         onShowFeedback = { feedback -> showFeedback(feedback.message, feedback.isError) },
-        onConnectionHintTargetResolved = { targetIpInput = it }
+        onConnectionHintTargetResolved = {
+            if (uxPreferences.connectionViewMode != ConnectionViewMode.LAN) targetIpInput = it
+        }
     )
 
     val screenWiring = buildP2pScreenEventWiring(
@@ -381,7 +430,7 @@ fun P2pScreenRoute() {
             applyConnectionViewMode = ::applyConnectionViewMode,
             setGlobalLanJoined = ::setGlobalLanJoined,
             setTargetIpInput = { targetIpInput = it },
-            setChatDraft = { chatDraft = it },
+            setChatDraft = ::updateChatDraft,
             setChatChannel = { chatChannel = it },
             setChatDirectLanTargetIp = { chatDirectLanTargetIp = it },
             setChatDirectWifiTargetIps = { chatDirectWifiTargetIps = it },
@@ -392,14 +441,89 @@ fun P2pScreenRoute() {
             refreshReceivedFiles = ::refreshReceivedFiles,
             handleOutboundResult = ::handleOutboundResult,
             handleLanSuggestedTarget = ::handleLanSuggestedTarget,
-            requestWifiPermissions = { wifiPermissionLauncher.launch(requiredPermissions) },
-            pickFiles = { pickFileLauncher.launch(arrayOf("*/*")) }
+            requestWifiPermissions = {
+                val permissionGrantedNow = hasRequiredPermissions(appContext)
+                hasPermission = permissionGrantedNow
+                when (resolveWifiPermissionRequestAction(
+                    permissionGranted = permissionGrantedNow,
+                    permissionAlreadyRequested = wifiPermissionAsked,
+                    shouldShowRationale = requiredPermissions.any { activity?.shouldShowRequestPermissionRationale(it) == true }
+                )) {
+                    WifiPermissionRequestAction.REFRESH_STATE -> backend.refreshWifiDirectState()
+                    WifiPermissionRequestAction.REQUEST_PERMISSION -> {
+                        wifiPermissionAsked = true
+                        wifiPermissionLauncher.launch(requiredPermissions)
+                    }
+                    WifiPermissionRequestAction.OPEN_APP_SETTINGS -> {
+                        runCatching {
+                            context.startActivity(Intent(
+                                Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                                android.net.Uri.fromParts("package", appContext.packageName, null)
+                            ))
+                        }.onFailure {
+                            pushFeedback("Abre Ajustes de Android, Qetara y Permisos para permitir dispositivos cercanos.", true)
+                        }
+                    }
+                }
+            },
+            pickFiles = { attachmentContext ->
+                pendingPickerContext = attachmentContext
+                pickFileLauncher.launch(arrayOf("*/*"))
+            }
         )
     )
 
+    var showPreferences by rememberSaveable { mutableStateOf(false) }
+    var showAbout by rememberSaveable { mutableStateOf(false) }
+    var showLicenses by rememberSaveable { mutableStateOf(false) }
+    if (showPreferences) {
+        QetaraPreferencesDialog(
+            state = routeState.uiState,
+            onFontScaleChange = screenWiring.onFontScaleChange,
+            onCompactModeChange = screenWiring.onCompactModeChange,
+            onVibrateOnConnectChange = screenWiring.onVibrateOnConnectChange,
+            onVibrateOnErrorChange = screenWiring.onVibrateOnErrorChange,
+            onSilentSuccessFeedbackChange = screenWiring.onSilentSuccessFeedbackChange,
+            onDismiss = { showPreferences = false }
+        )
+    }
+    if (showLicenses) {
+        QetaraOpenSourceLicensesDialog(onDismiss = { showLicenses = false })
+    }
+    if (showAbout && !showLicenses) {
+        val identityFingerprint = remember(appContext) {
+            runCatching { NoiseIdentityStore.fingerprintShort(NoiseIdentityStore.getOrCreate(appContext).publicKey).chunked(4).joinToString(" ") }.getOrNull()
+        }
+        AlertDialog(
+            onDismissRequest = { showAbout = false },
+            title = { Text("Qetara") },
+            text = {
+                Column(
+                    modifier = Modifier.verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text("Comparte cerca. Conserva el control.", fontWeight = FontWeight.SemiBold)
+                    Text("Archivos y mensajes entre tus equipos, usando tu red local o Wi-Fi Direct. Las transferencias no necesitan una cuenta ni un servidor en la nube.")
+                    Text("Un proyecto de código abierto de Experience Lab, creado por Intelog Natanael.")
+                    Text("Código abierto · licencia MIT", style = MaterialTheme.typography.labelMedium)
+                    TextButton(onClick = { showLicenses = true }) { Text("Licencias") }
+                    Text("Versión "+BuildConfig.VERSION_NAME, style = MaterialTheme.typography.labelMedium)
+                    identityFingerprint?.let { fingerprint ->
+                        Text("Huella de este equipo: $fingerprint", style = MaterialTheme.typography.labelMedium)
+                    }
+                    Text("Los archivos recibidos están en Descargas. La actividad y los mensajes se conservan en este equipo.", style = MaterialTheme.typography.bodySmall)
+                }
+            },
+            confirmButton = { TextButton(onClick = { showAbout = false }) { Text("Listo") } }
+        )
+    }
+
+    val keyboardVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
     Scaffold(
+        modifier = Modifier.imePadding(),
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
+            if (!keyboardVisible) {
             var topModeMenuExpanded by rememberSaveable { mutableStateOf(false) }
             TopAppBar(
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -408,26 +532,22 @@ fun P2pScreenRoute() {
                 ),
                 title = {
                     Box {
-                        Column(
-                            modifier = Modifier.clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null
-                            ) {
-                                topModeMenuExpanded = true
-                            }
+                        TextButton(
+                            onClick = { topModeMenuExpanded = true },
+                            contentPadding = PaddingValues(horizontal = 0.dp, vertical = 4.dp)
                         ) {
-                            Text(
-                                "Qetara",
-                                fontWeight = FontWeight.SemiBold
-                            )
-                            Text(
-                                text = when (routeState.uiState.connectionViewMode) {
-                                    ConnectionViewMode.ADVANCED -> "Completo · local-first"
-                                    else -> "${routeState.uiState.activeConnectionMode.title} · local-first"
-                                },
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                            Column {
+                                Text("Qetara", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge)
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        if (routeState.uiState.connectionViewMode == ConnectionViewMode.ADVANCED) "Conexión avanzada"
+                                        else routeState.uiState.activeConnectionMode.title,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Icon(Icons.Rounded.ExpandMore, contentDescription = "Cambiar conexión", modifier = Modifier.size(16.dp))
+                                }
+                            }
                         }
                         DropdownMenu(
                             expanded = topModeMenuExpanded,
@@ -444,8 +564,17 @@ fun P2pScreenRoute() {
                             }
                         }
                     }
+                },
+                actions = {
+                    IconButton(onClick = { showPreferences = true }) {
+                        Icon(Icons.Rounded.Settings, contentDescription = "Ajustes de lectura y avisos")
+                    }
+                    IconButton(onClick = { showAbout = true }) {
+                        Icon(Icons.Rounded.Info, contentDescription = "Acerca de Qetara")
+                    }
                 }
             )
+            }
         },
         snackbarHost = {
             SnackbarHost(hostState = snackbarHostState)
@@ -454,7 +583,7 @@ fun P2pScreenRoute() {
         RenderP2pScreen(
             state = routeState.uiState,
             wiring = screenWiring,
-            modifier = Modifier.padding(padding)
+            modifier = Modifier.padding(padding).consumeWindowInsets(padding)
         )
     }
 }

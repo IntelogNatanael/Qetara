@@ -1,0 +1,17 @@
+name: Proponer una mejora
+description: Describe una tarea que Qetara podría hacer más sencilla.
+title: "[Mejora] "
+body:
+  - type: textarea
+    id: task
+    attributes:
+      label: ¿Qué intentas hacer?
+      description: Cuenta un ejemplo concreto de uso.
+    validations:
+      required: true
+  - type: textarea
+    id: improvement
+    attributes:
+      label: ¿Cómo debería ayudarte Qetara?
+    validations:
+      required: true

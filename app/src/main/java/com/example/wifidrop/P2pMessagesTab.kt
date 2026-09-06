@@ -1,15 +1,38 @@
 package com.example.wifidrop
 import android.content.Intent
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.rounded.ArrowDownward
+import androidx.compose.material.icons.rounded.ContentCopy
+import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.FilterChip
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.contentDescription
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.ime
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Dp
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -90,6 +113,13 @@ internal fun P2pMessagesTab(
 ) {
     val context = LocalContext.current
     val listState = rememberLazyListState()
+    val chatCoroutineScope = rememberCoroutineScope()
+    var searchVisible by rememberSaveable(activeChannel) { mutableStateOf(false) }
+    var messageQuery by rememberSaveable(activeChannel) { mutableStateOf("") }
+    var channelOptionsExpanded by rememberSaveable(activeChannel) { mutableStateOf(false) }
+    var newMessagesCount by remember(activeChannel) { mutableIntStateOf(0) }
+    var previousNewestMessageId by remember(activeChannel) { mutableStateOf<String?>(null) }
+    val atLatestMessage by remember { derivedStateOf { listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset < 80 } }
     var composerMoreExpanded by rememberSaveable { mutableStateOf(false) }
     var confirmClearChat by rememberSaveable { mutableStateOf(false) }
     var pendingDeleteMessageId by rememberSaveable { mutableStateOf<String?>(null) }
@@ -127,7 +157,13 @@ internal fun P2pMessagesTab(
     val filteredMessages = state.chatMessages.filter { entry ->
         entry.scope == activeScope
     }
-    val recentMessages = filteredMessages.take(120)
+    val recentMessages = remember(filteredMessages, messageQuery) {
+        val query = messageQuery.trim()
+        if (query.isBlank()) filteredMessages else filteredMessages.filter { message ->
+            message.text.contains(query, ignoreCase = true) ||
+                message.peerLabel?.contains(query, ignoreCase = true) == true
+        }
+    }
     val directChatMode = state.chatDirectTargetMode ?: state.activeConnectionMode
     val isDirectWifiMode = !isGlobalChat && directChatMode == ConnectionMode.WIFI_DIRECT
     val directTargetCount = state.chatDirectTargetIps.size
@@ -205,6 +241,7 @@ internal fun P2pMessagesTab(
     }
 
     val sendDisabledReason = when {
+        !state.sessionEnabled -> "Activa la sesión para enviar archivos o mensajes."
         isGlobalChat && !state.lanConnected -> "El canal requiere estar en una red Wi‑Fi."
         isGlobalChat && !globalLanJoined -> "Entra al canal Wi‑Fi para escribir."
         isGlobalChat && state.selectedFilesCount > 0 && state.globalChatPeerCount <= 0 ->
@@ -212,6 +249,7 @@ internal fun P2pMessagesTab(
         isGlobalChat && state.chatDraft.isBlank() && state.selectedFilesCount <= 0 -> "Escribe un mensaje o adjunta archivos."
         !hasComposerPayload -> "Escribe un mensaje o adjunta archivos."
         state.sessionExpired -> "Sesión expirada. Renueva la sesión."
+        !isGlobalChat && directChannelReady && !state.chatSessionReady -> "Confirma la sesión con el receptor en Conectar antes de enviar."
         !isGlobalChat && directChatMode == ConnectionMode.WIFI_DIRECT && state.chatDirectTargetIps.isEmpty() ->
             "Elige al menos un equipo del grupo Wi‑Fi Direct."
         !isGlobalChat && directChatMode == ConnectionMode.WIFI_DIRECT && state.selectedFilesCount > 0 && state.chatDirectTargetIps.size > 1 ->
@@ -228,6 +266,7 @@ internal fun P2pMessagesTab(
         else -> null
     }
     val composerNotice = when {
+        hasComposerPayload && sendDisabledReason != null -> sendDisabledReason
         state.sessionExpired -> "Renueva la sesión para volver a enviar."
         isGlobalChat && state.selectedFilesCount > 0 && state.globalChatPeerCount <= 0 ->
             "Cuando haya otro equipo en el canal podrás enviarle archivos."
@@ -312,7 +351,7 @@ internal fun P2pMessagesTab(
         state.tokenSyncStatus.contains("reintent", ignoreCase = true) ||
             state.tokenSyncStatus.contains("no pude", ignoreCase = true) ||
             state.tokenSyncStatus.contains("fall", ignoreCase = true)
-    val showSyncButton = experience.showSyncAction && (!isGlobalChat || tokenSyncNeedsManualAction)
+    val showSyncButton = !state.chatSessionReady && experience.showSyncAction && (!isGlobalChat || tokenSyncNeedsManualAction)
     val queueHeadline = when {
         queueRunningCount > 0 -> "Cola activa"
         queueFailedCount > 0 -> "Requiere atención"
@@ -338,14 +377,21 @@ internal fun P2pMessagesTab(
         0.22f
     )
 
-    LaunchedEffect(recentMessages.firstOrNull()?.id, recentMessages.size) {
-        if (recentMessages.isNotEmpty() &&
-            !listState.isScrollInProgress &&
-            listState.firstVisibleItemIndex <= 1
-        ) {
-            listState.scrollToItem(0)
+    LaunchedEffect(filteredMessages.firstOrNull()?.id) {
+        val newest = filteredMessages.firstOrNull()
+        if (newest != null && newest.id != previousNewestMessageId) {
+            if (messageQuery.isBlank() && (atLatestMessage || newest.direction == ChatMessageDirection.OUTGOING)) {
+                listState.scrollToItem(0)
+                newMessagesCount = 0
+            } else if (previousNewestMessageId != null && messageQuery.isBlank()) {
+                val added = filteredMessages.indexOfFirst { it.id == previousNewestMessageId }.coerceAtLeast(1)
+                newMessagesCount += added
+            }
+            previousNewestMessageId = newest.id
         }
     }
+    LaunchedEffect(atLatestMessage) { if (atLatestMessage) newMessagesCount = 0 }
+    LaunchedEffect(messageQuery, activeChannel) { listState.scrollToItem(0) }
 
     ElevatedCard(
         modifier = modifier
@@ -356,17 +402,23 @@ internal fun P2pMessagesTab(
         val sectionLabel = when {
             showChannelJoinPrompt -> null
             showDirectSetupCard && hasMessages -> "Historial reciente"
-            hasMessages -> "Mensajes"
+            hasMessages -> if (messageQuery.isNotBlank()) "Resultados guardados" else if (isGlobalChat) "Mensajes" else "Historial de chats directos"
             !showDirectSetupCard -> if (isGlobalChat) null else "Empieza aquí"
             else -> null
         }
+        BoxWithConstraints(Modifier.fillMaxSize()) {
+        val keyboardVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
+        val composerMaxHeight = (maxHeight * 0.62f).coerceAtLeast(128.dp).coerceAtMost(maxHeight)
+        val headerMaxHeight = maxHeight * 0.34f
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .imePadding()
-                .padding(UiSpaceM),
+            modifier = Modifier.fillMaxSize().padding(UiSpaceS),
             verticalArrangement = Arrangement.spacedBy(UiSpaceS)
         ) {
+            if (!keyboardVisible) {
+            Column(
+                modifier = Modifier.fillMaxWidth().heightIn(max = headerMaxHeight).verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(UiSpaceS)
+            ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -379,7 +431,8 @@ internal fun P2pMessagesTab(
                     Text(
                         chatHeaderTitle,
                         fontWeight = FontWeight.Bold,
-                        style = MaterialTheme.typography.titleMedium
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.semantics { heading() }
                     )
                     Text(
                         chatHeaderSummary,
@@ -391,6 +444,11 @@ internal fun P2pMessagesTab(
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    if (filteredMessages.isNotEmpty()) {
+                        IconButton(onClick = { searchVisible = !searchVisible; if (!searchVisible) messageQuery = "" }) {
+                            Icon(Icons.Rounded.Search, contentDescription = "Buscar en mensajes guardados")
+                        }
+                    }
                     if (isGlobalChat && globalLanJoined) {
                         TextButton(onClick = { onSetGlobalLanJoined(false) }) {
                             Icon(
@@ -402,76 +460,52 @@ internal fun P2pMessagesTab(
                         }
                     }
                     if (filteredMessages.isNotEmpty()) {
-                        TextButton(onClick = { confirmClearChat = true }) {
-                            Icon(
-                                imageVector = Icons.Rounded.DeleteSweep,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp)
+                        IconButton(onClick = { confirmClearChat = true }) {
+                            Icon(Icons.Rounded.DeleteSweep, contentDescription = "Eliminar historial de este canal")
+                        }
+                    }
+                }
+            }
+
+            if (searchVisible) {
+                OutlinedTextField(
+                    value = messageQuery,
+                    onValueChange = { messageQuery = it.take(160) },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    label = { Text("Buscar texto o equipo") },
+                    leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
+                    trailingIcon = {
+                        IconButton(onClick = { messageQuery = ""; searchVisible = false }) {
+                            Icon(Icons.Rounded.Close, contentDescription = "Cerrar búsqueda")
+                        }
+                    },
+                    shape = RoundedCornerShape(16.dp)
+                )
+            }
+
+            if (!isGlobalChat) {
+                val availablePeers = if (directChatMode == ConnectionMode.WIFI_DIRECT) directWifiPeers else directLanPeers
+                if (availablePeers.isNotEmpty()) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        availablePeers.forEach { peer ->
+                            val selected = if (directChatMode == ConnectionMode.WIFI_DIRECT) state.chatDirectTargetIps.contains(peer.ip)
+                                else state.chatDirectTargetIp == peer.ip
+                            FilterChip(
+                                selected = selected,
+                                onClick = { onSelectChatDirectPeer(peer.ip) },
+                                label = { Text(peer.label.ifBlank { peer.ip }, maxLines = 1) }
                             )
-                            Text("Limpiar")
                         }
                     }
                 }
             }
 
-            if (!isGlobalChat && directChatMode == ConnectionMode.LAN) {
-                if (directLanPeers.isNotEmpty()) {
-                    FlowRow(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(UiSpaceS),
-                        verticalArrangement = Arrangement.spacedBy(UiSpaceS)
-                    ) {
-                        directLanPeers.forEach { peer ->
-                            val selected = state.chatDirectTargetIp == peer.ip
-                            val onClick = { onSelectChatDirectPeer(peer.ip) }
-                            if (selected) {
-                                Button(onClick = onClick) {
-                                    Text(peer.label.ifBlank { peer.ip })
-                                }
-                            } else {
-                                OutlinedButton(onClick = onClick) {
-                                    Text(peer.label.ifBlank { peer.ip })
-                                }
-                            }
-                        }
-                    }
-                } else {
-                    Text(
-                        "Busca dispositivos para elegir un equipo.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-
-            if (!isGlobalChat && directChatMode == ConnectionMode.WIFI_DIRECT) {
-                if (directWifiPeers.isNotEmpty()) {
-                    FlowRow(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(UiSpaceS),
-                        verticalArrangement = Arrangement.spacedBy(UiSpaceS)
-                    ) {
-                        directWifiPeers.forEach { peer ->
-                            val selected = state.chatDirectTargetIps.contains(peer.ip)
-                            val onClick = { onSelectChatDirectPeer(peer.ip) }
-                            if (selected) {
-                                Button(onClick = onClick) {
-                                    Text(peer.label.ifBlank { peer.ip })
-                                }
-                            } else {
-                                OutlinedButton(onClick = onClick) {
-                                    Text(peer.label.ifBlank { peer.ip })
-                                }
-                            }
-                        }
-                    }
-                } else if (p2pLinked) {
-                    Text(
-                        "Cuando el grupo detecte más equipos aparecerán aquí.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+            if (!isGlobalChat && directChannelReady && !state.chatSessionReady) {
+                TextButton(onClick = onOpenConnectTab) { Text("Confirmar sesión en Conectar") }
             }
 
             if (showDirectSetupCard && hasMessages) {
@@ -501,7 +535,7 @@ internal fun P2pMessagesTab(
                                         else -> globalDeviceCountLabel
                                     }
                                 } else if (channelReady) {
-                                    if (directTargetCount > 1) "$directTargetCount equipos" else "Equipo listo"
+                                    if (!state.chatSessionReady) "Sesión por confirmar" else if (directTargetCount > 1) "$directTargetCount equipos" else "Equipo listo"
                                 } else {
                                     "Sin equipo"
                                 },
@@ -517,7 +551,7 @@ internal fun P2pMessagesTab(
                                 }
                             )
                         }
-                        if (state.sessionExpired || experience.showSyncAction || state.tokenSyncStatus.isNotBlank()) {
+                        if (state.sessionExpired || (!state.chatSessionReady && (experience.showSyncAction || state.tokenSyncStatus.isNotBlank()))) {
                             StatusChip(
                                 label = when {
                                     state.sessionExpired -> "Sesión expirada"
@@ -525,7 +559,7 @@ internal fun P2pMessagesTab(
                                     state.tokenSyncStatus.contains("reintent", ignoreCase = true) ||
                                         state.tokenSyncStatus.contains("no pude", ignoreCase = true) ||
                                         state.tokenSyncStatus.contains("fall", ignoreCase = true) -> "Reintentar"
-                                    state.tokenSyncStatus.contains("sincron", ignoreCase = true) -> "Sincronizando"
+                                    state.sessionSyncing -> "Sincronizando"
                                     else -> "Sesión"
                                 },
                                 containerColor = if (state.sessionExpired) {
@@ -557,11 +591,16 @@ internal fun P2pMessagesTab(
                     }
 
                     if (isGlobalChat) {
-                        ChannelDownloadSettingsCard(
-                            autoDownload = state.autoDownloadChannelFiles,
-                            onAutoDownloadChange = onAutoDownloadChannelFilesChange,
-                            panelColor = quietPanelColor
-                        )
+                        TextButton(onClick = { channelOptionsExpanded = !channelOptionsExpanded }) {
+                            Text(if (channelOptionsExpanded) "Ocultar opciones del canal" else "Opciones del canal")
+                        }
+                        if (channelOptionsExpanded) {
+                            ChannelDownloadSettingsCard(
+                                autoDownload = state.autoDownloadChannelFiles,
+                                onAutoDownloadChange = onAutoDownloadChannelFilesChange,
+                                panelColor = quietPanelColor
+                            )
+                        }
                     }
                 }
             }
@@ -688,11 +727,22 @@ internal fun P2pMessagesTab(
                 }
             }
 
+            }
+            } else {
+                Text(
+                    if (isGlobalChat) channelTitle else directTargetLabel ?: chatHeaderTitle,
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+
             if (hasMessages) {
+                Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
                 LazyColumn(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f),
+                        .fillMaxSize(),
                     state = listState,
                     reverseLayout = true,
                     verticalArrangement = Arrangement.spacedBy(UiSpaceS)
@@ -707,6 +757,28 @@ internal fun P2pMessagesTab(
                             onShareMessage = { shareChatMessage(context, item) }
                         )
                     }
+                }
+                if (!atLatestMessage && messageQuery.isBlank()) {
+                    FilledTonalButton(
+                        onClick = {
+                            newMessagesCount = 0
+                            chatCoroutineScope.launch { listState.animateScrollToItem(0) }
+                        },
+                        modifier = Modifier.align(Alignment.BottomCenter).padding(8.dp)
+                    ) {
+                        Icon(Icons.Rounded.ArrowDownward, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Text(if (newMessagesCount > 0) "${newMessagesCount} nuevos" else "Ir al último mensaje")
+                    }
+                }
+                }
+            } else if (messageQuery.isNotBlank()) {
+                Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    EmptyStateBlock(
+                        title = "No encontramos ese mensaje",
+                        body = "Prueba otra palabra o busca por el nombre del equipo.",
+                        actionLabel = "Borrar búsqueda",
+                        onAction = { messageQuery = "" }
+                    )
                 }
             } else if (showDirectSetupCard) {
                 Column(
@@ -773,6 +845,8 @@ internal fun P2pMessagesTab(
             if (!showDirectSetupCard && !showChannelJoinPrompt) {
                 ChatComposerPanel(
                     draft = state.chatDraft,
+                    maxHeight = composerMaxHeight,
+                    keyboardVisible = keyboardVisible,
                     selectedFileNames = state.selectedFileNames,
                     selectedFilesCount = state.selectedFilesCount,
                     placeholderText = composerPlaceholder,
@@ -860,6 +934,7 @@ internal fun P2pMessagesTab(
                 )
             }
         }
+        }
     }
 
     if (pendingDeleteMessageId != null) {
@@ -869,7 +944,7 @@ internal fun P2pMessagesTab(
             title = { Text("Eliminar mensaje") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(UiSpaceS)) {
-                    Text("Esta accion eliminara solo este mensaje.")
+                    Text("Se eliminará este mensaje del historial de este equipo.")
                     Text(
                         pendingMessage?.text?.take(160).orEmpty().ifBlank { "Mensaje sin contenido visible." },
                         style = MaterialTheme.typography.bodySmall,
@@ -902,7 +977,7 @@ internal fun P2pMessagesTab(
             title = { Text("Limpiar chat") },
             text = {
                 Text(
-                    "Se eliminaran ${filteredMessages.size} mensajes de este canal. Esta accion no se puede deshacer."
+                    "Se eliminarán todos los mensajes de este canal guardados en este equipo, incluidos los que no aparecen en la búsqueda. Esta acción no se puede deshacer."
                 )
             },
             confirmButton = {
@@ -1083,6 +1158,8 @@ private fun WifiChannelEmptyCard() {
 @Composable
 private fun ChatComposerPanel(
     draft: String,
+    maxHeight: Dp,
+    keyboardVisible: Boolean,
     selectedFileNames: List<String>,
     selectedFilesCount: Int,
     placeholderText: String,
@@ -1102,7 +1179,7 @@ private fun ChatComposerPanel(
         "$selectedFilesCount archivos listos"
     }
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().heightIn(max = maxHeight),
         shape = RoundedCornerShape(24.dp),
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.36f)
     ) {
@@ -1112,103 +1189,16 @@ private fun ChatComposerPanel(
                 .padding(horizontal = UiSpaceS, vertical = 10.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            if (selectedFilesCount > 0) {
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(18.dp),
-                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 12.dp, vertical = 10.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Row(
-                                modifier = Modifier.weight(1f),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Rounded.AttachFile,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                    Text(
-                                        attachmentsLabel,
-                                        fontWeight = FontWeight.SemiBold,
-                                        style = MaterialTheme.typography.bodySmall
-                                    )
-                                    Text(
-                                        "Se enviarán con este mensaje.",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
-                            TextButton(onClick = onClearSelectedFiles) {
-                                Icon(
-                                    imageVector = Icons.Rounded.Close,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Text("Quitar")
-                            }
-                        }
-
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .horizontalScroll(rememberScrollState()),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            selectedFileNames.take(4).forEach { fileName ->
-                                Surface(
-                                    shape = RoundedCornerShape(999.dp),
-                                    color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.65f),
-                                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                                ) {
-                                    Row(
-                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Rounded.Description,
-                                            contentDescription = null,
-                                            modifier = Modifier.size(16.dp)
-                                        )
-                                        Text(
-                                            fileName,
-                                            style = MaterialTheme.typography.labelMedium,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-                                    }
-                                }
-                            }
-                            if (selectedFilesCount > 4) {
-                                Surface(
-                                    shape = RoundedCornerShape(999.dp),
-                                    color = MaterialTheme.colorScheme.primaryContainer,
-                                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                                ) {
-                                    Text(
-                                        "+${selectedFilesCount - 4} más",
-                                        style = MaterialTheme.typography.labelMedium,
-                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
-                                    )
-                                }
-                            }
-                        }
-                    }
+            if (selectedFilesCount > 0 && !keyboardVisible) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        attachmentsLabel + selectedFileNames.firstOrNull()?.let { " · $it" }.orEmpty(),
+                        modifier = Modifier.weight(1f),
+                        style = MaterialTheme.typography.bodySmall,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    TextButton(onClick = onClearSelectedFiles) { Text("Quitar") }
                 }
             }
 
@@ -1221,7 +1211,11 @@ private fun ChatComposerPanel(
                 },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(min = 72.dp),
+                    .weight(1f, fill = false)
+                    .heightIn(min = 56.dp)
+                    .semantics { contentDescription = "Escribir mensaje" },
+                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
+                supportingText = if (draft.length >= 1_800) { { Text("${draft.length}/2000 caracteres") } } else null,
                 maxLines = 4,
                 shape = RoundedCornerShape(20.dp),
                 colors = TextFieldDefaults.colors(
@@ -1242,20 +1236,11 @@ private fun ChatComposerPanel(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 if (attachEnabled || selectedFilesCount > 0) {
-                    FilledTonalButton(
+                    IconButton(
                         onClick = onPickFile,
                         enabled = attachEnabled && composerEnabled
                     ) {
-                        Icon(
-                            imageVector = Icons.Rounded.AttachFile,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Text(
-                            if (selectedFilesCount == 0) "Adjuntar" else "Adjuntar más",
-                            maxLines = 1,
-                            softWrap = false
-                        )
+                        Icon(Icons.Rounded.AttachFile, contentDescription = "Adjuntar archivos")
                     }
                 }
                 Button(
@@ -1269,7 +1254,7 @@ private fun ChatComposerPanel(
                         modifier = Modifier.size(18.dp)
                     )
                     Text(
-                        sendButtonLabel,
+                        if (keyboardVisible && selectedFilesCount > 0) "Enviar ($selectedFilesCount)" else sendButtonLabel,
                         maxLines = 1,
                         softWrap = false
                     )
@@ -1397,278 +1382,127 @@ private fun ChatMessageCard(
     onShareMessage: () -> Unit
 ) {
     var itemMoreExpanded by rememberSaveable(item.id) { mutableStateOf(false) }
+    val clipboard = LocalClipboardManager.current
     val outgoing = item.direction == ChatMessageDirection.OUTGOING
-    val channelFileOffer = (
-        ChatMessageScopeCodec.decodeFromTransport(item.text)
-            as? ChatMessageScopeCodec.DecodedChatPayload.FileOffer
-        )?.offer
-    val bubbleColor = when {
-        outgoing && item.status == ChatMessageStatus.FAILED -> MaterialTheme.colorScheme.errorContainer
-        outgoing && item.status == ChatMessageStatus.CANCELED -> MaterialTheme.colorScheme.surfaceVariant
-        outgoing -> MaterialTheme.colorScheme.primaryContainer
-        item.status == ChatMessageStatus.FAILED -> MaterialTheme.colorScheme.errorContainer
-        else -> MaterialTheme.colorScheme.secondaryContainer
+    val failed = item.status == ChatMessageStatus.FAILED
+    val pending = item.status == ChatMessageStatus.QUEUED || item.status == ChatMessageStatus.SENDING
+    val channelFileOffer = remember(item.text) {
+        (ChatMessageScopeCodec.decodeFromTransport(item.text) as? ChatMessageScopeCodec.DecodedChatPayload.FileOffer)?.offer
     }
-    val bubbleContentColor = when {
-        outgoing && item.status == ChatMessageStatus.FAILED -> MaterialTheme.colorScheme.onErrorContainer
-        outgoing && item.status == ChatMessageStatus.CANCELED -> MaterialTheme.colorScheme.onSurfaceVariant
-        outgoing -> MaterialTheme.colorScheme.onPrimaryContainer
-        item.status == ChatMessageStatus.FAILED -> MaterialTheme.colorScheme.onErrorContainer
-        else -> MaterialTheme.colorScheme.onSecondaryContainer
-    }
-    val statusChipLabel = chatStatusLabel(item.status)
-    val statusChipColor = when (item.status) {
-        ChatMessageStatus.FAILED -> MaterialTheme.colorScheme.errorContainer
-        ChatMessageStatus.QUEUED,
-        ChatMessageStatus.SENDING -> MaterialTheme.colorScheme.secondaryContainer
-        ChatMessageStatus.PUBLISHED -> MaterialTheme.colorScheme.tertiaryContainer
-        ChatMessageStatus.CANCELED -> MaterialTheme.colorScheme.surfaceVariant
-        ChatMessageStatus.SENT,
-        ChatMessageStatus.RECEIVED -> MaterialTheme.colorScheme.primaryContainer
-    }
-    val statusChipContentColor = when (item.status) {
-        ChatMessageStatus.FAILED -> MaterialTheme.colorScheme.onErrorContainer
-        ChatMessageStatus.QUEUED,
-        ChatMessageStatus.SENDING -> MaterialTheme.colorScheme.onSecondaryContainer
-        ChatMessageStatus.PUBLISHED -> MaterialTheme.colorScheme.onTertiaryContainer
-        ChatMessageStatus.CANCELED -> MaterialTheme.colorScheme.onSurfaceVariant
-        ChatMessageStatus.SENT,
-        ChatMessageStatus.RECEIVED -> MaterialTheme.colorScheme.onPrimaryContainer
-    }
-
+    val contentColor = if (failed) MaterialTheme.colorScheme.onErrorContainer
+        else if (outgoing) MaterialTheme.colorScheme.onPrimaryContainer
+        else MaterialTheme.colorScheme.onSurface
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = if (outgoing) Arrangement.End else Arrangement.Start
     ) {
         Surface(
-            shape = RoundedCornerShape(18.dp),
-            color = bubbleColor,
-            contentColor = bubbleContentColor,
-            modifier = Modifier.fillMaxWidth(0.88f)
+            shape = RoundedCornerShape(
+                topStart = 18.dp,
+                topEnd = 18.dp,
+                bottomStart = if (outgoing) 18.dp else 5.dp,
+                bottomEnd = if (outgoing) 5.dp else 18.dp
+            ),
+            color = if (failed) MaterialTheme.colorScheme.errorContainer
+                else if (outgoing) MaterialTheme.colorScheme.primaryContainer
+                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
+            contentColor = contentColor,
+            modifier = Modifier.widthIn(max = 560.dp).fillMaxWidth(0.92f)
         ) {
             Column(
-                modifier = Modifier.padding(UiSpaceS),
-                verticalArrangement = Arrangement.spacedBy(UiSpaceS)
+                modifier = Modifier.padding(start = 14.dp, top = 4.dp, end = 8.dp, bottom = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column(
+                    Text(
+                        if (outgoing) "Tú" + (item.peerLabel?.takeIf { it.isNotBlank() }?.let { " → $it" } ?: "")
+                        else item.peerLabel ?: "Equipo",
                         modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Text(
-                            text = if (outgoing) {
-                                buildString {
-                                    append("Tu")
-                                    if (!item.peerLabel.isNullOrBlank()) {
-                                        append(" → ")
-                                        append(item.peerLabel)
-                                    }
-                                    append(" · ")
-                                    append(formatHistoryTime(item.timestampMs))
-                                }
-                            } else {
-                                "${item.peerLabel ?: "Equipo"} · ${formatHistoryTime(item.timestampMs)}"
-                            },
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                        if (
-                            item.status == ChatMessageStatus.FAILED ||
-                            item.status == ChatMessageStatus.CANCELED ||
-                            item.status == ChatMessageStatus.QUEUED ||
-                            item.status == ChatMessageStatus.SENDING
-                        ) {
-                            StatusChip(
-                                label = statusChipLabel,
-                                containerColor = statusChipColor,
-                                contentColor = statusChipContentColor
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Box {
+                        IconButton(onClick = { itemMoreExpanded = true }) {
+                            Icon(Icons.Rounded.MoreHoriz, contentDescription = "Acciones del mensaje", modifier = Modifier.size(20.dp))
+                        }
+                        DropdownMenu(expanded = itemMoreExpanded, onDismissRequest = { itemMoreExpanded = false }) {
+                            if (channelFileOffer == null) {
+                                DropdownMenuItem(
+                                    text = { Text("Copiar texto") },
+                                    leadingIcon = { Icon(Icons.Rounded.ContentCopy, contentDescription = null) },
+                                    onClick = { itemMoreExpanded = false; clipboard.setText(AnnotatedString(item.text)) }
+                                )
+                            }
+                            DropdownMenuItem(
+                                text = { Text("Compartir mensaje") },
+                                leadingIcon = { Icon(Icons.Rounded.IosShare, contentDescription = null) },
+                                onClick = { itemMoreExpanded = false; onShareMessage() }
+                            )
+                            if (outgoing && failed) {
+                                DropdownMenuItem(
+                                    text = { Text("Reintentar envío") },
+                                    leadingIcon = { Icon(Icons.Rounded.Refresh, contentDescription = null) },
+                                    onClick = { itemMoreExpanded = false; onRetryMessage(item.id) }
+                                )
+                            }
+                            if (outgoing && pending) {
+                                DropdownMenuItem(
+                                    text = { Text("Cancelar envío") },
+                                    leadingIcon = { Icon(Icons.Rounded.Close, contentDescription = null) },
+                                    onClick = { itemMoreExpanded = false; onCancelQueuedMessage(item.id) }
+                                )
+                            }
+                            DropdownMenuItem(
+                                text = { Text("Eliminar de este equipo") },
+                                leadingIcon = { Icon(Icons.Rounded.DeleteOutline, contentDescription = null) },
+                                onClick = { itemMoreExpanded = false; onRequestDelete() }
                             )
                         }
                     }
                 }
-
                 if (channelFileOffer != null) {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(
-                            if (outgoing) {
-                                "Tú compartiste:"
-                            } else {
-                                "${item.peerLabel ?: channelFileOffer.senderLabel} compartió:"
-                            },
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                        Surface(
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(14.dp),
-                            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.68f)
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Row(
-                                modifier = Modifier.padding(12.dp),
-                                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Rounded.Description,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(22.dp)
+                            Icon(Icons.Rounded.Description, contentDescription = null)
+                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Text(channelFileOffer.fileName, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                                Text(
+                                    if (channelFileOffer.fileSizeBytes >= 0) formatBytes(channelFileOffer.fileSizeBytes) else "Tamaño no disponible",
+                                    style = MaterialTheme.typography.bodySmall
                                 )
-                                Column(Modifier.weight(1f)) {
-                                    Text(
-                                        channelFileOffer.fileName,
-                                        fontWeight = FontWeight.SemiBold,
-                                        maxLines = 2,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                    Text(
-                                        if (channelFileOffer.fileSizeBytes >= 0L) {
-                                            formatBytes(channelFileOffer.fileSizeBytes)
-                                        } else {
-                                            "Tamaño no disponible"
-                                        },
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
                             }
                         }
-                        if (!outgoing) {
-                            Button(onClick = onDownloadChannelFileOffer) {
-                                Text("Descargar")
-                            }
-                        }
+                    }
+                    if (!outgoing) {
+                        FilledTonalButton(onClick = onDownloadChannelFileOffer) { Text("Descargar archivo") }
                     }
                 } else {
-                    Text(item.text, style = MaterialTheme.typography.bodyMedium)
+                    SelectionContainer { Text(item.text, style = MaterialTheme.typography.bodyLarge) }
                 }
-
-                if (
-                    item.status == ChatMessageStatus.SENT ||
-                    item.status == ChatMessageStatus.RECEIVED ||
-                    item.status == ChatMessageStatus.PUBLISHED
-                ) {
-                    Text(
-                        statusChipLabel,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = bubbleContentColor.copy(alpha = 0.82f)
-                    )
-                }
-
+                Text(
+                    formatHistoryTime(item.timestampMs) + " · " + chatStatusLabel(item.status),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = contentColor.copy(alpha = 0.82f),
+                    modifier = Modifier.padding(top = 6.dp)
+                )
                 val friendlyIssue = friendlyMessageIssue(item.errorCause)
                 if (!friendlyIssue.isNullOrBlank()) {
-                    Text(
-                        friendlyIssue,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.error
-                    )
+                    Text(friendlyIssue, style = MaterialTheme.typography.bodySmall, color = contentColor)
                 }
-            }
-        }
-    }
-
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = if (outgoing) Arrangement.End else Arrangement.Start,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        when {
-            outgoing && item.status == ChatMessageStatus.FAILED -> {
-                OutlinedButton(onClick = { onRetryMessage(item.id) }) {
-                    Icon(
-                        imageVector = Icons.Rounded.Refresh,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Text("Reintentar envío")
-                }
-            }
-
-            outgoing && (item.status == ChatMessageStatus.QUEUED || item.status == ChatMessageStatus.SENDING) -> {
-                OutlinedButton(
-                    onClick = { onCancelQueuedMessage(item.id) },
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = MaterialTheme.colorScheme.error
-                    )
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.Close,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Text(
-                        if (item.status == ChatMessageStatus.SENDING) {
-                            "Cancelar envío"
-                        } else {
-                            "Quitar de cola"
-                        }
-                    )
-                }
-            }
-        }
-
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(onClick = onShareMessage) {
-                Icon(
-                    imageVector = Icons.Rounded.IosShare,
-                    contentDescription = "Compartir mensaje"
-                )
-            }
-            IconButton(onClick = onRequestDelete) {
-                Icon(
-                    imageVector = Icons.Rounded.DeleteOutline,
-                    contentDescription = "Eliminar mensaje"
-                )
-            }
-            if (outgoing && (item.status == ChatMessageStatus.FAILED || item.status == ChatMessageStatus.QUEUED || item.status == ChatMessageStatus.SENDING)) {
-                Box {
-                    IconButton(onClick = { itemMoreExpanded = true }) {
-                        Icon(
-                            imageVector = Icons.Rounded.MoreHoriz,
-                            contentDescription = "Más acciones"
-                        )
-                    }
-                    DropdownMenu(
-                        expanded = itemMoreExpanded,
-                        onDismissRequest = { itemMoreExpanded = false }
-                    ) {
-                        if (outgoing && item.status == ChatMessageStatus.FAILED) {
-                            DropdownMenuItem(
-                                text = { Text("Reintentar envío") },
-                                leadingIcon = {
-                                    Icon(
-                                        imageVector = Icons.Rounded.Refresh,
-                                        contentDescription = null
-                                    )
-                                },
-                                onClick = {
-                                    itemMoreExpanded = false
-                                    onRetryMessage(item.id)
-                                }
-                            )
-                        }
-                        if (outgoing && (item.status == ChatMessageStatus.QUEUED || item.status == ChatMessageStatus.SENDING)) {
-                            DropdownMenuItem(
-                                text = { Text("Cancelar envío") },
-                                leadingIcon = {
-                                    Icon(
-                                        imageVector = Icons.Rounded.Close,
-                                        contentDescription = null
-                                    )
-                                },
-                                onClick = {
-                                    itemMoreExpanded = false
-                                    onCancelQueuedMessage(item.id)
-                                }
-                            )
-                        }
-                    }
+                if (outgoing && failed) {
+                    TextButton(onClick = { onRetryMessage(item.id) }) { Text("Reintentar envío") }
                 }
             }
         }
@@ -1738,24 +1572,8 @@ private fun shareChatMessage(context: android.content.Context, item: ChatMessage
 }
 
 private fun friendlyMessageIssue(cause: String?): String? {
-    val normalized = cause?.trim()?.lowercase().orEmpty()
-    if (normalized.isBlank()) return null
-    return when {
-        normalized.contains("cancelad") -> null
-        normalized.contains("token") || normalized.contains("pin") || normalized.contains("sesion") || normalized.contains("sesión") -> {
-            "La sesión ya no es válida. Renuévala y vuelve a intentar."
-        }
-        normalized.contains("timeout") || normalized.contains("timed out") || normalized.contains("tiempo") -> {
-            "El otro equipo no respondió a tiempo."
-        }
-        normalized.contains("rechaz") || normalized.contains("refus") -> {
-            "El otro equipo rechazó la conexión."
-        }
-        normalized.contains("wifi") || normalized.contains("network") || normalized.contains("socket") || normalized.contains("host") || normalized.contains("ip") -> {
-            "No se pudo llegar al otro equipo."
-        }
-        else -> "No se pudo enviar este mensaje."
-    }
+    if (cause?.contains("cancelad", ignoreCase = true) == true) return null
+    return com.example.wifidrop.presentation.actionableTransferIssue(cause, "No se pudo enviar. Comprueba la conexión y vuelve a intentarlo.")
 }
 
 @Composable

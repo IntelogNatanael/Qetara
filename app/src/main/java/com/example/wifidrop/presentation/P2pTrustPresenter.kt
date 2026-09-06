@@ -12,9 +12,15 @@ class P2pTrustPresenter(
         return null
     }
 
-    fun approveCredentialShare(request: PendingCredentialShareRequest): P2pFeedbackMessage {
-        backend.approveCredentialShare(request.id, request.label)
-        return P2pFeedbackMessage("Aprobaste compartir la sesión con ${request.label}.")
+    fun approveCredentialShare(request: PendingCredentialShareRequest): P2pFeedbackMessage? {
+        backend.approveCredentialShare(
+            peerId = request.id,
+            peerLabel = request.label,
+            expectedNoiseStaticKey = request.noiseStaticKey.orEmpty(),
+            requestedAtMs = request.requestedAtMs
+        )
+        // Service acceptance removes this exact pending request; a replaced request stays visible.
+        return null
     }
 
     fun rejectCredentialShare(request: PendingCredentialShareRequest): P2pFeedbackMessage {

@@ -2,13 +2,23 @@ package com.example.wifidrop
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -18,8 +28,6 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -32,7 +40,12 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 
 @Composable
 internal fun QetaraBackdrop(modifier: Modifier = Modifier) {
@@ -156,7 +169,7 @@ internal fun DeveloperFooter(
                     tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.76f)
                 )
                 Text(
-                    "By Intelog Natanael",
+                    "Creado por Intelog Natanael",
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
@@ -177,88 +190,63 @@ internal fun QetaraBottomNavigation(
     tabIcon: (P2pMainTab) -> androidx.compose.ui.graphics.vector.ImageVector,
     modifier: Modifier = Modifier
 ) {
-    val shape = RoundedCornerShape(30.dp)
     Surface(
-        modifier = modifier
-            .fillMaxWidth()
-            .border(
-                width = 1.dp,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f),
-                shape = shape
-            ),
-        shape = shape,
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
-        tonalElevation = 3.dp,
-        shadowElevation = 14.dp
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 2.dp
     ) {
-        Column(
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = 14.dp, top = 12.dp, end = 14.dp),
-                shape = RoundedCornerShape(16.dp),
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.34f)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(8.dp)
-                            .background(
-                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.88f),
-                                shape = RoundedCornerShape(999.dp)
-                            )
-                    )
-                    Text(
-                        statusLabel,
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-            }
+        BoxWithConstraints(Modifier.fillMaxWidth()) {
+            val density = LocalDensity.current
+            val labelStyle = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.sp)
+            val textMeasurer = rememberTextMeasurer()
+            val widestLabelPx = tabs.maxOfOrNull {
+                textMeasurer.measure(AnnotatedString(tabLabel(it)), style = labelStyle, softWrap = false).size.width
+            } ?: 0
+            val availableItemWidthPx = with(density) { maxWidth.toPx() } / tabs.size.coerceAtLeast(1)
+            val compactLabels = widestLabelPx + with(density) { 8.dp.toPx() } > availableItemWidthPx
             NavigationBar(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 4.dp)
-                    .navigationBarsPadding(),
+                modifier = Modifier.fillMaxWidth().selectableGroup().semantics { stateDescription = statusLabel },
                 containerColor = Color.Transparent,
-                tonalElevation = 0.dp
+                tonalElevation = 0.dp,
+                // The outer Scaffold owns system bars.
+                windowInsets = WindowInsets(0, 0, 0, 0)
             ) {
                 tabs.forEachIndexed { index, tab ->
-                    NavigationBarItem(
-                        selected = selectedTabIndex == index,
-                        onClick = { onTabSelected(index, tab) },
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = MaterialTheme.colorScheme.primary,
-                            selectedTextColor = MaterialTheme.colorScheme.primary,
-                            indicatorColor = lerp(
-                                MaterialTheme.colorScheme.primaryContainer,
-                                MaterialTheme.colorScheme.surface,
-                                0.18f
-                            ),
-                            unselectedIconColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.72f),
-                            unselectedTextColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.72f)
-                        ),
-                        icon = {
+                    val selected = selectedTabIndex == index
+                    val label = tabLabel(tab)
+                    Column(
+                        modifier = Modifier
+                            .weight(if (compactLabels && selected) 2f else 1f)
+                            .heightIn(min = 80.dp)
+                            .selectable(selected = selected, role = Role.Tab, onClick = { onTabSelected(index, tab) })
+                            .semantics(mergeDescendants = true) { contentDescription = label }
+                            .padding(horizontal = 2.dp, vertical = 8.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically)
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(20.dp),
+                            color = if (selected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent
+                        ) {
                             Icon(
                                 imageVector = tabIcon(tab),
-                                contentDescription = null
+                                contentDescription = null,
+                                tint = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = if (compactLabels) 8.dp else 16.dp, vertical = 4.dp).size(24.dp)
                             )
-                        },
-                        label = {
-                            Text(tabLabel(tab), maxLines = 1)
-                        },
-                        alwaysShowLabel = true
-                    )
+                        }
+                        if (!compactLabels || selected) {
+                            Text(
+                                label,
+                                modifier = Modifier.clearAndSetSemantics { },
+                                maxLines = 1,
+                                textAlign = TextAlign.Center,
+                                style = labelStyle,
+                                color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
                 }
             }
         }

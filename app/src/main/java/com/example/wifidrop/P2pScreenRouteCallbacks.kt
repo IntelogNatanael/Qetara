@@ -71,3 +71,14 @@ fun applyTransientUiEffect(
     }
     pushFeedback(effect.feedback)
 }
+
+fun adjustedPreferencesForConnectionMode(
+    current: UxPreferences,
+    next: ConnectionMode
+): UxPreferences = when (next) {
+    ConnectionMode.WIFI_DIRECT -> current.copy(activeConnectionMode = next, wifiDirectModeEnabled = true)
+    ConnectionMode.LAN -> current.copy(activeConnectionMode = next, lanModeEnabled = true)
+}
+
+fun canUseLanTargetSuggestion(viewMode: ConnectionViewMode): Boolean =
+    viewMode != ConnectionViewMode.WIFI_DIRECT

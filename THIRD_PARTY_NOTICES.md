@@ -1,0 +1,57 @@
+# Avisos de software de terceros
+
+Qetara 1.1.0 utiliza software de terceros bajo sus respectivas licencias. La licencia MIT de [Qetara](LICENSE) se aplica a su propio código; no sustituye las licencias de estas dependencias.
+
+Esta revisión del 6 de septiembre de 2026 combina los archivos Gradle, los POM de Maven descargados para la compilación, el modelo de bibliotecas del artefacto Android **debug** y los JAR presentes en la distribución Windows generada. El [inventario verificable](licenses/dependency-inventory.json) conserva coordenadas, versiones, licencia declarada, URL del POM y SHA-256 del POM inspeccionado: 91 componentes en el modelo Android, 33 JAR de terceros en Windows y 119 coordenadas distintas entre ambos. El modelo Android incluye herramientas de inspección habilitadas para debug. No representa un inventario completo de cada biblioteca nativa incrustada, del SDK Android ni del runtime Java.
+
+## Aplicación y bibliotecas de ejecución
+
+| Componente | Versión observada | Uso | Aviso/licencia |
+| --- | --- | --- | --- |
+| AndroidX Activity | 1.13.0 | Interfaz y ciclo de vida Android | Apache 2.0 |
+| AndroidX Core / Core KTX | 1.18.0 | Integración Android | Apache 2.0 |
+| AndroidX Core Splashscreen | 1.2.0 | Inicio Android | Apache 2.0 |
+| AndroidX AppCompat | 1.7.1 | Compatibilidad Android | Apache 2.0 |
+| Jetpack Compose (BOM 2026.01.00) | UI 1.10.1; Material 3 1.4.0; iconos 1.7.8 | Interfaz Android | Apache 2.0 |
+| Kotlin standard library | Android 2.2.20; Windows 2.2.10, adaptadores JDK 2.1.21 | Lenguaje y biblioteca estándar | Apache 2.0 |
+| Kotlin Coroutines | Android 1.11.0; Windows 1.8.0 | Concurrencia | Apache 2.0 |
+| Compose Multiplatform/Desktop | 1.8.2 | Interfaz Windows | Apache 2.0 |
+| Skiko | 0.9.4.2 | Integración gráfica nativa Windows | Apache 2.0; [NOTICE de Skiko](licenses/skiko-0.9.4.2-NOTICE.txt) |
+| Skia | revisión a00c390e98, paquete m132-a00c390e98-1 declarado por Skiko | Motor gráfico nativo | [Licencia BSD de Skia](licenses/skia-a00c390e98-LICENSE.txt); sus componentes conservan términos propios |
+| Noise Java, `kr.jclab:noise-java` | 0.0.1 | Transporte cifrado Android y Windows | POM: Apache 2.0; código de origen: avisos MIT y dominio público preservados [aquí](licenses/noise-java-0.0.1-NOTICES.txt) |
+| Noto Sans Syriac | archivos Regular y Black incluidos en design/brand/fonts | Recursos tipográficos de marca | [SIL Open Font License 1.1](design/brand/fonts/OFL.txt), Copyright 2022 The Noto Project Authors |
+
+Las bibliotecas AndroidX, Kotlin y Compose incluyen dependencias transitivas de sus respectivas familias. Las versiones concretas del artefacto inspeccionado se detallan en el inventario; no se deducen únicamente de las versiones declaradas directamente en Gradle. También se incluyen las declaraciones Apache 2.0 de JetBrains Annotations, JSpecify y Guava ListenableFuture (esta última heredada de su POM padre).
+
+El texto de [Apache License 2.0](licenses/Apache-2.0.txt) acompaña este proyecto. Los proyectos y sus fuentes se identifican mediante los enlaces declarados por sus POM dentro del inventario.
+
+## Avisos de Noise Java
+
+El POM oficial de `kr.jclab:noise-java:0.0.1` declara Apache 2.0. La inspección adicional del archivo de fuentes oficial encontró el aviso MIT de **Copyright (C) 2016 Southern Storm Software, Pty Ltd.** en las clases del protocolo y de criptografía. `Curve448.java` conserva avisos MIT de **Copyright (c) 2011 Stanford University** y **Copyright (c) 2014 Cryptography Research, Inc.**. RijndaelAES y NewHope conservan declaraciones de dominio público. El [archivo de avisos](licenses/noise-java-0.0.1-NOTICES.txt) reproduce esas declaraciones originales; no se ha reclasificado todo el código a partir del POM.
+
+## Runtime Java de la distribución Windows
+
+La distribución Windows utiliza Eclipse Temurin **21.0.12.1+1 LTS**, seleccionado desde la publicación estable oficial para Windows x64 y reducido con los módulos necesarios para Qetara. Se conserva íntegro su directorio `runtime/legal/`, que incluye los textos GPL v2, las excepciones indicadas por el proveedor y los avisos por módulo de componentes como FreeType, HarfBuzz, ICU, libpng, JPEG, zlib y otros. Esos términos pertenecen al runtime y sus componentes; no se reemplazan por la licencia MIT de Qetara ni por esta tabla. El archivo `runtime/release` identifica la versión y los módulos presentes en cada distribución concreta.
+
+Las fuentes correspondientes acompañan la entrega en `Qetara-third-party-source`: archivo oficial completo de OpenJDK `OpenJDK21U-jdk-sources_21.0.12.1_1.tar.gz`, snapshot de los scripts Temurin, licencias, metadatos y comprobaciones SHA-256. El commit de OpenJDK es `1c417fbfc2f70ab03a565b0af0a5a3c6f5e15ad6`; el de los scripts de compilación es `e6ba7dec3d07654074559310376a3ae89da5f4ac`. Al redistribuir el runtime, se debe acompañar ese paquete de fuentes y conservar sus avisos, junto con los de `runtime/legal/`. La [publicación oficial de Temurin](https://github.com/adoptium/temurin21-binaries/releases/tag/jdk-21.0.12.1%2B1) permite contrastar la procedencia; este enlace no sustituye el paquete de fuentes entregado.
+
+## Herramientas de desarrollo y pruebas
+
+Estas herramientas se usan para producir o comprobar la aplicación; no deben confundirse con componentes de ejecución añadidos a propósito a la distribución final.
+
+| Herramienta | Versión declarada | Licencia declarada |
+| --- | --- | --- |
+| Gradle Wrapper / Gradle | 9.1.0 | Apache 2.0; la distribución Gradle conserva sus propios avisos |
+| Android Gradle Plugin | 9.0.0 | Apache 2.0 |
+| Kotlin JVM y Compose Compiler plugins | 2.2.10 | Apache 2.0 |
+| Compose Gradle plugin | 1.8.2 | Apache 2.0 |
+| JUnit | 4.13.2 | Eclipse Public License 1.0 |
+| Kotlin Test / Kotlin Test JUnit | 2.2.10 | Apache 2.0 |
+| Hamcrest Core, transitivo de JUnit | 1.3 | BSD, según su POM padre |
+| Compose UI tooling | 1.10.1 | Apache 2.0; dependencia Android debug |
+
+## Conservación y actualización
+
+Las distribuciones deben llevar este documento y los archivos de `licenses/`, además de los avisos originales presentes en sus bibliotecas y en `runtime/legal/` cuando incluyan Java. Los recursos Noto deben conservar su archivo OFL. Al cambiar dependencias o generar otra plataforma, se deben volver a inspeccionar los artefactos realmente resueltos y los avisos nativos de esa plataforma; esta instantánea no acredita binarios que todavía no se han construido.
+
+Fuentes adicionales de la revisión: [Skiko v0.9.4.2](https://github.com/JetBrains/skiko/tree/v0.9.4.2), [versión de Skia declarada por Skiko](https://github.com/JetBrains/skiko/blob/v0.9.4.2/skiko/gradle.properties), [fuentes publicadas de Noise Java 0.0.1](https://repo.maven.apache.org/maven2/kr/jclab/noise-java/0.0.1/noise-java-0.0.1-sources.jar).

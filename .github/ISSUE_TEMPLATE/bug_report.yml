@@ -1,0 +1,37 @@
+name: Informar un fallo
+description: Ayúdanos a reproducir un problema de Qetara.
+title: "[Fallo] "
+labels: [bug]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: ¿Qué ocurrió?
+      description: Explica el resultado esperado y el observado.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Pasos para reproducir
+      placeholder: "1. Abrir Qetara…"
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Versión de Qetara o commit
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Dispositivos y sistema operativo
+      description: Indica si usas red local o Wi-Fi Direct.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidencia opcional
+      description: Usa archivos sintéticos. Oculta códigos, PIN y datos personales.

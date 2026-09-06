@@ -16,6 +16,7 @@ object NoiseIdentityStore {
     private const val KEY_PRIVATE = "noise_private"
     private const val KEY_PUBLIC = "noise_public"
 
+    @Synchronized
     fun getOrCreate(context: Context): NoiseStaticIdentity {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val existingPrivate = prefs.getString(KEY_PRIVATE, null)

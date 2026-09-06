@@ -4,3 +4,8 @@ plugins {
     id("org.jetbrains.kotlin.jvm") version "2.2.10" apply false
     id("org.jetbrains.kotlin.plugin.compose") version "2.2.10" apply false
 }
+
+allprojects {
+    group = "org.qetara"
+    version = providers.gradleProperty("qetaraVersion").getOrElse("1.1.0")
+}

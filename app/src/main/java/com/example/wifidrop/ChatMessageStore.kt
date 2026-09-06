@@ -4,7 +4,7 @@ import android.content.Context
 import androidx.core.content.edit
 import org.json.JSONArray
 import org.json.JSONObject
-import kotlin.random.Random
+import java.util.UUID
 
 enum class ChatMessageDirection {
     OUTGOING,
@@ -81,10 +81,10 @@ object ChatMessageScopeCodec {
     }
 
     fun encodeForTransport(textRaw: String, scope: ChatMessageScope): String {
-        val text = sanitizeChatText(textRaw)
-        if (text.startsWith(TRANSPORT_MARKER)) {
-            return text
+        if (textRaw.trim().startsWith(TRANSPORT_MARKER)) {
+            return com.example.wifidrop.protocol.requireValidTransportMessage(textRaw)
         }
+        val text = sanitizeChatText(textRaw)
         return when (scope) {
             ChatMessageScope.DIRECT -> text
             ChatMessageScope.GLOBAL_LAN -> GLOBAL_LAN_MARKER + text
@@ -304,6 +304,7 @@ object ChatMessageStore {
     private const val KEY_JSON = "chat_json"
     private const val MAX_ITEMS = 300
 
+    @Synchronized
     fun list(context: Context, limit: Int = 120): List<ChatMessageEntry> {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val raw = prefs.getString(KEY_JSON, null).orEmpty()
@@ -339,6 +340,7 @@ object ChatMessageStore {
         }
     }
 
+    @Synchronized
     fun append(context: Context, entry: ChatMessageEntry) {
         val current = list(context, limit = MAX_ITEMS).toMutableList()
         current.add(0, sanitize(entry))
@@ -354,7 +356,7 @@ object ChatMessageStore {
         errorCause: String?
     ): ChatMessageEntry {
         val now = System.currentTimeMillis()
-        val id = "${now}_${Random.nextInt(1000, 9999)}"
+        val id = UUID.randomUUID().toString()
         return ChatMessageEntry(
             id = id,
             direction = ChatMessageDirection.OUTGOING,
@@ -375,7 +377,7 @@ object ChatMessageStore {
         scope: ChatMessageScope
     ): ChatMessageEntry {
         val now = System.currentTimeMillis()
-        val id = "${now}_${Random.nextInt(1000, 9999)}"
+        val id = UUID.randomUUID().toString()
         return ChatMessageEntry(
             id = id,
             direction = ChatMessageDirection.INCOMING,
@@ -389,6 +391,7 @@ object ChatMessageStore {
         )
     }
 
+    @Synchronized
     fun updateStatus(
         context: Context,
         messageIdRaw: String,
@@ -410,6 +413,7 @@ object ChatMessageStore {
         persist(context, next)
     }
 
+    @Synchronized
     fun remove(context: Context, messageIdRaw: String) {
         val messageId = messageIdRaw.trim()
         if (messageId.isBlank()) return
@@ -417,6 +421,7 @@ object ChatMessageStore {
         persist(context, next)
     }
 
+    @Synchronized
     fun clear(context: Context) {
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             .edit {
@@ -424,6 +429,7 @@ object ChatMessageStore {
             }
     }
 
+    @Synchronized
     fun clearScope(context: Context, scope: ChatMessageScope) {
         val next = list(context, limit = MAX_ITEMS).filterNot { it.scope == scope }
         persist(context, next)
@@ -498,5 +504,5 @@ object ChatMessageStore {
 }
 
 private fun sanitizeChatText(raw: String): String {
-    return raw.trim().replace(Regex("\\s+"), " ").take(2_000)
+    return raw.trim().take(2_000)
 }

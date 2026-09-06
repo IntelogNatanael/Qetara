@@ -21,7 +21,9 @@ data class PendingMessageTask(
     val maxRetries: Int = 4,
     val nextAttemptAtMs: Long = 0L,
     val createdAtMs: Long = 0L,
-    val lastError: String? = null
+    val lastError: String? = null,
+    val expectedPeerId: String? = null,
+    val directGroupSessionId: String? = null
 )
 
 object PendingMessageStore {
@@ -30,6 +32,7 @@ object PendingMessageStore {
     private const val KEY_JSON = "pending_json"
     private const val MAX_ITEMS = 300
 
+    @Synchronized
     fun list(context: Context): List<PendingMessageTask> {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val raw = prefs.getString(KEY_JSON, null).orEmpty()
@@ -43,7 +46,7 @@ object PendingMessageStore {
                     val id = obj.optString("id").ifBlank { continue }
                     val chatMessageId = obj.optString("chat_id").ifBlank { continue }
                     val targetIp = sanitizeIp(obj.optString("target_ip"))
-                    val message = sanitizeMessage(obj.optString("message"))
+                    val message = runCatching { sanitizeMessage(obj.optString("message")) }.getOrNull() ?: continue
                     val token = FileTransfer.normalizeToken(obj.optString("token"))
                     val pin = TransferSecurity.normalizePin(obj.optString("pin"))
                     val clientId = sanitizeClientId(obj.optString("client_id"))
@@ -70,7 +73,9 @@ object PendingMessageStore {
                             maxRetries = obj.optInt("max_retries", 4).coerceIn(1, 4),
                             nextAttemptAtMs = obj.optLong("next_attempt_at_ms", 0L),
                             createdAtMs = obj.optLong("created_at_ms", 0L),
-                            lastError = obj.optString("last_error").takeIf { it.isNotBlank() }?.take(240)
+                            lastError = obj.optString("last_error").takeIf { it.isNotBlank() }?.take(240),
+                            expectedPeerId = obj.optString("expected_peer_id").takeIf { it.isNotBlank() }?.take(80),
+                            directGroupSessionId = obj.optString("direct_group_session_id").takeIf { it.isNotBlank() }?.take(80)
                         )
                     )
                 }
@@ -80,6 +85,7 @@ object PendingMessageStore {
         }
     }
 
+    @Synchronized
     fun upsert(context: Context, task: PendingMessageTask) {
         val current = list(context)
             .filterNot { it.id == task.id }
@@ -88,6 +94,7 @@ object PendingMessageStore {
         persist(context, current)
     }
 
+    @Synchronized
     fun remove(context: Context, taskId: String) {
         val normalized = taskId.trim()
         if (normalized.isBlank()) return
@@ -95,6 +102,7 @@ object PendingMessageStore {
         persist(context, next)
     }
 
+    @Synchronized
     fun removeByChatMessageId(context: Context, chatMessageIdRaw: String) {
         val chatMessageId = chatMessageIdRaw.trim()
         if (chatMessageId.isBlank()) return
@@ -108,6 +116,7 @@ object PendingMessageStore {
         return list(context).firstOrNull { it.chatMessageId == chatMessageId }
     }
 
+    @Synchronized
     fun clear(context: Context) {
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             .edit {
@@ -115,6 +124,7 @@ object PendingMessageStore {
             }
     }
 
+    @Synchronized
     fun clearScope(context: Context, scope: ChatMessageScope) {
         val next = list(context).filterNot { it.scope == scope }
         persist(context, next)
@@ -141,6 +151,8 @@ object PendingMessageStore {
                     .put("next_attempt_at_ms", task.nextAttemptAtMs)
                     .put("created_at_ms", task.createdAtMs)
                     .put("last_error", task.lastError.orEmpty())
+                    .put("expected_peer_id", task.expectedPeerId.orEmpty())
+                    .put("direct_group_session_id", task.directGroupSessionId.orEmpty())
             )
         }
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -170,7 +182,7 @@ object PendingMessageStore {
     }
 
     private fun sanitizeMessage(raw: String): String {
-        return raw.trim().replace(Regex("\\s+"), " ").take(2_000)
+        return com.example.wifidrop.protocol.requireValidTransportMessage(raw)
     }
 
     private fun sanitizeIp(raw: String): String {

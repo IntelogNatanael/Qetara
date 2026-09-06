@@ -50,6 +50,7 @@ object LocalDeviceIdentity {
     private const val PREFS_NAME = "wifidrop_identity"
     private const val KEY_DEVICE_ID = "device_id"
 
+    @Synchronized
     fun getOrCreate(context: Context): String {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val existing = prefs.getString(KEY_DEVICE_ID, null)

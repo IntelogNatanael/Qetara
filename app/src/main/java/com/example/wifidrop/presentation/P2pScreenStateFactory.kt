@@ -35,7 +35,10 @@ data class P2pScreenSessionState(
     val nowMs: Long,
     val sessionExpired: Boolean,
     val localDeviceIdShort: String,
-    val tokenSyncStatus: String
+    val tokenSyncStatus: String,
+    val sessionReady: Boolean = false,
+    val chatSessionReady: Boolean = false,
+    val sessionSyncing: Boolean = false
 )
 
 data class P2pScreenDraftState(
@@ -43,7 +46,9 @@ data class P2pScreenDraftState(
     val selectedFileNames: List<String>,
     val receivedFiles: List<File>,
     val shareImportStatus: String,
-    val chatDraft: String
+    val chatDraft: String,
+    val attachmentContext: P2pAttachmentContext = P2pAttachmentContext.FILES,
+    val incomingShareEventId: Long? = null
 )
 
 data class P2pFavoriteSuggestionState(
@@ -171,7 +176,13 @@ fun buildP2pScreenState(input: P2pScreenStateInput): P2pScreenState {
         vibrateOnConnect = input.uxPreferences.vibrateOnConnect,
         vibrateOnError = input.uxPreferences.vibrateOnError,
         silentSuccessFeedback = input.uxPreferences.silentSuccessFeedback,
-        autoDownloadChannelFiles = input.uxPreferences.autoDownloadChannelFiles
+        autoDownloadChannelFiles = input.uxPreferences.autoDownloadChannelFiles,
+        attachmentContext = input.draft.attachmentContext,
+        incomingShareEventId = input.draft.incomingShareEventId,
+        sessionReady = input.session.sessionReady,
+        chatSessionReady = input.session.chatSessionReady,
+        sessionEnabled = input.uxPreferences.sessionEnabled,
+        sessionSyncing = input.session.sessionSyncing
     )
 }
 

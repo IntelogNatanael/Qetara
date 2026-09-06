@@ -7,13 +7,39 @@ fun actionableTransferIssue(cause: String?, fallback: String): String? {
     if (normalized.isBlank()) return null
 
     return when {
+        normalized.contains("sesion_cerrada") -> {
+            "La sesión está cerrada. Toca Activar sesión para conectar o enviar otra vez."
+        }
+
+        normalized.contains("grupo_direct_no_acreditado") -> {
+            "Todavía no se ha confirmado el equipo en este enlace Wi-Fi Direct. Mantén Qetara abierto en ambos; si no avanza, desconecta y vuelve a unirlos."
+        }
+
+        normalized.contains("grupo_direct_renovado") -> {
+            "El enlace Wi-Fi Direct cambió. Vuelve a Conectar, revisa el equipo de destino y repite el envío."
+        }
+
+        normalized.contains("destino_fuera_grupo_direct") -> {
+            "Ese equipo no forma parte del enlace Wi-Fi Direct actual. Elige un equipo del grupo o cambia a Misma Wi-Fi para conectarlo por la red local."
+        }
+
+        normalized.contains("secure_credentials_required") ||
+            normalized.contains("emparejamiento_manual_requerido") -> {
+            "Este equipo necesita emparejamiento manual. En Conectar, abre Credenciales e introduce el código de sesión y el PIN que muestra el otro equipo."
+        }
+
         normalized.contains("confirmacion_host_requerida") -> {
-            "El otro equipo debe aprobar compartir la sesión. Espera la aprobación y vuelve a intentar."
+            "El otro equipo debe aprobar la conexión. Compara la huella, espera la aprobación y vuelve a intentar."
         }
 
         normalized.contains("dispositivo_no_confiable") ||
             normalized.contains("no confiable") -> {
             "El otro equipo aún no está confiado. Acepta la solicitud de confianza en Qetara y reintenta."
+        }
+
+        normalized.contains("noise_key_mismatch") ||
+            normalized.contains("clave noise") -> {
+            "La identidad de este equipo cambió. Comprueba su huella en Acerca de Qetara. Si es tu equipo, ve a Conectar, Gestionar equipos recordados y olvídalo antes de volver a conectar."
         }
 
         normalized.contains("auth_invalida") ||
@@ -22,11 +48,6 @@ fun actionableTransferIssue(cause: String?, fallback: String): String? {
             normalized.contains("token") ||
             normalized.contains("pin") -> {
             "Token o PIN no coinciden. Sincroniza la sesión con el otro equipo y vuelve a enviar."
-        }
-
-        normalized.contains("noise_key_mismatch") ||
-            normalized.contains("clave noise") -> {
-            "La identidad segura del otro equipo cambió. Verifica que sea el equipo correcto y vuelve a confiarlo."
         }
 
         normalized.contains("sesion_expirada") ||

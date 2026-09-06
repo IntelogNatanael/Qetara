@@ -7,6 +7,7 @@ import com.example.wifidrop.ConnectionSnapshot
 import com.example.wifidrop.LocalDeviceIdentity
 import com.example.wifidrop.TransferSecurity
 import com.example.wifidrop.backend.P2pBackend
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -22,7 +23,12 @@ data class P2pSessionState(
     val syncStatus: String = "",
     val syncing: Boolean = false,
     val lastAutoSyncedPeerIp: String? = null,
-    val localDeviceIdShort: String
+    val localDeviceIdShort: String,
+    val confirmation: P2pSessionConfirmation? = null,
+    val connectionNetworkKey: String = "",
+    val connectionTargetIp: String? = null,
+    val connectionTargetPeerId: String? = null,
+    val readinessChangedAtMs: Long = System.currentTimeMillis()
 )
 
 data class P2pSessionFeedback(
@@ -46,39 +52,90 @@ class P2pSessionPresenter(
         )
     )
     val state: StateFlow<P2pSessionState> = _state.asStateFlow()
+    private val syncCoordinator = P2pSessionSyncCoordinator()
+    private var lastSyncNeedsUserAction = false
 
     fun isSessionExpired(nowMs: Long): Boolean {
         return TransferSecurity.isExpired(_state.value.expiresAtMs, nowMs)
     }
 
     fun normalizeAndSetToken(raw: String) {
-        _state.update { current -> current.copy(token = normalizeSessionToken(raw)) }
+        val token = normalizeSessionToken(raw)
+        _state.update { current -> if (current.token == token) current else current.copy(
+            token = token, confirmation = null, lastAutoSyncedPeerIp = null, readinessChangedAtMs = System.currentTimeMillis()
+        ) }
     }
 
     fun normalizeAndSetPin(raw: String) {
-        _state.update { current -> current.copy(pin = normalizeSessionPin(raw)) }
+        val pin = normalizeSessionPin(raw)
+        _state.update { current -> if (current.pin == pin) current else current.copy(
+            pin = pin, confirmation = null, lastAutoSyncedPeerIp = null, readinessChangedAtMs = System.currentTimeMillis()
+        ) }
     }
 
     fun renewSession(minutes: Int = 30, nowMs: Long = System.currentTimeMillis()) {
         _state.update { current ->
             current.copy(
                 expiresAtMs = computeRenewedSessionExpiry(nowMs, minutes),
-                syncStatus = buildSessionRenewedStatus(minutes)
+                syncStatus = buildSessionRenewedStatus(minutes),
+                confirmation = null,
+                lastAutoSyncedPeerIp = null,
+                readinessChangedAtMs = nowMs
             )
         }
     }
 
     fun generateToken() {
-        _state.update { current -> current.copy(token = generateSessionToken()) }
+        normalizeAndSetToken(generateSessionToken())
     }
 
     fun generatePin() {
-        _state.update { current -> current.copy(pin = generateSessionPin()) }
+        normalizeAndSetPin(generateSessionPin())
+    }
+
+    fun observeConnectionContext(networkKey: String, target: P2pResolvedTarget?) {
+        _state.update { current ->
+            val networkChanged = current.connectionNetworkKey != networkKey
+            val targetChanged = current.connectionTargetIp != target?.ip || current.connectionTargetPeerId != target?.peerId
+            if (!networkChanged && !targetChanged) current else current.copy(
+                connectionNetworkKey = networkKey,
+                connectionTargetIp = target?.ip,
+                connectionTargetPeerId = target?.peerId,
+                confirmation = null,
+                lastAutoSyncedPeerIp = null,
+                readinessChangedAtMs = if (networkChanged) System.currentTimeMillis() else current.readinessChangedAtMs
+            )
+        }
+    }
+
+    fun clearSessionConfirmation() {
+        lastSyncNeedsUserAction = false
+        _state.update { it.copy(
+            confirmation = null,
+            lastAutoSyncedPeerIp = null,
+            readinessChangedAtMs = System.currentTimeMillis(),
+            syncStatus = if (it.syncing) it.syncStatus else ""
+        ) }
+    }
+
+    fun confirmManualSession(target: P2pResolvedTarget?, networkKey: String): P2pSessionFeedback {
+        val current = _state.value
+        if (target == null || !com.example.wifidrop.FileTransfer.isValidToken(current.token) ||
+            !TransferSecurity.isValidPin(current.pin) || isSessionExpired(System.currentTimeMillis())) {
+            return P2pSessionFeedback("Revisa el equipo, el código y el PIN antes de continuar.", isError = true)
+        }
+        observeConnectionContext(networkKey, target)
+        _state.update { state -> state.copy(
+            confirmation = P2pSessionConfirmation(target.ip, target.peerId, networkKey, state.token, state.pin),
+            lastAutoSyncedPeerIp = target.ip,
+            syncStatus = "Datos de sesión confirmados para "+ (target.label ?: target.ip) + "."
+        ) }
+        return P2pSessionFeedback("Sesión preparada con los datos que confirmaste.")
     }
 
     fun copyToken(): P2pSessionFeedback {
         clipboard.setPrimaryClip(ClipData.newPlainText("WifiDropToken", _state.value.token))
-        return P2pSessionFeedback("Token copiado.")
+        return P2pSessionFeedback("Código de sesión copiado.")
     }
 
     fun pasteToken(): P2pSessionFeedback {
@@ -89,7 +146,7 @@ class P2pSessionPresenter(
             .orEmpty()
         return if (pasted.isNotBlank()) {
             normalizeAndSetToken(pasted)
-            P2pSessionFeedback("Token pegado y normalizado.")
+            P2pSessionFeedback("Código de sesión pegado.")
         } else {
             P2pSessionFeedback("No hay texto valido en el portapapeles.", isError = true)
         }
@@ -99,6 +156,7 @@ class P2pSessionPresenter(
         _state.update { current ->
             current.copy(
                 lastAutoSyncedPeerIp = null,
+                confirmation = null,
                 syncStatus = "Conectando con el otro equipo y preparando la sincronización..."
             )
         }
@@ -137,59 +195,46 @@ class P2pSessionPresenter(
             _state.update { current -> current.copy(syncStatus = buildMissingSyncHostStatus()) }
             return false
         }
-        if (_state.value.syncing) {
-            if (manual) {
-                _state.update { current -> current.copy(syncStatus = buildSyncBusyStatus()) }
+        return syncCoordinator.syncOnce {
+            val currentState = _state.value
+            lastSyncNeedsUserAction = false
+            _state.update { current ->
+                current.copy(syncing = true, confirmation = null, syncStatus = buildSyncStartStatus(manual))
             }
-            return false
-        }
-
-        val currentState = _state.value
-        _state.update { current ->
-            current.copy(
-                syncing = true,
-                syncStatus = buildSyncStartStatus(manual)
-            )
-        }
-
-        val result = backend.requestSessionCredentials(
-            hostAddress = hostIp,
-            clientId = localDeviceId,
-            deviceLabel = deviceLabel
-        )
-
-        return try {
-            var ok = false
-            result.fold(
-                onSuccess = { payload ->
-                    val syncResult = buildSessionSyncSuccess(
-                        payload = payload,
-                        currentToken = currentState.token,
-                        currentPin = currentState.pin
-                    )
-                    _state.update { current ->
-                        current.copy(
-                            token = syncResult.token,
-                            pin = syncResult.pin ?: current.pin,
-                            expiresAtMs = syncResult.expiresAtMs,
-                            syncStatus = syncResult.statusMessage
-                        )
+            try {
+                val result = backend.requestSessionCredentials(
+                    hostAddress = hostIp,
+                    clientId = localDeviceId,
+                    deviceLabel = deviceLabel
+                )
+                result.fold(
+                    onSuccess = { payload ->
+                        var applied = false
+                        _state.update { current ->
+                            val next = applySessionSyncResult(current, currentState, hostIp, payload)
+                            applied = next !== current
+                            next
+                        }
+                        applied
+                    },
+                    onFailure = { error ->
+                        if (error is CancellationException) throw error
+                        val cause = error.message ?: error::class.java.simpleName
+                        lastSyncNeedsUserAction = sessionSyncRequiresUserAction(cause)
+                        _state.update { current -> current.copy(syncStatus = buildSessionSyncFailureStatus(cause)) }
+                        false
                     }
-                    ok = true
-                },
-                onFailure = { error ->
-                    _state.update { current ->
-                        current.copy(
-                            syncStatus = buildSessionSyncFailureStatus(
-                                error.message ?: error::class.java.simpleName
-                            )
-                        )
-                    }
-                }
-            )
-            ok
-        } finally {
-            _state.update { current -> current.copy(syncing = false) }
+                )
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                val cause = error.message ?: error::class.java.simpleName
+                lastSyncNeedsUserAction = sessionSyncRequiresUserAction(cause)
+                _state.update { current -> current.copy(syncStatus = buildSessionSyncFailureStatus(cause)) }
+                false
+            } finally {
+                _state.update { current -> current.copy(syncing = false) }
+            }
         }
     }
 
@@ -198,29 +243,29 @@ class P2pSessionPresenter(
         lanConnected: Boolean,
         connection: ConnectionSnapshot?,
         receiveDirPath: String,
-        nowMs: Long
+        nowMs: Long,
+        sessionEnabled: Boolean = true,
+        serviceRunning: Boolean = false
     ) {
         val current = _state.value
-        val shouldRunSession = shouldStartBackendSession(
-            P2pSessionServiceInput(
-                permissionGranted = permissionGranted,
-                lanConnected = lanConnected,
-                connection = connection,
-                token = current.token,
-                pin = current.pin,
-                sessionExpired = isSessionExpired(nowMs)
-            )
+        val serviceInput = P2pSessionServiceInput(
+            permissionGranted = permissionGranted,
+            lanConnected = lanConnected,
+            connection = connection,
+            token = current.token,
+            pin = current.pin,
+            sessionExpired = isSessionExpired(nowMs),
+            sessionEnabled = sessionEnabled
         )
-
-        if (shouldRunSession) {
-            backend.startSession(
+        when (resolveSessionServiceAction(serviceInput, serviceRunning)) {
+            P2pSessionServiceAction.START -> backend.startSession(
                 token = current.token,
                 pin = current.pin,
                 sessionExpiresAtMs = current.expiresAtMs,
                 receiveDirPath = receiveDirPath
             )
-        } else {
-            backend.stopSession()
+            P2pSessionServiceAction.STOP -> backend.stopSession()
+            P2pSessionServiceAction.NONE -> Unit
         }
     }
 
@@ -293,10 +338,7 @@ class P2pSessionPresenter(
                     break
                 }
 
-                if (attempts >= directAutoSyncPlan.maxAttempts) {
-                    _state.update { state -> state.copy(syncStatus = directAutoSyncPlan.failureStatus) }
-                    break
-                }
+                if (lastSyncNeedsUserAction || attempts >= directAutoSyncPlan.maxAttempts) break
 
                 _state.update { state ->
                     state.copy(syncStatus = buildSyncRetryStatus(attempts, directAutoSyncPlan.maxAttempts))
@@ -329,7 +371,7 @@ class P2pSessionPresenter(
         )
 
         if (lanAutoSyncPlan == null) {
-            if (connection?.groupFormed != true) {
+            if (!lanConnected && connection?.groupFormed != true) {
                 _state.update { state -> state.copy(lastAutoSyncedPeerIp = null) }
             }
             return
@@ -357,10 +399,7 @@ class P2pSessionPresenter(
                 break
             }
 
-            if (attempts >= lanAutoSyncPlan.maxAttempts) {
-                _state.update { state -> state.copy(syncStatus = lanAutoSyncPlan.failureStatus) }
-                break
-            }
+            if (lastSyncNeedsUserAction || attempts >= lanAutoSyncPlan.maxAttempts) break
 
             _state.update { state ->
                 state.copy(syncStatus = buildSyncRetryStatus(attempts, lanAutoSyncPlan.maxAttempts))
