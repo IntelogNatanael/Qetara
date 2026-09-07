@@ -153,15 +153,36 @@ class FlashEngineTest {
         } }
     }
     @Test fun manualDiscoveryReportsEphemeralIdentityWithoutStartingTransferAndStopsWithActivation() {
+        fun probe(port: Int): FlashPeer = Socket().use { socket ->
+            socket.connect(InetSocketAddress("127.0.0.1", port), 2_000)
+            socket.soTimeout = 2_000
+            val output = DataOutputStream(socket.getOutputStream())
+            output.flashHeader(FLASH_PROBE); output.flush()
+            val input = DataInputStream(socket.getInputStream())
+            assertEquals(FLASH_ANNOUNCE, input.flashKind())
+            readFlashPeer(input, "127.0.0.1")
+        }
         Fixture().use { a -> Fixture().use { b ->
             a.engine.discoverAt("127.0.0.1", b.state.port)
             waitUntil { a.engine.snapshot().peers.isNotEmpty() }
             val peer = a.engine.snapshot().peers.single()
             assertEquals(b.state.localId, peer.id); assertEquals(b.state.port, peer.port)
+            assertEquals(b.state.localId, probe(b.state.port).id)
             assertTrue(a.engine.snapshot().operations.isEmpty() && b.engine.snapshot().operations.isEmpty())
             assertTrue(b.approvals.isEmpty() && !b.directory.exists())
             b.engine.stop()
-            assertFails { Socket().use { it.connect(InetSocketAddress("127.0.0.1", b.state.port), 300) } }
+            assertFalse(b.engine.snapshot().active)
+            // A closing listener may finish a TCP connect before its blocked accept unwinds.
+            // Require transport closure without a Flash response; a timeout is not closure.
+            val stopped = assertFailsWith<IOException> { probe(b.state.port) }
+            assertFalse(stopped is SocketTimeoutException, "Stopped listener did not close the probe")
+            assertTrue(b.engine.snapshot().operations.isEmpty() && b.approvals.isEmpty())
+            assertTrue(b.received.isEmpty() && !b.directory.exists())
+            val restarted = b.engine.start()
+            assertTrue(restarted.active)
+            assertNotEquals(b.state.localId, restarted.localId)
+            assertEquals(restarted.localId, probe(restarted.port).id)
+            assertTrue(b.engine.snapshot().operations.isEmpty() && b.approvals.isEmpty())
         } }
     }
     @Test fun udpDiscoveryRepliesOnlyWithPublicActivationAndEchoesNonce() {
