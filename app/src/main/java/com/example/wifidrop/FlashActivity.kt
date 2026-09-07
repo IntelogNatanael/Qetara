@@ -81,7 +81,7 @@ private fun FlashScreen(activity: FlashActivity, onBack: () -> Unit) {
         notificationsAllowed = allowed
         if (!allowed) notice = "Puedes seguir usando Flash aquí. Para ver solicitudes al salir, permite notificaciones en Ajustes de Android."
     }
-    val saveCopy = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")) { uri ->
+    val saveCopy = rememberLauncherForActivityResult(CreateReceivedDocument()) { uri ->
         val path = pendingSavePath
         pendingSavePath = null
         if (uri != null && path != null) {

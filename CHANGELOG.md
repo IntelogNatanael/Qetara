@@ -1,5 +1,16 @@
 # Cambios en Qetara
 
+## 1.3.1 — 7 de septiembre de 2026
+
+Corrección de Android, compatible con Qetara PC 1.3.0.
+
+- Abrir un archivo recibido conserva el tipo MIME del proveedor o lo recupera del nombre cuando falta. Las fotos PNG/JPEG/HEIC se proponen como imágenes y los PDF siguen siendo PDF.
+- Qetara solicita «Abrir con» para elegir una aplicación compatible sin fijar una predeterminada. Android puede abrir directamente si sólo hay una aplicación compatible. El acceso concedido se limita a leer ese archivo.
+- Compartir, exportar a Descargas y Guardar una copia utilizan el mismo criterio de tipo de archivo.
+- Las rutas `file://` de exportaciones anteriores se convierten a URI de contenido; el proveedor sólo incorpora la carpeta pública `Download/Qetara` necesaria para esas copias.
+
+La corrección no inspecciona los bytes para adivinar un formato: un nombre sin extensión y sin metadatos sigue teniendo un tipo desconocido. Consulta [validación móvil 1.3.1](docs/VALIDATION-1.3.1-ANDROID.md).
+
 ## 1.3.0 — 7 de septiembre de 2026
 
 - Flash se activa expresamente en Android y PC para compartir archivos por la misma red local sin crear ni escribir credenciales. Empieza apagado y caduca a los 30 minutos.

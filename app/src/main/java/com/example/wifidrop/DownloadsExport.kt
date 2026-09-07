@@ -8,7 +8,6 @@ import android.os.Environment
 import android.provider.MediaStore
 import androidx.annotation.RequiresApi
 import java.io.File
-import java.net.URLConnection
 
 object DownloadsExport {
 
@@ -33,7 +32,7 @@ object DownloadsExport {
         val resolver = context.contentResolver
         val relativePath = "${Environment.DIRECTORY_DOWNLOADS}/$FOLDER_NAME/"
         val displayName = uniqueDisplayName(resolver, source.name, relativePath)
-        val mime = URLConnection.guessContentTypeFromName(displayName) ?: "application/octet-stream"
+        val mime = ReceivedFileMimeTypes.fromName(displayName) ?: "application/octet-stream"
 
         val values = ContentValues().apply {
             put(MediaStore.DownloadColumns.DISPLAY_NAME, displayName)

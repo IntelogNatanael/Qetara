@@ -158,3 +158,10 @@ El botón de información abre **Acerca de Qetara**, con la versión, licencia y
 La entrega se valida por compilación, pruebas automatizadas y comprobaciones en el entorno disponible. La compatibilidad de todos los teléfonos, redes y restricciones de batería debe verificarse en los equipos concretos de uso. Para una primera prueba, envía un archivo pequeño y comprueba que puedes abrirlo en el receptor.
 
 Al cambiar entre Misma Wi-Fi y Wi-Fi Direct, Qetara descarta el destino y la confirmación de sesión anteriores. Los archivos elegidos se conservan. Revisa el equipo mostrado antes de continuar. En Misma Wi-Fi, la tarjeta principal permite **Cambiar equipo** o abrir directamente **Conectar por dirección IP**.
+
+
+## Abrir archivos recibidos (1.3.1)
+
+**Abrir** solicita el selector **Abrir con** de Android con el tipo del archivo. Si sólo hay una aplicación compatible, Android puede abrirla directamente. Puedes elegir Fotos, una galería u otra aplicación que declare compatibilidad. Qetara no fija Drive ni ninguna aplicación. La lista concreta depende de las aplicaciones instaladas; Drive puede aparecer si también admite ese tipo de imagen. Compartir y Guardar una copia conservan el tipo cuando el nombre o el proveedor permiten identificarlo.
+
+El permiso temporal permite leer únicamente el archivo elegido; no concede escritura ni acceso general a tus archivos. Si faltan el tipo y una extensión reconocible, Qetara deja la elección al selector genérico sin afirmar que el archivo sea PDF o imagen.
