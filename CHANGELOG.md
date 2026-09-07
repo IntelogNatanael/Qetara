@@ -1,14 +1,21 @@
 # Cambios en Qetara
 
-## En preparación — privacidad en Android
+## 1.3.0 — 7 de septiembre de 2026
 
-- El PIN empieza oculto en las vistas normal y Completo, con controles Mostrar y Ocultar. Cambiar de sesión, recrear la pantalla o pasar a segundo plano vuelve a ocultarlo; editarlo conserva el foco.
+- Flash se activa expresamente en Android y PC para compartir archivos por la misma red local sin crear ni escribir credenciales. Empieza apagado y caduca a los 30 minutos.
+- Ambas plataformas comparten descubrimiento, canal cifrado, verificación y aceptación por archivo, progreso, cancelación y resultado. Las solicitudes vencen y una aceptación tardía no reactiva la función.
+- Flash conserva la sesión habitual y sus controles avanzados. La dirección IP local sirve como alternativa a la búsqueda cuando la red permite conexiones directas.
+- Se distingue el estado cerrado de la sesión en la vista Completo de Android y se aclaran los estados de búsqueda y conexión Wi-Fi Direct.
+
+### Privacidad de Android integrada en esta entrega
+
+- El PIN empieza oculto en las vistas normal y Completo, con controles Mostrar y Ocultar. Cambiar de sesión, recrear la pantalla o pausar la aplicación vuelve a ocultarlo; editarlo conserva el foco. También lo oculta al perder el foco de la ventana, aunque la actividad siga activa. Mostrarlo requiere que Qetara esté activa y tenga el foco; recuperarlo no revela el PIN automáticamente.
 - Los botones de copia y la selección de texto marcan el portapapeles como sensible. El contenido se conserva para pegarlo, y los sistemas compatibles pueden ocultar su vista previa.
-- Android 13 y posteriores reciben la indicación de ocultar la miniatura guardada de Qetara en aplicaciones recientes. Una vista de recientes que mantenga la aplicación activa puede conservar el PIN revelado, también al regresar directamente. Las capturas voluntarias en primer plano siguen permitidas.
+- Android 13 y posteriores reciben la indicación de ocultar la miniatura guardada de Qetara en aplicaciones recientes. La transición en directo depende del sistema: el nuevo manejo del foco no elimina un fotograma que Android ya haya capturado. Las capturas voluntarias en primer plano siguen permitidas.
 - El descubrimiento público deja de indicar si el anfitrión confía en quien consulta. La disposición del protocolo y la autenticación se mantienen compatibles.
 - Las reglas de copia de seguridad excluyen explícitamente los dominios de datos privados, incluida la transferencia entre dispositivos y el almacenamiento protegido del dispositivo.
 
-Estas mejoras se evalúan en una compilación Android 1.2.1. La validación en un teléfono físico está pendiente; no constituyen todavía una nueva entrega estable.
+Estas mejoras se evaluaron previamente como candidatas Android 1.2.1. La compilación 05 superó seis recorridos de privacidad en emulador Android 16, con dos comprobaciones de Recientes. La validación física comenzó con una actualización autorizada de 1.0 a la compilación 04 en un CPH2743 con Android 16, conservando instalación y permisos sin borrar datos; después se instaló 05. El teléfono quedó pausado antes de verificar allí el nuevo manejo del foco. Los resultados y límites de 1.3.0 se registran en [Validación](docs/VALIDATION.md).
 
 ## 1.2.0 — 6 de septiembre de 2026
 

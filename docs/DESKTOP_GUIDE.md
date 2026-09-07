@@ -2,6 +2,10 @@
 
 Qetara permite compartir archivos y conversar entre equipos de una misma red local. Puedes conectar una PC con Android o con otra PC, sin crear una cuenta ni subir los archivos a un servicio de almacenamiento.
 
+## Flash opcional
+
+El botón **Flash** abre el envío temporal sin escribir código de sesión ni PIN. Actívalo en ambos equipos, elige un archivo y el destino y pulsa **Solicitar envío**. Compara los cuatro grupos en ambas pantallas antes de aceptar. **Flash activo** mantiene visible la disponibilidad aunque vuelvas a otro espacio. Cada activación caduca a los 30 minutos; **Desactivar** termina únicamente Flash. La carpeta de recepción se elige antes de activarlo y **Ver en carpeta** permite localizar lo recibido. La [guía de Flash](FLASH.md) incluye el recorrido completo y la alternativa por dirección local.
+
 ## Abrir Qetara
 
 Extrae la carpeta completa de la distribución para Windows y abre **Qetara.exe**. Conserva las carpetas que acompañan al ejecutable: forman parte de la aplicación.

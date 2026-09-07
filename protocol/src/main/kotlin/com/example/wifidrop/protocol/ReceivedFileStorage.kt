@@ -11,7 +11,7 @@ fun publishReceivedFile(
     beforePublish: (reservedTarget: File) -> Unit = {}
 ): File {
     require(source.isFile) { "archivo temporal inexistente" }
-    check(directory.isDirectory || directory.mkdirs()) { "carpeta de recepcion no disponible" }
+    check(directory.mkdirs() || directory.isDirectory) { "carpeta de recepcion no disponible" }
     val safeName = sanitizeFileName(desiredName)
     val extensionAt = safeName.lastIndexOf('.').takeIf { it > 0 } ?: safeName.length
     val base = safeName.substring(0, extensionAt)
@@ -76,7 +76,7 @@ fun copyReceivedFile(
     checkActive: () -> Unit = {}
 ): File {
     require(source.isFile) { "archivo origen no disponible" }
-    check(directory.isDirectory || directory.mkdirs()) { "carpeta de exportacion no disponible" }
+    check(directory.mkdirs() || directory.isDirectory) { "carpeta de exportacion no disponible" }
     requireReceiveCapacity(source.length(), 0L, directory.usableSpace)
     val staging = File.createTempFile(".qetara-export-", ".part", directory)
     try {

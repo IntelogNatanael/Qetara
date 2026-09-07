@@ -24,9 +24,15 @@ La selección de archivos y el texto de un borrador pertenecen a su contexto de 
 
 La UI y la CLI comparten el mismo motor. Un error debe describir la fase que falló: preparar, enviar, recibir o verificar. La ventana empaquetada usa el runtime de Java incluido en su carpeta.
 
+## Flash opcional
+
+`protocol/flash` implementa `FlashEngine`: descubrimiento temporal, Noise XX, comparación y aceptación por archivo, transferencia y publicación verificada. Tiene puerto y activación propios, separados de WDRP v4, y no conserva identidad ni confianza después de su cierre. El contrato detallado está en [protocol/FLASH.md](protocol/FLASH.md).
+
+Android utiliza `FlashActivity`, `FlashForegroundService` y estado observable del proceso. PC utiliza `DesktopFlashController`, conservado al cambiar de espacio, y un diálogo global de solicitudes. Los adaptadores consumen callbacks en orden y descartan comandos de activaciones anteriores. Los resultados de archivos ya publicados se conservan aunque la interfaz haya empezado a cerrar la sesión; un resultado tardío no reactiva Flash.
+
 ## Transferencias y almacenamiento
 
-Antes de escribir se validan nombres, tamaños, offsets, hashes y límites de frames. Las recepciones usan archivos temporales; la publicación del resultado ocurre después de verificar el contenido. La selección de nombres evita sobrescribir un archivo existente. Los recibos de transferencias y mensajes ayudan a evitar duplicados al repetir una operación cuya confirmación se perdió.
+Antes de escribir se validan nombres, tamaños, offsets, hashes y límites de frames. Las recepciones usan archivos temporales; la publicación del resultado ocurre después de verificar el contenido. La selección de nombres evita sobrescribir un archivo existente. En la sesión habitual, los recibos de transferencias y mensajes ayudan a evitar duplicados al repetir una operación cuya confirmación se perdió.
 
 Cada receptor limita sus clientes simultáneos. En Android, la publicación de archivos se serializa para conservar coherencia de estado y exportación. Cancelar o cambiar de generación cierra sockets bloqueados y libera trabajos; el estado distingue receptor disponible de una transferencia activa.
 

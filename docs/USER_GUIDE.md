@@ -4,9 +4,14 @@ Qetara comparte archivos y mensajes directamente entre tus equipos, sin crear un
 
 1. [Guía para Android](ANDROID_GUIDE.md): conectar, enviar, conversar y encontrar descargas.
 2. [Guía para PC](DESKTOP_GUIDE.md): preparar una sesión, elegir destino y recibir archivos.
-3. [Privacidad](PRIVACY.md): qué información permanece en cada equipo y qué se anuncia en la red.
+3. [Flash opcional](FLASH.md): un archivo por la red local sin escribir credenciales.
+4. [Privacidad](PRIVACY.md): qué información permanece en cada equipo y qué se anuncia en la red.
 
-## Primer intercambio Android ↔ PC
+## Compartir puntualmente con Flash
+
+Abre **Flash** en ambos equipos y actívalo. Elige un archivo y el destinatario, pulsa **Solicitar envío**, compara los cuatro grupos de verificación y acepta en los dos dispositivos. Flash está apagado al iniciar el proceso y termina a los 30 minutos o al desactivarlo. La sesión habitual se controla por separado. Consulta [Flash](FLASH.md) para recibir, cancelar y abrir lo recibido.
+
+## Primer intercambio habitual Android ↔ PC
 
 Conecta ambos a la misma Wi-Fi. En PC crea una sesión y activa la recepción. En Android elige **Misma Wi-Fi**, selecciona el PC o introduce su IP y copia su código de sesión y PIN. Confirma esos datos, elige un archivo y envíalo. Espera la confirmación antes de cerrar Qetara.
 
@@ -22,6 +27,6 @@ El código tiene ocho caracteres y el PIN seis cifras. Son temporales: usa los q
 
 ## Instalar una actualización
 
-Android exige que una actualización conserve el identificador de aplicación y la firma del paquete anterior. El paquete de distribución 1.1.0 tiene su propia clave de firma. Una instalación antigua firmada con otra clave no se puede actualizar directamente con él. Conserva primero los archivos importantes; consulta la nota de distribución antes de realizar cambios en tu instalación.
+Android exige que una actualización conserve el identificador de aplicación y la firma del paquete anterior. La entrega 1.3.0 distingue el APK de distribución del APK de depuración USB. Para conservar los datos usa el que tenga la misma firma que la instalación anterior; consulta el LEEME de la entrega. Cambiar de firma no es una actualización directa.
 
 La validación de esta entrega distingue las pruebas realizadas en el emulador y en Windows de los recorridos que necesitan dos equipos físicos. Consulta el informe de validación incluido con la distribución.

@@ -1,8 +1,10 @@
 # Avisos de software de terceros
 
-Qetara 1.2.0 utiliza software de terceros bajo sus respectivas licencias. La licencia MIT de [Qetara](LICENSE) se aplica a su propio código; no sustituye las licencias de estas dependencias.
+Qetara 1.3.0 utiliza software de terceros bajo sus respectivas licencias. La licencia MIT de [Qetara](LICENSE) se aplica a su propio código; no sustituye las licencias de estas dependencias.
 
-Esta revisión del 6 de septiembre de 2026 combina los archivos Gradle, los POM de Maven descargados para la compilación, el modelo de bibliotecas del artefacto Android **debug** y los JAR presentes en la distribución Windows generada. El [inventario verificable](licenses/dependency-inventory.json) conserva coordenadas, versiones, licencia declarada, URL del POM y SHA-256 del POM inspeccionado: 91 componentes en el modelo Android, 33 JAR de terceros en Windows y 119 coordenadas distintas entre ambos. El modelo Android incluye herramientas de inspección habilitadas para debug. No representa un inventario completo de cada biblioteca nativa incrustada, del SDK Android ni del runtime Java.
+El inventario base del 6 de septiembre de 2026 combina los archivos Gradle, los POM de Maven descargados para la compilación, el modelo de bibliotecas del artefacto Android **debug** y los JAR presentes en la distribución Windows generada. El [inventario verificable](licenses/dependency-inventory.json) conserva coordenadas, versiones, licencia declarada, URL del POM y SHA-256 del POM inspeccionado: 91 componentes en el modelo Android, 33 JAR de terceros en Windows y 119 coordenadas distintas entre ambos. El modelo Android incluye herramientas de inspección habilitadas para debug. No representa un inventario completo de cada biblioteca nativa incrustada, del SDK Android ni del runtime Java.
+
+Flash reutiliza Noise Java y las bibliotecas ya incluidas. La verificación de la entrega 1.3.0 contrasta el modelo Android y los JAR Windows con este inventario; no se atribuye una nueva auditoría de licencias a un cambio de versión del producto.
 
 ## Aplicación y bibliotecas de ejecución
 

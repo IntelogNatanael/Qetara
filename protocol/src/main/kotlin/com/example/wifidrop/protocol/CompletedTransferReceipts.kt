@@ -57,7 +57,7 @@ class CompletedTransferReceipts(private val receiveDirectory: File) {
 
     fun remember(peerId: String, attemptId: String, fileName: String, totalBytes: Long, hash: String, target: File) {
         require(target.canonicalFile.parentFile == receiveDirectory.canonicalFile) { "destino de recibo invalido" }
-        check(receiptsDirectory.isDirectory || receiptsDirectory.mkdirs()) { "carpeta de recibos no disponible" }
+        check(receiptsDirectory.mkdirs() || receiptsDirectory.isDirectory) { "carpeta de recibos no disponible" }
         val receipt = receiptFile(peerId, attemptId, fileName, totalBytes, hash)
         val stagedReceipt = File.createTempFile(".qetara-receipt-", ".pending", receiptsDirectory)
         try {

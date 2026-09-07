@@ -1639,6 +1639,9 @@ private fun runDesktopGui(cli: CliArgs) {
         var receiverExpiresAt by remember { mutableStateOf<Long?>(null) }
         var sessionRemaining by remember { mutableStateOf("") }
         var showCloseDialog by remember { mutableStateOf(false) }
+        val flashController = remember { DesktopFlashController(File(outputDirText)) }
+        var showFlash by remember { mutableStateOf(false) }
+        var chatWasVisibleBeforeFlash by remember { mutableStateOf(false) }
         val transfers = remember { mutableStateListOf<DesktopTransferEntry>() }
         fun addTransfer(entry: DesktopTransferEntry) {
             transfers.add(entry)
@@ -1768,6 +1771,10 @@ private fun runDesktopGui(cli: CliArgs) {
         }
 
         fun handleDroppedFiles(files: List<File>) {
+            if (showFlash) {
+                flashController.chooseDroppedFiles(files)
+                return
+            }
             val file = files.firstOrNull { it.isFile }
             if (file == null) {
                 notice = "No se encontró un archivo. Para enviar una carpeta, comprímela primero."
@@ -1871,6 +1878,7 @@ private fun runDesktopGui(cli: CliArgs) {
         }
 
         fun stopDesktopOperationsForExit() {
+            flashController.close()
             // Revoke queued EDT callbacks before closing sockets or disposing the window.
             receiverGeneration++
             receiverPhase = DesktopTaskPhase.STOPPING
@@ -2712,7 +2720,7 @@ private fun runDesktopGui(cli: CliArgs) {
 
         Window(
             onCloseRequest = {
-                if (activeSendCancellation != null || receivingProgress != null || activeChatCancellation != null) {
+                if (activeSendCancellation != null || receivingProgress != null || activeChatCancellation != null || flashController.state.busy || flashController.state.session.approvals.isNotEmpty()) {
                     showCloseDialog = true
                 } else {
                     stopDesktopOperationsForExit()
@@ -2793,6 +2801,13 @@ private fun runDesktopGui(cli: CliArgs) {
             }
             MaterialTheme(colors = qetaraDesktopColors) {
                 val actions = DesktopWorkspaceActions(
+                    onOpenFlash = {
+                        if (!showFlash) {
+                            chatWasVisibleBeforeFlash = isChatVisible
+                            isChatVisible = false
+                            showFlash = true
+                        }
+                    },
                     onTokenChange = { revokeChannelFileOffers(); tokenText = normalizeToken(it) },
                     onPinChange = { revokeChannelFileOffers(); pinText = normalizePin(it) },
                     onDeviceNameChange = { deviceLabelText = it.take(64) },
@@ -2883,7 +2898,9 @@ private fun runDesktopGui(cli: CliArgs) {
                         transfers = transfers.toList(), notice = notice, sessionRemaining = sessionRemaining,
                         unreadMessages = unreadConversations.values.sum(),
                         messageSending = activeChatCancellation != null,
-                        identityFingerprint = desktopIdentityFingerprint(noiseIdentity.publicKey)
+                        identityFingerprint = desktopIdentityFingerprint(noiseIdentity.publicKey),
+                        flashActive = flashController.state.session.active,
+                        flashApprovals = flashController.state.session.approvals.size
                     ),
                     actions = actions,
                     chatContent = {
@@ -2936,13 +2953,33 @@ private fun runDesktopGui(cli: CliArgs) {
                     },
                     activityContent = { modifier ->
                         DesktopEventsPanel(logs, logListState, { logs.clear() }, modifier)
+                    },
+                    flashVisible = showFlash,
+                    flashContent = {
+                        DesktopFlashPanel(
+                            controller = flashController,
+                            deviceName = deviceLabelText,
+                            localAddresses = localNetworkEndpoints.map { it.address },
+                            onBack = {
+                                showFlash = false
+                                isChatVisible = chatWasVisibleBeforeFlash
+                                if (isChatVisible) markConversationRead(currentConversationKey())
+                            },
+                            onChooseFile = {
+                                chooseFilePath(flashController.state.selectedFile?.absolutePath.orEmpty(), window)?.let { flashController.chooseFile(File(it)) }
+                            },
+                            onChooseDirectory = {
+                                chooseDirectoryPath(flashController.state.directory.absolutePath, window)?.let { flashController.chooseDirectory(File(it)) }
+                            }
+                        )
                     }
                 )
+                DesktopFlashApprovalHost(flashController)
                 if (showCloseDialog) {
                     androidx.compose.material.AlertDialog(
                         onDismissRequest = { showCloseDialog = false },
-                        title = { Text("Hay una transferencia en curso") },
-                        text = { Text("Al salir se detendrán los envíos y la recepción. Los archivos ya recibidos se conservan.") },
+                        title = { Text("Hay una transferencia o solicitud en curso") },
+                        text = { Text("Al salir se detendrán los envíos, la recepción y Flash. Los archivos ya recibidos se conservan.") },
                         confirmButton = {
                             TextButton(onClick = {
                                 stopDesktopOperationsForExit()

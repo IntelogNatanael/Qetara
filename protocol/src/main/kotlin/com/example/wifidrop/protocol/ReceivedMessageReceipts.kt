@@ -12,7 +12,7 @@ class ReceivedMessageReceipts(receiveDirectory: File) {
     fun deliverOnce(peerId: String, attemptId: String, message: String, deliver: () -> Unit): Boolean {
         val material = listOf(peerId, attemptId, message).joinToString("") { "${it.length}:$it" }
         val key = MessageDigest.getInstance("SHA-256").digest(material.toByteArray(Charsets.UTF_8)).toHexLower()
-        check(directory.isDirectory || directory.mkdirs()) { "carpeta de recibos no disponible" }
+        check(directory.mkdirs() || directory.isDirectory) { "carpeta de recibos no disponible" }
         val receipt = File(directory, "message_$key.receipt")
         if (receipt.isFile && receipt.length() == 2L && receipt.readText() == "ok") return false
         deliver()

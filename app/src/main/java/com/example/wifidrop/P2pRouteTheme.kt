@@ -23,17 +23,24 @@ private val QetaraDarkContainer = Color(0xFF223D56)
 
 @Composable
 fun QetaraAppShell() {
+    QetaraTheme {
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = MaterialTheme.colorScheme.background
+        ) {
+            P2pScreenRoute()
+        }
+    }
+}
+
+@Composable
+internal fun QetaraTheme(content: @Composable () -> Unit) {
     val dark = isSystemInDarkTheme()
     ProvidePrivateClipboard {
         MaterialTheme(
             colorScheme = if (dark) wifiDropDarkScheme else wifiDropLightScheme
         ) {
-            Surface(
-                modifier = Modifier.fillMaxSize(),
-                color = MaterialTheme.colorScheme.background
-            ) {
-                P2pScreenRoute()
-            }
+            content()
         }
     }
 }

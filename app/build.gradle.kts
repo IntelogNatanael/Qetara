@@ -21,7 +21,7 @@ android {
         applicationId = "com.example.wifidrop"
         minSdk = 24
         targetSdk = 36
-        versionCode = providers.gradleProperty("qetaraVersionCode").getOrElse("3").toInt()
+        versionCode = providers.gradleProperty("qetaraVersionCode").getOrElse("5").toInt()
         versionName = project.version.toString()
     }
 

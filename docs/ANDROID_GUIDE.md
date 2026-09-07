@@ -2,7 +2,11 @@
 
 Qetara permite compartir archivos y mensajes entre equipos cercanos. No requiere una cuenta. Para empezar con un PC, conecta ambos equipos a la misma red Wi-Fi y abre Qetara en los dos.
 
-La aplicación está configurada para Android 7.0 (API 24) o posterior. Consulta el [README del proyecto](../README.md) para identificar el APK de la entrega y su forma de instalación. Esta rama incorpora mejoras de privacidad posteriores a Qetara 1.2.0; su validación en un teléfono físico sigue pendiente.
+La aplicación está configurada para Android 7.0 (API 24) o posterior. Consulta el [README del proyecto](../README.md) para identificar el APK de la entrega y su forma de instalación. Qetara 1.3.0 incorpora Flash opcional y las mejoras de privacidad evaluadas tras 1.2.0. La comprobación física permanece pausada; consulta [Validación](VALIDATION.md) para distinguir las pruebas de esta entrega de las realizadas anteriormente.
+
+## Flash opcional
+
+Abre **Flash** para un envío puntual por la misma Wi-Fi, sin escribir código de sesión ni PIN. Actívalo en los dos dispositivos, selecciona el archivo y el destino y compara la verificación en ambas pantallas antes de aceptar. La notificación permite detener la sesión activa; también caduca a los 30 minutos. Al reiniciar el proceso empieza apagado. La [guía de Flash](FLASH.md) explica recepción, cancelación y qué hacer si la búsqueda no encuentra al otro equipo.
 
 ## Elegir cómo conectar
 
@@ -28,9 +32,9 @@ Si el PC va a enviar por primera vez a Android, usa en el PC el código y el PIN
 
 Si necesitas abrir el formulario de nuevo, usa **Ver o introducir credenciales** en Conectar. **Copiar código** copia el código de la sesión actual; **Pegar código** lo toma del portapapeles. El PIN se introduce por separado.
 
-El PIN está oculto mientras lo introduces. **Mostrar** permite comprobarlo sin abandonar el campo; **Ocultar** vuelve a cubrirlo. Al pausar la aplicación, girar la pantalla o cambiar la sesión, vuelve a ocultarse. Algunos sistemas mantienen Qetara activa al abrir recientes; en ese caso puede seguir visible también al regresar directamente. Toca **Ocultar** antes de abrir recientes si necesitas cubrirlo. Puedes mostrarlo otra vez cuando necesites comunicarlo al otro equipo.
+El PIN está oculto mientras lo introduces. **Mostrar** permite comprobarlo sin abandonar el campo; **Ocultar** vuelve a cubrirlo. Al pausar la aplicación, girar la pantalla o cambiar la sesión, vuelve a ocultarse. También se oculta al perder el foco de la ventana, aunque Qetara siga activa, y no se revela automáticamente al regresar. Para mostrarlo otra vez, la ventana debe estar activa y tener el foco. Este ajuste se comprobó en emulador Android 16; puedes tocar **Ocultar** antes de abrir Recientes cuando necesites cubrirlo de inmediato.
 
-Qetara marca las copias como sensibles para pedir al sistema que oculte su vista previa. El contenido sigue disponible para pegarlo. En Android 13 o posterior también pide ocultar la miniatura guardada de aplicaciones recientes; la transición en directo depende del sistema. Las capturas de pantalla voluntarias siguen disponibles. Consulta los alcances en [Privacidad](PRIVACY.md).
+Qetara marca las copias como sensibles para pedir al sistema que oculte su vista previa. El contenido sigue disponible para pegarlo. En Android 13 o posterior también pide ocultar la miniatura guardada de aplicaciones recientes; la transición en directo depende del sistema. Ocultar el PIN no elimina un fotograma que Android ya haya capturado. Las capturas de pantalla voluntarias siguen disponibles. Consulta los alcances y las comprobaciones físicas en [Privacidad](PRIVACY.md).
 
 Al enviar hacia un receptor, usa el código y el PIN que muestra ese receptor. Si cambias los datos o renuevas la sesión en uno de los equipos, vuelve a comprobar que ambos usan los mismos valores. Una sesión expirada se recupera con **Renovar sesión**; la renovación local no modifica por sí sola la sesión del otro equipo.
 

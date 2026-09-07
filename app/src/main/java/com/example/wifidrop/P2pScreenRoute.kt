@@ -530,6 +530,7 @@ fun P2pScreenRoute() {
         )
     }
 
+    val flashState by FlashAndroidRuntime.state.collectAsState()
     val keyboardVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
     Scaffold(
         modifier = Modifier.imePadding(),
@@ -578,6 +579,15 @@ fun P2pScreenRoute() {
                     }
                 },
                 actions = {
+                    TextButton(onClick = { context.startActivity(Intent(context, FlashActivity::class.java)) }) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("Flash")
+                            if (flashState.active) Text(
+                                if (flashState.engine?.approvals?.isNotEmpty() == true) "solicitud" else "activo",
+                                style = MaterialTheme.typography.labelSmall
+                            )
+                        }
+                    }
                     IconButton(onClick = { showPreferences = true }) {
                         Icon(Icons.Rounded.Settings, contentDescription = "Ajustes de lectura y avisos")
                     }

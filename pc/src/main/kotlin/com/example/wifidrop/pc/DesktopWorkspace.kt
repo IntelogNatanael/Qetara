@@ -54,7 +54,9 @@ internal data class DesktopWorkspaceState(
     val sessionRemaining: String,
     val unreadMessages: Int = 0,
     val identityFingerprint: String = "",
-    val messageSending: Boolean = false
+    val messageSending: Boolean = false,
+    val flashActive: Boolean = false,
+    val flashApprovals: Int = 0
 ) {
     val receiverBusy: Boolean get() = receiverPhase in listOf(DesktopTaskPhase.STARTING, DesktopTaskPhase.RUNNING, DesktopTaskPhase.STOPPING)
     val sendingBusy: Boolean get() = sendingPhase in listOf(DesktopTaskPhase.STARTING, DesktopTaskPhase.RUNNING, DesktopTaskPhase.STOPPING)
@@ -87,7 +89,8 @@ internal data class DesktopWorkspaceActions(
     val onChatVisibilityChange: (Boolean) -> Unit,
     val onSaveSettings: () -> Unit,
     val onOpenSource: () -> Unit,
-    val onCopyFingerprint: () -> Unit = {}
+    val onCopyFingerprint: () -> Unit = {},
+    val onOpenFlash: () -> Unit = {}
 )
 
 private enum class WorkspaceTab(val label: String) {
@@ -99,7 +102,9 @@ internal fun DesktopWorkspace(
     state: DesktopWorkspaceState,
     actions: DesktopWorkspaceActions,
     chatContent: @Composable () -> Unit,
-    activityContent: @Composable (Modifier) -> Unit
+    activityContent: @Composable (Modifier) -> Unit,
+    flashVisible: Boolean = false,
+    flashContent: @Composable () -> Unit = {}
 ) {
     var selectedTab by remember { mutableStateOf(WorkspaceTab.SHARE) }
     var showLicenses by remember { mutableStateOf(false) }
@@ -117,9 +122,14 @@ internal fun DesktopWorkspace(
                     Text("Qetara", style = MaterialTheme.typography.h5, fontWeight = FontWeight.Bold)
                     Text("Cerca de ti. Bajo tu control.", style = MaterialTheme.typography.caption, color = qetaraTeal)
                 }
+                OutlinedButton(actions.onOpenFlash, enabled = !flashVisible, modifier = Modifier.padding(end = 12.dp)) {
+                    Text((if (state.flashActive) "Flash activo" else "Flash") + if (state.flashApprovals > 0) " (${state.flashApprovals})" else "")
+                }
                 Column(horizontalAlignment = Alignment.End) {
                     StatusBadge(
-                        if (state.receiverPhase == DesktopTaskPhase.RUNNING) "Disponible para recibir" else "Recepción desactivada",
+                        if (state.flashActive) {
+                            if (state.receiverPhase == DesktopTaskPhase.RUNNING) "Recepción habitual activa" else "Recepción habitual desactivada"
+                        } else if (state.receiverPhase == DesktopTaskPhase.RUNNING) "Disponible para recibir" else "Recepción desactivada",
                         state.receiverPhase == DesktopTaskPhase.RUNNING
                     )
                     Text(
@@ -129,6 +139,10 @@ internal fun DesktopWorkspace(
                         color = qetaraInk.copy(alpha = .7f)
                     )
                 }
+            }
+            if (flashVisible) {
+                Box(Modifier.weight(1f).fillMaxWidth()) { flashContent() }
+                return@Column
             }
             ScrollableTabRow(
                 selectedTabIndex = selectedTab.ordinal,

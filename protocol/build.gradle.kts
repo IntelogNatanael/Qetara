@@ -3,6 +3,7 @@ plugins {
 }
 
 dependencies {
+    implementation("kr.jclab:noise-java:0.0.1")
     testImplementation(kotlin("test"))
 }
 

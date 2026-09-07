@@ -352,6 +352,7 @@ fun P2pScreen(
     val experience = deriveP2pExperienceState(state)
     val chatExperience = deriveP2pChatExperienceState(state)
     val sessionLabel = when {
+        !state.sessionEnabled -> "Sesión cerrada"
         state.sessionExpired -> "Sesión expirada"
         else -> formatSessionExpiry(state.sessionExpiresAtMs, state.nowMs)
     }
@@ -384,7 +385,13 @@ fun P2pScreen(
     }
     val hasConnectionAlerts = state.pendingCredentialShare != null || state.pendingTrust != null
     val isSyncingNow = state.sessionSyncing
-    val isConnectingNow = state.directDiscovering || state.directConnecting || state.directCreatingGroup
+    val isDirectBusyNow = state.directDiscovering || state.directConnecting || state.directCreatingGroup
+    val directActivityLabel = when {
+        state.directCreatingGroup -> "Creando enlace"
+        state.directConnecting -> "Conectando"
+        state.directDiscovering -> "Buscando equipos"
+        else -> null
+    }
     val activeTransferCancelLabel = when {
         state.receiving && (state.sending || state.sendActiveCount > 0) -> "Cancelar transferencias"
         state.receiving -> "Cancelar recepción"
@@ -487,7 +494,7 @@ fun P2pScreen(
         directReadyForExchange -> "Directo listo"
         !state.permissionGranted -> "Falta permiso"
         !state.p2pEnabled -> "Abre Wi-Fi del sistema"
-        state.directCreatingGroup -> "Enlace creado en este equipo"
+        state.directCreatingGroup -> "Creando enlace"
         state.directConnecting -> "Uniéndote al enlace"
         state.directDiscovering && state.peers.isNotEmpty() -> "Elige el equipo correcto"
         state.directDiscovering -> "Buscando equipos"
@@ -591,6 +598,7 @@ fun P2pScreen(
         }
     }
     val compactSyncLabel = when {
+        !state.sessionEnabled -> null
         state.sessionExpired -> "Sesión expirada"
         state.sessionSyncing -> "Sincronizando"
         state.tokenSyncStatus.contains("reintent", ignoreCase = true) -> "Reintentando"
@@ -618,6 +626,7 @@ fun P2pScreen(
         else -> "Sincronizar ahora"
     }
     val sessionStatusText = when {
+        !state.sessionEnabled -> null
         requiresManualPairing -> "Abre Qetara en el otro equipo. Copia aquí su token y su PIN para compartir la misma sesión."
         state.sessionExpired -> "La sesión expiró. Renueva para continuar."
         state.sessionSyncing -> "Sincronizando sesión..."
@@ -633,7 +642,7 @@ fun P2pScreen(
             (connectionViewMode == ConnectionViewMode.ADVANCED && state.trustedPeers.isNotEmpty())
     val headerActivityLabel = when {
         isSyncingNow -> "Sincronizando"
-        isConnectingNow -> "Conectando"
+        isDirectBusyNow -> directActivityLabel
         state.receiving -> "Recibiendo"
         state.sending || queueRunningCount > 0 -> {
             if (state.sendBatchTotal > 0) {
@@ -655,7 +664,7 @@ fun P2pScreen(
     val headerDetailHint = when {
         connectionViewMode != ConnectionViewMode.ADVANCED &&
             !sessionNeedsAttention &&
-            !isConnectingNow &&
+            !isDirectBusyNow &&
             !isSyncingNow &&
             (state.receiving || state.sending || queueRunningCount > 0 || queuePendingCount > 0) -> null
         else -> headerHint
@@ -970,14 +979,14 @@ fun P2pScreen(
                                 if (!headerActivityLabel.isNullOrBlank()) {
                                     StatusChip(
                                         label = headerActivityLabel,
-                                        containerColor = if (state.receiving || isSyncingNow || isConnectingNow) {
+                                        containerColor = if (state.receiving || isSyncingNow || isDirectBusyNow) {
                                             MaterialTheme.colorScheme.tertiaryContainer
                                         } else if (state.sending || queueRunningCount > 0) {
                                             MaterialTheme.colorScheme.primaryContainer
                                         } else {
                                             MaterialTheme.colorScheme.surfaceVariant
                                         },
-                                        contentColor = if (state.receiving || isSyncingNow || isConnectingNow) {
+                                        contentColor = if (state.receiving || isSyncingNow || isDirectBusyNow) {
                                             MaterialTheme.colorScheme.onTertiaryContainer
                                         } else if (state.sending || queueRunningCount > 0) {
                                             MaterialTheme.colorScheme.onPrimaryContainer
@@ -1108,14 +1117,14 @@ fun P2pScreen(
                             if (!headerActivityLabel.isNullOrBlank()) {
                                 StatusChip(
                                     label = headerActivityLabel,
-                                    containerColor = if (state.receiving || isSyncingNow || isConnectingNow) {
+                                    containerColor = if (state.receiving || isSyncingNow || isDirectBusyNow) {
                                         MaterialTheme.colorScheme.tertiaryContainer
                                     } else if (state.sending || queueRunningCount > 0) {
                                         MaterialTheme.colorScheme.primaryContainer
                                     } else {
                                         MaterialTheme.colorScheme.surfaceVariant
                                     },
-                                    contentColor = if (state.receiving || isSyncingNow || isConnectingNow) {
+                                    contentColor = if (state.receiving || isSyncingNow || isDirectBusyNow) {
                                         MaterialTheme.colorScheme.onTertiaryContainer
                                     } else if (state.sending || queueRunningCount > 0) {
                                         MaterialTheme.colorScheme.onPrimaryContainer
@@ -1274,7 +1283,7 @@ fun P2pScreen(
                             }
 
                             AnimatedVisibility(
-                                visible = isConnectingNow || isSyncingNow,
+                                visible = isDirectBusyNow || isSyncingNow,
                                 enter = fadeIn(tween(150)) + slideInVertically(tween(150)),
                                 exit = fadeOut(tween(180)) + slideOutVertically(tween(180))
                             ) {
@@ -1282,7 +1291,7 @@ fun P2pScreen(
                                     text = if (isSyncingNow) {
                                         "Sincronizando credenciales..."
                                     } else {
-                                        "Conectando dispositivos..."
+                                        directActivityLabel.orEmpty()
                                     },
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -2014,7 +2023,7 @@ fun P2pScreen(
                                 verticalArrangement = Arrangement.spacedBy(2.dp)
                             ) {
                                 Text(
-                                    "Sesión activa",
+                                    if (state.sessionEnabled) "Sesión activa" else "Sesión cerrada",
                                     fontWeight = FontWeight.SemiBold,
                                     style = MaterialTheme.typography.bodyMedium
                                 )
@@ -2041,6 +2050,7 @@ fun P2pScreen(
                         StageHeader(
                             title = "Sesión",
                             summary = when {
+                                !state.sessionEnabled -> "Cerrada. Puedes preparar las credenciales."
                                 state.sessionExpired -> "Sesión expirada. Renueva para continuar."
                                 compactSyncLabel != null -> compactSyncLabel
                                 else -> "Activa y lista."
@@ -2657,7 +2667,7 @@ fun P2pScreen(
                                 "Abre Wi-Fi del sistema"
                             }
                             simpleWifiDirectMode && state.directCreatingGroup -> {
-                                "Enlace creado"
+                                "Creando enlace"
                             }
                             simpleWifiDirectMode && state.directConnecting -> {
                                 "Uniéndote al enlace"

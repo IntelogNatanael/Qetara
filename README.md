@@ -15,6 +15,12 @@ En Android puedes compartir hacia Qetara desde otras aplicaciones. Si tu red imp
 
 Consulta la [guía de uso](docs/USER_GUIDE.md) para conectar equipos, recuperar un envío y encontrar los archivos recibidos.
 
+### Compartir con Flash
+
+**Flash es opcional y empieza apagado.** Actívalo en Android y PC para compartir un archivo por la misma red local sin crear ni escribir código de sesión o PIN. Elige el archivo y el equipo, compara la verificación que aparece en ambas pantallas y acepta el envío en los dos dispositivos. Puedes seguir el progreso, cancelar y abrir lo recibido. La activación termina a los 30 minutos o cuando la desactives.
+
+Flash tiene una sesión temporal independiente; la conexión habitual, los mensajes y los controles avanzados siguen disponibles. Consulta [la guía de Flash](docs/FLASH.md), incluidos los pasos cuando la red impide descubrir equipos.
+
 ## Qué incluye
 
 - **Android:** conexión por LAN y Wi-Fi Direct, compartir desde otras apps, mensajes directos, canal Wi-Fi y biblioteca de descargas.
