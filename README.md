@@ -57,4 +57,6 @@ Para crear los paquetes de distribución, consulta [la guía de publicación](do
 
 Las mejoras deben hacer más sencilla una tarea real y mantener los datos del usuario a salvo. Lee [CONTRIBUTING.md](CONTRIBUTING.md), la [arquitectura](ARCHITECTURE.md) y los [principios de experiencia](docs/EXPERIENCE.md).
 
+Para continuar el desarrollo, consulta la [guía de traspaso](docs/HANDOFF.md).
+
 Para problemas de seguridad, sigue [SECURITY.md](SECURITY.md). Los recursos y dependencias de terceros conservan sus propias licencias: [avisos de terceros](THIRD_PARTY_NOTICES.md).
