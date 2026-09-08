@@ -7,6 +7,17 @@ data class P2pAttachmentDraft<T>(
     val status: String = ""
 )
 
+internal fun <T, K> mergeAttachmentFiles(
+    existing: List<T>,
+    added: List<T>,
+    keyOf: (T) -> K
+): List<T> = buildList(existing.size + added.size) {
+    val seen = hashSetOf<K>()
+    (existing + added).forEach { item ->
+        if (seen.add(keyOf(item))) add(item)
+    }
+}
+
 /** Each composer owns its selection; changing screens never moves files between audiences. */
 data class P2pAttachmentDrafts<T>(
     val activeContext: P2pAttachmentContext = P2pAttachmentContext.FILES,

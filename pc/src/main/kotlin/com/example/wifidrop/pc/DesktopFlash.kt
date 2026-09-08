@@ -62,8 +62,8 @@ internal fun DesktopFlashPanel(
         state.starting -> "Preparando la recepción temporal…"
         !state.session.active -> "Al activarlo, este equipo podrá enviar y recibir solicitudes de Flash durante 30 minutos."
         transfer != null -> transfer.detail
-        state.sendPending -> "Preparando el archivo…"
-        state.selectedFile == null -> "Elige un archivo para enviar o espera una solicitud del otro equipo."
+        state.sendPending -> "Preparando el siguiente archivo…"
+        state.selectedFiles.isEmpty() -> "Elige uno o varios archivos para enviar, o espera una solicitud del otro equipo."
         selected == null -> "Elige un equipo que tenga Flash activo."
         else -> "El otro equipo verá el nombre y tamaño. Ambos deberán comparar el código antes de transferir."
     }
@@ -72,7 +72,7 @@ internal fun DesktopFlashPanel(
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text("Flash", style = MaterialTheme.typography.h5, fontWeight = FontWeight.Bold)
-                Text(if (state.session.active) "Activo · $minutes min restantes" else "Un archivo, dos equipos, bajo tu control.", color = qetaraTeal, style = MaterialTheme.typography.body2)
+                Text(if (state.session.active) "Activo · $minutes min restantes" else "Tus archivos, dos equipos, bajo tu control.", color = qetaraTeal, style = MaterialTheme.typography.body2)
             }
             if (state.session.active || state.starting) {
                 OutlinedButton(onClick = { if (state.busy) confirmStop = true else controller.stop() }) { Text("Desactivar") }
@@ -101,12 +101,19 @@ internal fun DesktopFlashPanel(
                     if (state.session.active) Text("La carpeta queda fija mientras Flash esté activo.", style = MaterialTheme.typography.caption, color = qetaraTeal)
                 }
                 FlashCard {
-                    Text("Archivo para compartir", fontWeight = FontWeight.SemiBold)
+                    Text("Archivos para compartir", fontWeight = FontWeight.SemiBold)
                     DesktopFileDropZone(state.selectedFile?.absolutePath.orEmpty(), false, onChooseFile, enabled = !state.busy)
-                    state.selectedFile?.let { file ->
+                    state.selectedFiles.take(3).forEach { file ->
                         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                            Text(formatBytes(file.length()), Modifier.weight(1f), style = MaterialTheme.typography.body2)
-                            TextButton(controller::clearFile, enabled = !state.busy) { Text("Quitar") }
+                            Text(file.name, Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(formatBytes(file.length()), style = MaterialTheme.typography.body2)
+                        }
+                    }
+                    if (state.selectedFiles.size > 3) Text("Y ${state.selectedFiles.size - 3} archivo(s) más.", style = MaterialTheme.typography.body2)
+                    if (state.selectedFiles.isNotEmpty()) {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text("${state.selectedFiles.size} archivo(s) preparados", style = MaterialTheme.typography.caption, color = qetaraTeal)
+                            TextButton(controller::clearFiles, enabled = !state.busy) { Text("Quitar todos") }
                         }
                     }
                 }
@@ -197,10 +204,10 @@ internal fun DesktopFlashPanel(
                     modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
                 ) { Text(if (transfer.cancelling) "Cancelando…" else "Cancelar transferencia") }
                 else -> Button(
-                    controller::send, enabled = !state.busy && state.selectedFile != null && selected != null,
+                    controller::send, enabled = !state.busy && state.selectedFiles.isNotEmpty() && selected != null,
                     colors = ButtonDefaults.buttonColors(backgroundColor = qetaraTeal, contentColor = Color.White),
                     modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
-                ) { Text(if (state.sendPending) "Preparando…" else "Solicitar envío") }
+                ) { Text(if (state.sendPending) "Preparando…" else if (state.selectedFiles.size == 1) "Solicitar envío" else "Enviar ${state.selectedFiles.size} archivos") }
             }
         }
     }

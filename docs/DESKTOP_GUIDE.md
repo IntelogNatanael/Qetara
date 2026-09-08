@@ -4,7 +4,7 @@ Qetara permite compartir archivos y conversar entre equipos de una misma red loc
 
 ## Flash opcional
 
-El botón **Flash** abre el envío temporal sin escribir código de sesión ni PIN. Actívalo en ambos equipos, elige un archivo y el destino y pulsa **Solicitar envío**. Compara los cuatro grupos en ambas pantallas antes de aceptar. **Flash activo** mantiene visible la disponibilidad aunque vuelvas a otro espacio. Cada activación caduca a los 30 minutos; **Desactivar** termina únicamente Flash. La carpeta de recepción se elige antes de activarlo y **Ver en carpeta** permite localizar lo recibido. La [guía de Flash](FLASH.md) incluye el recorrido completo y la alternativa por dirección local.
+El botón **Flash** abre el envío temporal sin escribir código de sesión ni PIN. Actívalo en ambos equipos, elige uno o varios archivos y el destino y pulsa **Solicitar envío**. Qetara solicita la aprobación y muestra una verificación nueva para cada archivo. Compara los cuatro grupos en ambas pantallas antes de aceptar. **Flash activo** mantiene visible la disponibilidad aunque vuelvas a otro espacio. Cada activación caduca a los 30 minutos; **Desactivar** termina únicamente Flash. La carpeta de recepción se elige antes de activarlo y **Ver en carpeta** permite localizar lo recibido. La [guía de Flash](FLASH.md) incluye el recorrido completo y la alternativa por dirección local.
 
 ## Abrir Qetara
 
@@ -38,19 +38,19 @@ Qetara PC usa emparejamiento manual. No entrega el código ni el PIN a quien los
 
 Al conectar una PC nueva a un receptor Android, el teléfono puede pedir que apruebes ese equipo antes de recibir contenido. Compara la huella que muestra la solicitud con **Ajustes → Este equipo** en la PC. Si coincide, aprueba el equipo en el teléfono y vuelve a enviar desde la PC. La huella identifica la clave pública del dispositivo; no es el código ni el PIN de sesión.
 
-## Enviar un archivo desde la PC
+## Enviar archivos desde la PC
 
 1. Abre **Compartir**.
-2. Arrastra un archivo sobre la ventana o pulsa el área **Arrastra y suelta un archivo aquí**.
+2. Arrastra uno o varios archivos sobre la ventana o pulsa el área de selección. Puedes volver a agregar archivos sin perder los ya elegidos.
 3. Pulsa **Buscar equipos** y selecciona el receptor. También puedes escribir su IP o nombre de equipo.
 4. Comprueba que el receptor esté activo y que ambos equipos tengan la misma sesión.
-5. Pulsa **Enviar archivo**.
+5. Pulsa **Enviar archivos**.
 
 El estado distingue la preparación, el envío y la verificación por el receptor. Qetara confirma el envío después de que el otro equipo haya aceptado y verificado el archivo.
 
-- La PC envía **un archivo por operación**. Si arrastras varios, selecciona el primero y te lo indica.
+- La PC procesa los archivos seleccionados en orden. Los completados desaparecen de la selección; si cancelas o falla uno, conserva los que todavía no se enviaron.
 - Para compartir una carpeta, comprímela primero en un archivo.
-- **Quitar archivo** retira la selección; no elimina el original.
+- **Quitar todos** retira la selección; no elimina los originales.
 - **Cancelar envío** detiene el envío en curso. Si vuelves a enviar el mismo archivo al mismo destino, Qetara puede aprovechar los datos parciales que conserve el receptor.
 - Los reintentos automáticos mantienen la identidad de la operación. Un intento ya registrado por el receptor puede confirmarse sin guardar otra copia.
 

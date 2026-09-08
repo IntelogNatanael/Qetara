@@ -6,6 +6,32 @@ import org.junit.Test
 
 class P2pAttachmentDraftsTest {
     @Test
+    fun sequentialPickerResultsAccumulateWithoutReplacingEarlierFiles() {
+        val firstSelection = listOf("photo.jpg", "report.pdf")
+        val accumulated = mergeAttachmentFiles(
+            existing = firstSelection,
+            added = listOf("notes.txt", "diagram.png"),
+            keyOf = { it }
+        )
+
+        assertEquals(
+            listOf("photo.jpg", "report.pdf", "notes.txt", "diagram.png"),
+            accumulated
+        )
+    }
+
+    @Test
+    fun repeatedPickerResultsKeepOneEntryPerFileAndPreserveOrder() {
+        val accumulated = mergeAttachmentFiles(
+            existing = listOf("photo.jpg", "report.pdf"),
+            added = listOf("report.pdf", "photo.jpg", "notes.txt", "notes.txt"),
+            keyOf = { it }
+        )
+
+        assertEquals(listOf("photo.jpg", "report.pdf", "notes.txt"), accumulated)
+    }
+
+    @Test
     fun switchingAudiencesPreservesEachSelectionWithoutCopyingIt() {
         var drafts = P2pAttachmentDrafts<String>()
             .update(P2pAttachmentContext.FILES) { it.copy(files = listOf("report.pdf")) }

@@ -27,7 +27,7 @@ internal data class FlashAndroidState(
     val engine: FlashState? = null,
     val status: String = "Flash está desactivado.",
     val importing: Boolean = false,
-    val selectedFile: File? = null,
+    val selectedFiles: List<File> = emptyList(),
     val selectedPeer: FlashPeer? = null,
     val progress: Map<String, FlashProgress> = emptyMap(),
     val results: List<FlashAndroidResult> = emptyList(),
@@ -35,6 +35,7 @@ internal data class FlashAndroidState(
     val deviceLabel: String = "Android"
 ) {
     val active: Boolean get() = phase == FlashAndroidPhase.ACTIVE && engine?.active == true
+    val selectedFile: File? get() = selectedFiles.firstOrNull()
 }
 
 /** Process-only state. Opening Flash or recreating its Activity never starts a receiver. */

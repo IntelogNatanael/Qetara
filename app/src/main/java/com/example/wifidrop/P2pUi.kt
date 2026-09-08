@@ -2934,7 +2934,7 @@ fun P2pScreen(
                                         contentDescription = null
                                     )
                                     Spacer(Modifier.width(8.dp))
-                                    Text(if (isCompactScreen) "Cambiar" else "Cambiar archivos")
+                                    Text(if (isCompactScreen) "Agregar" else "Agregar archivos")
                                 }
                             }
                             if (showSendMore) {

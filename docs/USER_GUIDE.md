@@ -4,16 +4,16 @@ Qetara comparte archivos y mensajes directamente entre tus equipos, sin crear un
 
 1. [Guía para Android](ANDROID_GUIDE.md): conectar, enviar, conversar y encontrar descargas.
 2. [Guía para PC](DESKTOP_GUIDE.md): preparar una sesión, elegir destino y recibir archivos.
-3. [Flash opcional](FLASH.md): un archivo por la red local sin escribir credenciales.
+3. [Flash opcional](FLASH.md): uno o varios archivos por la red local sin escribir credenciales.
 4. [Privacidad](PRIVACY.md): qué información permanece en cada equipo y qué se anuncia en la red.
 
 ## Compartir puntualmente con Flash
 
-Abre **Flash** en ambos equipos y actívalo. Elige un archivo y el destinatario, pulsa **Solicitar envío**, compara los cuatro grupos de verificación y acepta en los dos dispositivos. Flash está apagado al iniciar el proceso y termina a los 30 minutos o al desactivarlo. La sesión habitual se controla por separado. Consulta [Flash](FLASH.md) para recibir, cancelar y abrir lo recibido.
+Abre **Flash** en ambos equipos y actívalo. Elige uno o varios archivos y el destinatario y pulsa **Solicitar envío**. Qetara procesa la cola de uno en uno: compara los cuatro grupos de verificación y acepta cada archivo en los dos dispositivos. Flash está apagado al iniciar el proceso y termina a los 30 minutos o al desactivarlo. La sesión habitual se controla por separado. Consulta [Flash](FLASH.md) para recibir, cancelar y abrir lo recibido.
 
 ## Primer intercambio habitual Android ↔ PC
 
-Conecta ambos a la misma Wi-Fi. En PC crea una sesión y activa la recepción. En Android elige **Misma Wi-Fi**, selecciona el PC o introduce su IP y copia su código de sesión y PIN. Confirma esos datos, elige un archivo y envíalo. Espera la confirmación antes de cerrar Qetara.
+Conecta ambos a la misma Wi-Fi. En PC crea una sesión y activa la recepción. En Android elige **Misma Wi-Fi**, selecciona el PC o introduce su IP y copia su código de sesión y PIN. Confirma esos datos, elige uno o varios archivos y envíalos. Espera la confirmación antes de cerrar Qetara.
 
 El código tiene ocho caracteres y el PIN seis cifras. Son temporales: usa los que aparecen en la sesión activa. El intercambio automático de credenciales con aprobación de identidad está disponible entre Android compatibles; el PC utiliza código y PIN manuales.
 

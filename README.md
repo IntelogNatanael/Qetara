@@ -9,7 +9,7 @@ Qetara conecta Android y PC por tu red local. Entre dispositivos Android tambié
 1. Abre Qetara en ambos dispositivos y conéctalos a la misma red Wi-Fi.
 2. En el equipo que recibirá, prepara una sesión y deja el receptor activo.
 3. En el equipo que envía, elige el destino y usa el código y PIN de esa sesión.
-4. Elige un archivo y envíalo. Comprueba la confirmación antes de cerrar la aplicación.
+4. Elige uno o varios archivos y envíalos. Comprueba la confirmación antes de cerrar la aplicación.
 
 En Android puedes compartir hacia Qetara desde otras aplicaciones. Si tu red impide que los dispositivos se vean, usa la dirección local del receptor o, entre Android, Wi-Fi Direct.
 
@@ -17,7 +17,7 @@ Consulta la [guía de uso](docs/USER_GUIDE.md) para conectar equipos, recuperar 
 
 ### Compartir con Flash
 
-**Flash es opcional y empieza apagado.** Actívalo en Android y PC para compartir un archivo por la misma red local sin crear ni escribir código de sesión o PIN. Elige el archivo y el equipo, compara la verificación que aparece en ambas pantallas y acepta el envío en los dos dispositivos. Puedes seguir el progreso, cancelar y abrir lo recibido. La activación termina a los 30 minutos o cuando la desactives.
+**Flash es opcional y empieza apagado.** Actívalo en Android y PC para compartir archivos por la misma red local sin crear ni escribir código de sesión o PIN. Elige uno o varios archivos y el equipo; Qetara solicitará y verificará cada envío por separado. Compara la verificación que aparece en ambas pantallas y acepta el envío en los dos dispositivos. Puedes seguir el progreso, cancelar y abrir lo recibido. La activación termina a los 30 minutos o cuando la desactives.
 
 Flash tiene una sesión temporal independiente; la conexión habitual, los mensajes y los controles avanzados siguen disponibles. Consulta [la guía de Flash](docs/FLASH.md), incluidos los pasos cuando la red impide descubrir equipos.
 

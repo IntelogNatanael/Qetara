@@ -87,10 +87,24 @@ class P2pShareImportPresenter(
     suspend fun importPickedUris(uris: List<Uri>, context: P2pAttachmentContext) {
         if (uris.isEmpty()) return
         val ticket = revisions.getValue(context).incrementAndGet()
-        updateDraft(context) { it.copy(status = "Preparando selección...") }
+        updateDraft(context) { it.copy(status = "Agregando archivos...") }
         val loaded = loadOutboundSelections(uris)
         if (revisions.getValue(context).get() == ticket && loaded.isNotEmpty()) {
-            updateDraft(context) { it.copy(files = loaded, status = "${loaded.size} archivo(s) seleccionado(s).") }
+            updateDraft(context) { draft ->
+                val merged = mergeAttachmentFiles(
+                    existing = draft.files,
+                    added = loaded,
+                    keyOf = { it.uri.toString() }
+                )
+                draft.copy(
+                    files = merged,
+                    status = if (merged.size == 1) {
+                        "1 archivo seleccionado."
+                    } else {
+                        "${merged.size} archivos seleccionados."
+                    }
+                )
+            }
         }
     }
 

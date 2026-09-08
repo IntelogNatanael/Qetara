@@ -74,8 +74,8 @@ private fun FlashScreen(activity: FlashActivity, onBack: () -> Unit) {
     }
     val scope = rememberCoroutineScope()
     LaunchedEffect(Unit) { while (isActive) { delay(1_000); now = System.currentTimeMillis() } }
-    val chooseFile = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        if (uri != null) FlashForegroundService.chooseFile(uri)
+    val chooseFiles = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
+        if (uris.isNotEmpty()) FlashForegroundService.chooseFiles(uris)
     }
     val notifications = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { allowed ->
         notificationsAllowed = allowed
@@ -139,10 +139,20 @@ private fun FlashScreen(activity: FlashActivity, onBack: () -> Unit) {
                         verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text(selectedPeer?.let { "Para: ${it.label} · ${it.address}" } ?: "Elige un equipo receptor",
                             style = MaterialTheme.typography.labelLarge, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                        state.selectedFile?.let { Text(it.name, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                        if (state.selectedFiles.isNotEmpty()) {
+                            Text(
+                                if (state.selectedFiles.size == 1) state.selectedFiles.first().name
+                                else "${state.selectedFiles.size} archivos preparados",
+                                style = MaterialTheme.typography.bodySmall,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
                         Button(onClick = FlashForegroundService::send,
-                            enabled = !busy && selectedPeer != null && state.selectedFile != null,
-                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Solicitar envío") }
+                            enabled = !busy && selectedPeer != null && state.selectedFiles.isNotEmpty(),
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                            Text(if (state.selectedFiles.size == 1) "Solicitar envío" else "Enviar ${state.selectedFiles.size} archivos")
+                        }
                     }
                 }
             }
@@ -221,20 +231,23 @@ private fun FlashScreen(activity: FlashActivity, onBack: () -> Unit) {
             if (state.active && operations.isEmpty()) {
                 item("file") {
                     FlashCard {
-                        Text("1. Elige un archivo", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                        state.selectedFile?.let { file ->
-                            Text(file.name)
+                        Text("1. Elige archivos", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        state.selectedFiles.take(3).forEach { file ->
+                            Text(file.name, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             Text(android.text.format.Formatter.formatFileSize(activity, file.length()), style = MaterialTheme.typography.bodySmall)
+                        }
+                        if (state.selectedFiles.size > 3) {
+                            Text("Y ${state.selectedFiles.size - 3} archivo(s) más.", style = MaterialTheme.typography.bodySmall)
                         }
                         if (state.importing) {
                             LinearProgressIndicator(Modifier.fillMaxWidth())
                             TextButton(onClick = FlashForegroundService::cancelImport) { Text("Cancelar selección") }
                         } else {
-                            Button(onClick = { notice = null; chooseFile.launch(arrayOf("*/*")) }, enabled = !busy,
+                            Button(onClick = { notice = null; chooseFiles.launch(arrayOf("*/*")) }, enabled = !busy,
                                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                                Text(if (state.selectedFile == null) "Elegir archivo" else "Elegir otro archivo")
+                                Text(if (state.selectedFiles.isEmpty()) "Elegir archivos" else "Agregar archivos")
                             }
-                            if (state.selectedFile != null) TextButton(onClick = FlashForegroundService::clearFile, enabled = !busy) { Text("Quitar archivo") }
+                            if (state.selectedFiles.isNotEmpty()) TextButton(onClick = FlashForegroundService::clearFiles, enabled = !busy) { Text("Quitar todos") }
                         }
                         Text("Para recibir, basta con mantener Flash activo y aceptar la solicitud que llegue.", style = MaterialTheme.typography.bodySmall)
                     }
@@ -280,7 +293,7 @@ private fun FlashScreen(activity: FlashActivity, onBack: () -> Unit) {
                             state.selectedPeer != null -> "El equipo elegido ya no está disponible. Búscalo de nuevo o elige otro."
                             else -> "Elige un equipo receptor."
                         })
-                        Text("Al solicitar el envío, aparecerá la misma verificación en ambos equipos. Compruébala con la otra persona antes de aceptar.", style = MaterialTheme.typography.bodySmall)
+                        Text("Cada archivo se enviará por separado y mostrará su propia verificación en ambos equipos. Compruébala con la otra persona antes de aceptar.", style = MaterialTheme.typography.bodySmall)
                     }
                 }
             }

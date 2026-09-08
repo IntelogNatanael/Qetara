@@ -31,7 +31,7 @@ internal data class DesktopWorkspaceState(
     val deviceName: String,
     val outputDirectory: String,
     val host: String,
-    val filePath: String,
+    val filePaths: List<String>,
     val port: String,
     val retries: String,
     val sessionMinutes: String,
@@ -58,6 +58,8 @@ internal data class DesktopWorkspaceState(
     val flashActive: Boolean = false,
     val flashApprovals: Int = 0
 ) {
+    val filePath: String get() = filePaths.firstOrNull().orEmpty()
+    val selectedFilesCount: Int get() = filePaths.size
     val receiverBusy: Boolean get() = receiverPhase in listOf(DesktopTaskPhase.STARTING, DesktopTaskPhase.RUNNING, DesktopTaskPhase.STOPPING)
     val sendingBusy: Boolean get() = sendingPhase in listOf(DesktopTaskPhase.STARTING, DesktopTaskPhase.RUNNING, DesktopTaskPhase.STOPPING)
     val settingsLocked: Boolean get() = receiverBusy || sendingBusy || messageSending
@@ -75,7 +77,7 @@ internal data class DesktopWorkspaceActions(
     val onCreateSession: () -> Unit,
     val onCopySession: () -> Unit,
     val onChooseFile: () -> Unit,
-    val onClearFile: () -> Unit,
+    val onClearFiles: () -> Unit,
     val onChooseDirectory: () -> Unit,
     val onOpenDirectory: () -> Unit,
     val onOpenReceivedFile: (String) -> Unit,
@@ -367,11 +369,18 @@ private fun SessionCard(state: DesktopWorkspaceState, actions: DesktopWorkspaceA
 private fun SendCard(state: DesktopWorkspaceState, actions: DesktopWorkspaceActions) {
     WorkspaceCard("1. Elige qué compartir") {
         DesktopFileDropZone(state.filePath, state.isFileDragActive, actions.onChooseFile, enabled = !state.sendingBusy)
-        if (state.filePath.isNotBlank()) {
+        if (state.filePaths.isNotEmpty()) {
+            state.filePaths.take(3).forEach { path ->
+                val selectedFile = File(path)
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text(selectedFile.name, Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(formatBytes(selectedFile.length()), style = MaterialTheme.typography.body2, color = qetaraTeal)
+                }
+            }
+            if (state.selectedFilesCount > 3) Text("Y ${state.selectedFilesCount - 3} archivo(s) más.", style = MaterialTheme.typography.body2)
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                val selectedFile = File(state.filePath)
-                Text(formatBytes(selectedFile.length()), Modifier.weight(1f), style = MaterialTheme.typography.body2, color = qetaraTeal)
-                TextButton(actions.onClearFile, enabled = !state.sendingBusy) { Text("Quitar archivo") }
+                Text("${state.selectedFilesCount} archivo(s) listos", Modifier.weight(1f), style = MaterialTheme.typography.caption, color = qetaraTeal)
+                TextButton(actions.onClearFiles, enabled = !state.sendingBusy) { Text("Quitar todos") }
             }
         }
         Divider(color = qetaraLine)
@@ -418,7 +427,7 @@ private fun SendCard(state: DesktopWorkspaceState, actions: DesktopWorkspaceActi
                 enabled = state.sendIssues.isEmpty(),
                 colors = ButtonDefaults.buttonColors(backgroundColor = qetaraTeal, contentColor = Color.White),
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
-            ) { Text(if (state.sendingPhase == DesktopTaskPhase.ERROR) "Volver a intentar" else "Enviar archivo", fontWeight = FontWeight.Bold) }
+            ) { Text(if (state.sendingPhase == DesktopTaskPhase.ERROR) "Volver a intentar" else if (state.selectedFilesCount == 1) "Enviar archivo" else "Enviar ${state.selectedFilesCount} archivos", fontWeight = FontWeight.Bold) }
         }
     }
 }

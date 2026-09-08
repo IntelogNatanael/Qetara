@@ -1,5 +1,6 @@
 package com.example.wifidrop.pc
 
+import java.io.File
 import java.net.Socket
 import java.util.concurrent.CancellationException
 import java.util.concurrent.atomic.AtomicBoolean
@@ -15,6 +16,9 @@ internal data class DesktopTransferEntry(
     val path: String? = null,
     val outcome: String = "Completado"
 )
+
+internal fun mergeDesktopFileSelections(existing: List<File>, added: List<File>): List<File> =
+    (existing + added).distinctBy { it.absoluteFile.normalize().path }
 
 internal class DesktopTransferCancellation {
     private val cancelled = AtomicBoolean(false)

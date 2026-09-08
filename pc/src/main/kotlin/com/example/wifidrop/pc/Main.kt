@@ -1607,7 +1607,9 @@ private fun runDesktopGui(cli: CliArgs) {
         var tokenText by remember { mutableStateOf(normalizeToken(cli.token.orEmpty())) }
         var pinText by remember { mutableStateOf(normalizePin(cli.pin.orEmpty())) }
         var hostText by remember { mutableStateOf(cli.sendHost.orEmpty()) }
-        var filePathText by remember { mutableStateOf(cli.sendFilePath.orEmpty()) }
+        var selectedSendFiles by remember {
+            mutableStateOf(cli.sendFilePath?.takeIf { it.isNotBlank() }?.let { listOf(File(it)) }.orEmpty())
+        }
         var outputDirText by remember { mutableStateOf(if ("--out" in cli.explicitFlags) cli.outputDir.absolutePath else savedPreferences.outputDirectory.ifBlank { cli.outputDir.absolutePath }) }
         var portText by remember { mutableStateOf((if ("--port" in cli.explicitFlags) cli.port else savedPreferences.port).toString()) }
         var deviceLabelText by remember { mutableStateOf(if ("--label" in cli.explicitFlags) sanitizePeerLabel(cli.deviceLabel) else savedPreferences.deviceLabel.ifBlank { sanitizePeerLabel(cli.deviceLabel) }) }
@@ -1758,34 +1760,39 @@ private fun runDesktopGui(cli: CliArgs) {
             peers.forEach(::upsertLanPeer)
         }
 
-        fun selectSendFile(file: File, source: String) {
+        fun selectSendFiles(files: List<File>, source: String) {
             if (activeSendCancellation != null) return
-            if (!file.exists() || !file.isFile) {
+            if (files.isEmpty()) return
+            val readable = files.filter { it.exists() && it.isFile && it.canRead() }
+            if (readable.isEmpty()) {
                 notice = "Selecciona un archivo. Para enviar una carpeta, comprímela primero."
                 appendLog(notice!!, isError = true)
                 return
             }
-            filePathText = file.absolutePath
-            sendingStatus = "Archivo listo: ${file.name}"
-            appendLog("$source: ${file.name}")
+            selectedSendFiles = mergeDesktopFileSelections(selectedSendFiles, readable)
+            val ignored = files.size - readable.size
+            sendingStatus = if (selectedSendFiles.size == 1) {
+                "Archivo listo: ${selectedSendFiles.first().name}"
+            } else {
+                "${selectedSendFiles.size} archivos listos para enviar."
+            }
+            appendLog("$source: ${readable.size} archivo(s) agregado(s)")
+            if (ignored > 0) notice = "Se omitieron $ignored elementos que no eran archivos legibles."
         }
+
+        fun selectSendFile(file: File, source: String) = selectSendFiles(listOf(file), source)
 
         fun handleDroppedFiles(files: List<File>) {
             if (showFlash) {
                 flashController.chooseDroppedFiles(files)
                 return
             }
-            val file = files.firstOrNull { it.isFile }
-            if (file == null) {
+            if (files.none { it.exists() && it.isFile && it.canRead() }) {
                 notice = "No se encontró un archivo. Para enviar una carpeta, comprímela primero."
                 appendLog(notice!!, isError = true)
                 return
             }
-            selectSendFile(file, "Archivo soltado")
-            if (files.size > 1) {
-                notice = "Elegimos el primer archivo de ${files.size} elementos. Qetara envía un archivo por vez."
-                appendLog(notice!!)
-            }
+            selectSendFiles(files, "Archivos soltados")
         }
 
         fun selectChatAttachment(file: File, source: String) {
@@ -1834,11 +1841,10 @@ private fun runDesktopGui(cli: CliArgs) {
         }
         val hostError = if (hostText.isBlank()) "Busca un equipo receptor o escribe su IP." else null
         val fileError = run {
-            val file = File(filePathText.trim())
             when {
-                filePathText.isBlank() -> "Selecciona un archivo."
-                !file.exists() -> "El archivo no existe."
-                !file.isFile -> "La ruta seleccionada no es un archivo."
+                selectedSendFiles.isEmpty() -> "Selecciona al menos un archivo."
+                selectedSendFiles.any { !it.exists() } -> "Uno de los archivos ya no existe."
+                selectedSendFiles.any { !it.isFile || !it.canRead() } -> "Uno de los elementos seleccionados no es un archivo legible."
                 else -> null
             }
         }
@@ -2351,7 +2357,7 @@ private fun runDesktopGui(cli: CliArgs) {
                 appendLog(sendingStatus, isError = true)
                 return
             }
-            val file = File(filePathText.trim())
+            val files = selectedSendFiles.toList()
             if (fileError != null) {
                 sendingPhase = DesktopTaskPhase.ERROR
                 sendingStatus = fileError
@@ -2374,31 +2380,56 @@ private fun runDesktopGui(cli: CliArgs) {
             activeSendCancellation = cancellation
             sendingProgress = null
             sendingPhase = DesktopTaskPhase.STARTING
-            sendingStatus = "Preparando " + file.name + " y conectando con " + host + "…"
+            sendingStatus = if (files.size == 1) {
+                "Preparando ${files.first().name} y conectando con $host…"
+            } else {
+                "Preparando ${files.size} archivos para $host…"
+            }
             appendLog(sendingStatus)
             thread(
                 start = true,
                 isDaemon = true,
                 name = "wifidrop-desktop-send"
             ) {
+                var completedCount = 0
                 try {
-                    val result = sendFileToPeer(file, senderConfig, cancellation) { sent, total ->
-                        SwingUtilities.invokeLater {
-                            if (activeSendCancellation === cancellation && !cancellation.isCancelled) {
-                                sendingPhase = DesktopTaskPhase.RUNNING
-                                sendingProgress = if (total > 0L) (sent.toDouble() / total).toFloat().coerceIn(0f, 1f) else 1f
-                                sendingStatus = if (sent == total) "Verificando la recepción de " + file.name + "…"
-                                    else "Enviando " + file.name + " · " + (sendingProgress!! * 100).toInt() + "% · " + formatBytes(sent) + " de " + formatBytes(total)
+                    files.forEachIndexed { index, file ->
+                        cancellation.throwIfCancelled()
+                        val result = sendFileToPeer(file, senderConfig, cancellation) { sent, total ->
+                            SwingUtilities.invokeLater {
+                                if (activeSendCancellation === cancellation && !cancellation.isCancelled) {
+                                    sendingPhase = DesktopTaskPhase.RUNNING
+                                    val fileProgress = if (total > 0L) (sent.toDouble() / total).coerceIn(0.0, 1.0) else 1.0
+                                    sendingProgress = ((index + fileProgress) / files.size).toFloat().coerceIn(0f, 1f)
+                                    val prefix = if (files.size > 1) "Archivo ${index + 1} de ${files.size} · " else ""
+                                    sendingStatus = if (sent == total) "$prefix Verificando ${file.name}…"
+                                        else "$prefix Enviando ${file.name} · ${(fileProgress * 100).toInt()}% · ${formatBytes(sent)} de ${formatBytes(total)}"
+                                }
                             }
+                        }
+                        completedCount = index + 1
+                        val completedForFile = completedCount
+                        SwingUtilities.invokeLater {
+                            selectedSendFiles = selectedSendFiles.filterNot {
+                                it.absoluteFile.normalize().path == file.absoluteFile.normalize().path
+                            }
+                            sendingProgress = completedForFile.toFloat() / files.size
+                            addTransfer(DesktopTransferEntry(UUID.randomUUID().toString(), LocalTime.now().format(uiLogTimeFormatter), file.name, file.length(), host, false))
+                            sendingStatus = if (files.size == 1) result else "$completedForFile de ${files.size} archivos enviados y verificados."
+                            appendLog(result)
                         }
                     }
                     SwingUtilities.invokeLater {
                         activeSendCancellation = null
                         sendingProgress = 1f
-                        addTransfer(DesktopTransferEntry(UUID.randomUUID().toString(), LocalTime.now().format(uiLogTimeFormatter), file.name, file.length(), host, false))
-                        notice = file.name + " enviado y verificado por el equipo receptor."
+                        notice = if (files.size == 1) {
+                            "${files.first().name} enviado y verificado por el equipo receptor."
+                        } else {
+                            "${files.size} archivos enviados y verificados por el equipo receptor."
+                        }
                         sendingPhase = DesktopTaskPhase.IDLE
-                        sendingStatus = result
+                        sendingStatus = if (files.size == 1) "Transferencia completada y verificada."
+                            else "Lote completado: ${files.size} archivos verificados."
                         upsertLanPeer(
                             DesktopLanPeer(
                                 id = host,
@@ -2410,7 +2441,7 @@ private fun runDesktopGui(cli: CliArgs) {
                                 lastSeenAtMs = System.currentTimeMillis()
                             )
                         )
-                        appendLog(result)
+                        appendLog(sendingStatus)
                     }
                 } catch (error: Exception) {
                     SwingUtilities.invokeLater {
@@ -2419,10 +2450,16 @@ private fun runDesktopGui(cli: CliArgs) {
                         sendingProgress = null
                         if (cancellation.isCancelled) {
                             sendingPhase = DesktopTaskPhase.IDLE
-                            sendingStatus = "Envío cancelado. Puedes volver a enviarlo para reanudarlo."
+                            sendingStatus = if (files.size == 1) {
+                                "Envío cancelado. Puedes volver a enviarlo para reanudarlo."
+                            } else {
+                                "Lote cancelado después de $completedCount de ${files.size} archivos. Los pendientes siguen seleccionados."
+                            }
                             appendLog(sendingStatus)
                         } else {
-                            sendingStatus = actionableDesktopError(error)
+                            val detail = actionableDesktopError(error)
+                            sendingStatus = if (files.size == 1) detail
+                                else "El lote se detuvo después de $completedCount de ${files.size} archivos. $detail"
                             appendLog(sendingStatus, isError = true)
                         }
                     }
@@ -2828,8 +2865,16 @@ private fun runDesktopGui(cli: CliArgs) {
                         }.onSuccess { notice = "Datos de conexión copiados. Compártelos con la persona que conectará el otro equipo." }
                             .onFailure { notice = "No se pudo copiar. Puedes seleccionar los datos manualmente." }
                     },
-                    onChooseFile = { chooseFilePath(filePathText, window)?.let { selectSendFile(File(it), "Archivo elegido") } },
-                    onClearFile = { filePathText = ""; sendingProgress = null; sendingStatus = "Elige un archivo para compartir."; sendingPhase = DesktopTaskPhase.IDLE },
+                    onChooseFile = {
+                        val current = selectedSendFiles.firstOrNull()?.absolutePath.orEmpty()
+                        selectSendFiles(chooseFilePaths(current, window).map(::File), "Selector")
+                    },
+                    onClearFiles = {
+                        selectedSendFiles = emptyList()
+                        sendingProgress = null
+                        sendingStatus = "Elige uno o varios archivos para compartir."
+                        sendingPhase = DesktopTaskPhase.IDLE
+                    },
                     onChooseDirectory = { chooseDirectoryPath(outputDirText, window)?.let { outputDirText = it; savePreferences() } },
                     onOpenDirectory = {
                         runCatching {
@@ -2885,7 +2930,8 @@ private fun runDesktopGui(cli: CliArgs) {
                 DesktopWorkspace(
                     state = DesktopWorkspaceState(
                         token = tokenText, pin = pinText, deviceName = deviceLabelText,
-                        outputDirectory = outputDirText, host = hostText, filePath = filePathText,
+                        outputDirectory = outputDirText, host = hostText,
+                        filePaths = selectedSendFiles.map { it.absolutePath },
                         port = portText, retries = retriesText, sessionMinutes = sessionMinutesText,
                         localEndpoints = localNetworkEndpoints, peers = lanPeers.toList(),
                         discoveryPhase = lanDiscoveryPhase, discoveryStatus = lanDiscoveryStatus,
@@ -2966,7 +3012,8 @@ private fun runDesktopGui(cli: CliArgs) {
                                 if (isChatVisible) markConversationRead(currentConversationKey())
                             },
                             onChooseFile = {
-                                chooseFilePath(flashController.state.selectedFile?.absolutePath.orEmpty(), window)?.let { flashController.chooseFile(File(it)) }
+                                val current = flashController.state.selectedFile?.absolutePath.orEmpty()
+                                flashController.chooseFiles(chooseFilePaths(current, window).map(::File))
                             },
                             onChooseDirectory = {
                                 chooseDirectoryPath(flashController.state.directory.absolutePath, window)?.let { flashController.chooseDirectory(File(it)) }
@@ -4525,6 +4572,27 @@ private fun chooseFilePath(current: String, owner: java.awt.Component): String? 
         chooser.selectedFile?.absolutePath
     } else {
         null
+    }
+}
+
+private fun chooseFilePaths(current: String, owner: java.awt.Component): List<String> {
+    val chooser = JFileChooser().apply {
+        dialogTitle = "Elige archivos para compartir"
+        approveButtonText = "Agregar archivos"
+        isMultiSelectionEnabled = true
+    }
+    val base = File(current)
+    chooser.currentDirectory = when {
+        base.exists() && base.isFile -> base.parentFile
+        base.exists() && base.isDirectory -> base
+        else -> File(System.getProperty("user.home"))
+    }
+    chooser.fileSelectionMode = JFileChooser.FILES_ONLY
+    return if (chooser.showOpenDialog(owner) == JFileChooser.APPROVE_OPTION) {
+        chooser.selectedFiles.map { it.absolutePath }
+            .ifEmpty { listOfNotNull(chooser.selectedFile?.absolutePath) }
+    } else {
+        emptyList()
     }
 }
 

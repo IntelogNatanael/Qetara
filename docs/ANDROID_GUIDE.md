@@ -6,7 +6,7 @@ La aplicación está configurada para Android 7.0 (API 24) o posterior. Consulta
 
 ## Flash opcional
 
-Abre **Flash** para un envío puntual por la misma Wi-Fi, sin escribir código de sesión ni PIN. Actívalo en los dos dispositivos, selecciona el archivo y el destino y compara la verificación en ambas pantallas antes de aceptar. La notificación permite detener la sesión activa; también caduca a los 30 minutos. Al reiniciar el proceso empieza apagado. La [guía de Flash](FLASH.md) explica recepción, cancelación y qué hacer si la búsqueda no encuentra al otro equipo.
+Abre **Flash** para un envío puntual por la misma Wi-Fi, sin escribir código de sesión ni PIN. Actívalo en los dos dispositivos, selecciona uno o varios archivos y el destino. Qetara los procesa en orden y pide comparar y aceptar una verificación independiente para cada archivo. La notificación permite detener la sesión activa; también caduca a los 30 minutos. Al reiniciar el proceso empieza apagado. La [guía de Flash](FLASH.md) explica recepción, cancelación y qué hacer si la búsqueda no encuentra al otro equipo.
 
 ## Elegir cómo conectar
 
