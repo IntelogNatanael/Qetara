@@ -2,13 +2,19 @@
 
 Esta guía permite continuar el desarrollo sin depender de la conversación que originó la entrega. Los comandos se ejecutan desde la raíz del repositorio.
 
-## Estado de referencia
+## Candidata pública en preparación
+
+El código prepara **1.4.0, código Android 7**, con identificador `io.github.intelognatanael.qetara`. Se instala como aplicación nueva respecto de las entregas privadas anteriores. La decisión de identidad, continuidad de firma y migración está en [Identidad Android](ANDROID_IDENTITY.md). La versión se define en `gradle.properties` para todos los módulos.
+
+La publicación pública y la solicitud a F-Droid son pasos separados de esta preparación. Consulta [Preparación de publicación](PUBLICATION_READINESS.md) para las comprobaciones y los límites pendientes.
+
+## Entrega anterior de referencia
 
 - **Android 1.3.1, código 6**, identificador `com.example.wifidrop`, Android 7/API 24 como mínimo y SDK objetivo 36.
 - **PC 1.3.0 es compatible con Android 1.3.1.** La corrección 1.3.1 afecta a la apertura, exportación y copia de archivos Android; no cambia el protocolo de red.
 - El APK 1.3.1 corresponde al commit `97e62099974d21659085f7e752ac49dc193acf01`. La referencia de distribución es [v1.3.1](https://github.com/IntelogNatanael/Qetara/releases/tag/v1.3.1); `main` incluye desarrollo posterior a esos binarios.
 - El repositorio [IntelogNatanael/Qetara](https://github.com/IntelogNatanael/Qetara) es privado: el compañero necesita permiso de acceso. El código conserva su [licencia MIT](../LICENSE).
-- `build.gradle.kts` define ahora `1.3.1` para todos los módulos. Por tanto, recompilar PC desde este código le asigna ese número; no significa que el instalador PC 1.3.0 ya distribuido haya cambiado.
+- Los instaladores anteriores mantienen sus versiones originales; no contienen el desarrollo posterior descrito a continuación.
 
 Lee primero [CONTRIBUTING](../CONTRIBUTING.md), [arquitectura](../ARCHITECTURE.md), [principios de experiencia](EXPERIENCE.md) y [seguridad](../SECURITY.md). Trabaja en una rama propia y conserva los cambios del usuario. Antes de modificar interfaz, revisa [AGENTS.md](../AGENTS.md): exige Penpot MCP. No estuvo disponible durante la entrega documentada; las verificaciones de interfaz realizadas se describen en los informes de validación.
 
@@ -16,7 +22,7 @@ Lee primero [CONTRIBUTING](../CONTRIBUTING.md), [arquitectura](../ARCHITECTURE.m
 
 `main` incorpora selección múltiple y envío por lotes en PC y Flash, con acumulación de selecciones Android, deduplicación y conservación de los archivos no confirmados. Flash detiene los pendientes al cancelar y espera el resultado de cada archivo antes de avanzar. Android y PC buscan receptores automáticamente al activar Flash; la búsqueda manual sigue disponible.
 
-Las mejoras se validaron con 199 pruebas Android, 57 PC y 45 del protocolo, además de compilación, lint y autopruebas locales de transferencia y reanudación. Los comandos, fechas y límites de cada ejecución están en [Validación](VALIDATION.md). Los instaladores de la entrega anterior no incorporan estas mejoras; los cambios siguen bajo **En desarrollo** en [Cambios](../CHANGELOG.md).
+Las mejoras se validaron con 199 pruebas Android, 57 PC y 45 del protocolo, además de compilación, lint y autopruebas locales de transferencia y reanudación. Los comandos, fechas y límites de cada ejecución están en [Validación](VALIDATION.md). Los instaladores de la entrega anterior no incorporan estas mejoras; los cambios forman parte de la candidata **1.4.0** en [Cambios](../CHANGELOG.md).
 
 ## Preparar y comprobar el entorno
 
@@ -71,7 +77,7 @@ adb devices -l
 $serial = 'emulator-5554' # Sustituye por el emulador de pruebas observado.
 adb -s $serial install -r app\build\outputs\apk\debug\app-debug.apk
 adb -s $serial install -r app\build\outputs\apk\androidTest\debug\app-debug-androidTest.apk
-adb -s $serial shell am instrument -w -r com.example.wifidrop.test/com.example.wifidrop.ReceivedFileOpenInstrumentation
+adb -s $serial shell am instrument -w -r io.github.intelognatanael.qetara.test/com.example.wifidrop.ReceivedFileOpenInstrumentation
 ```
 
 La aceptación requiere `result=PASS`, `checks_passed=9` y `created_fixtures_removed=true`. Además de los tests, comprueba visualmente las pantallas que modifiques. No sustituyas automáticamente una instalación del usuario por una de otra firma ni desinstales sus datos para resolver un conflicto.

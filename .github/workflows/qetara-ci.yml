@@ -4,6 +4,12 @@ on:
   push:
   pull_request:
   workflow_dispatch:
+    inputs:
+      upload-reports:
+        description: 'Upload test and lint reports (requires available Actions artifact storage)'
+        type: boolean
+        required: false
+        default: false
 
 permissions:
   contents: read
@@ -21,22 +27,22 @@ jobs:
       - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
         with:
           distribution: temurin
-          java-version: '21'
+          # Adoptium SemVer for Temurin 21.0.12.1+1 (patch 1 * 100 + build 1).
+          java-version: '21.0.12+101.0.LTS'
       - uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407 # v3
       - uses: gradle/actions/setup-gradle@0b6dd653ba04f4f93bf581ec31e66cbd7dcb644d # v4
       - name: Install Android SDK components
         run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0'
       - name: Build, lint and test Android and shared protocol
-        run: ./gradlew :protocol:test :app:assembleDebug :app:assembleRelease :app:lintDebug :app:testDebugUnitTest --no-daemon --max-workers=2
+        run: ./gradlew :protocol:test :app:assembleDebug :app:assembleRelease :app:lintDebug :app:lintRelease :app:testDebugUnitTest --no-daemon --max-workers=2
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        if: always()
+        if: ${{ always() && github.event_name == 'workflow_dispatch' && inputs['upload-reports'] }}
         with:
           name: android-results
           path: |
             app/build/reports/
             protocol/build/reports/
-            app/build/outputs/apk/
-          retention-days: 14
+          retention-days: 3
   desktop:
     strategy:
       fail-fast: false
@@ -49,7 +55,8 @@ jobs:
       - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
         with:
           distribution: temurin
-          java-version: '21'
+          # Adoptium SemVer for Temurin 21.0.12.1+1 (patch 1 * 100 + build 1).
+          java-version: '21.0.12+101.0.LTS'
       - uses: gradle/actions/setup-gradle@0b6dd653ba04f4f93bf581ec31e66cbd7dcb644d # v4
       - name: Test and package desktop
         shell: bash
@@ -57,15 +64,11 @@ jobs:
       - name: Verify local transfer protocol
         shell: bash
         run: ./gradlew -PqetaraDesktopOnly=true :pc:run --no-daemon --args="--no-gui --token ABCD1234 --pin 123456 --self-test --no-receiver --no-interactive --out build/qetara-selftest"
-      - name: Preserve native application permissions
-        shell: bash
-        run: tar -czf pc/build/Qetara-${{ matrix.os }}.tar.gz -C pc/build/compose/binaries/main/app .
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        if: always()
+        if: ${{ always() && github.event_name == 'workflow_dispatch' && inputs['upload-reports'] }}
         with:
           name: desktop-${{ matrix.os }}
           path: |
             pc/build/reports/
-            pc/build/compose/jars/
-            pc/build/Qetara-*.tar.gz
-          retention-days: 14
+            protocol/build/reports/
+          retention-days: 3

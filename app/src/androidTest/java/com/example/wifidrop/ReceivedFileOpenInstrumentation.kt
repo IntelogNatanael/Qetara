@@ -16,12 +16,19 @@ import java.io.File
 
 /** Real Android providers and Intents, without opening apps or touching existing downloads. */
 class ReceivedFileOpenInstrumentation : Instrumentation() {
+    private var flashSockets = false
+
     override fun onCreate(arguments: Bundle?) {
         super.onCreate(arguments)
+        flashSockets = arguments?.getString("scenario") == "flash-sockets"
         start()
     }
 
     override fun onStart() {
+        if (flashSockets) {
+            FlashSocketInstrumentationScenario(this).run()
+            return
+        }
         val results = Bundle()
         val checks = mutableListOf<String>()
         val context = targetContext

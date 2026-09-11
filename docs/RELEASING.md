@@ -1,10 +1,12 @@
 # Preparar una distribución
 
-La versión se define en `build.gradle.kts`. Para Android incrementa también `qetaraVersionCode`: una actualización debe superar el código instalado. Mantén el identificador de aplicación y la misma clave de firma para conservar la posibilidad de actualizar.
+La versión se define una sola vez en `gradle.properties`: `qetaraVersion` para todos los módulos y `qetaraVersionCode` para Android. La candidata pública es 1.4.0, código 7. Las actualizaciones posteriores deben incrementar el código y mantener el identificador y la clave de firma.
+
+Desde 1.4.0 el identificador Android es `io.github.intelognatanael.qetara`, basado en la cuenta de GitHub del proyecto. Es una aplicación nueva respecto de `com.example.wifidrop`; puede coexistir con la anterior y no importa sus datos privados. El `namespace` Kotlin conserva `com.example.wifidrop`: identifica las clases internas, no la aplicación instalada. Las autoridades de FileProvider se derivan del identificador de instalación.
 
 ## Verificación
 
-Usa JDK 17 o superior (esta entrega se verifica con JDK 21) y Android SDK 36. En Windows ejecuta `scripts/verify.ps1`. Para trabajar solamente en PC usa `scripts/verify.ps1 -DesktopOnly`; el SDK de Android no es necesario en ese modo.
+Usa JDK 21 y Android SDK 36, con Build Tools 36.0.0 fijado en el proyecto. En Windows ejecuta `scripts/verify.ps1`. Para trabajar solamente en PC usa `scripts/verify.ps1 -DesktopOnly`; el SDK de Android no es necesario en ese modo.
 
 En cualquier sistema puedes ejecutar:
 

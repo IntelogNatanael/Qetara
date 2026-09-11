@@ -4,6 +4,13 @@
 
 # Local machine configuration
 local.properties
+.env
+.env.*
+!.env.example
+/.local/
+/entregas/
+/Preparar-entorno.ps1
+/EMPEZAR_AQUI.md
 
 # Gradle / Kotlin
 .gradle/

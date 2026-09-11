@@ -16,12 +16,13 @@ require(signingValues.all { it.isNullOrBlank() } || signingConfigured) {
 android {
     namespace = "com.example.wifidrop"
     compileSdk = 36
+    buildToolsVersion = "36.0.0"
 
     defaultConfig {
-        applicationId = "com.example.wifidrop"
+        applicationId = "io.github.intelognatanael.qetara"
         minSdk = 24
         targetSdk = 36
-        versionCode = providers.gradleProperty("qetaraVersionCode").getOrElse("6").toInt()
+        versionCode = providers.gradleProperty("qetaraVersionCode").get().toInt()
         versionName = project.version.toString()
         testInstrumentationRunner = "com.example.wifidrop.ReceivedFileOpenInstrumentation"
     }

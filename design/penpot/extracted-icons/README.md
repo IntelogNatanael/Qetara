@@ -2,6 +2,12 @@
 
 SVGs exportados directamente desde `Qetara Mobile Design System` en Penpot.
 
+Los doce iconos corresponden a recursos de **Circum Icons**, distribuidos
+por Klarr Agency bajo **Mozilla Public License 2.0**. Conserva la
+[licencia completa](../../../licenses/Circum-Icons-MPL-2.0.txt) y la
+[procedencia por archivo](PROVENANCE.md) al redistribuir estos SVG.
+La licencia MIT de Qetara no sustituye la licencia de estos recursos.
+
 Uso sugerido:
 
 - `wifi-on.svg`: ruta Wi-Fi activa o disponible

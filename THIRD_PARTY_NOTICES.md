@@ -1,10 +1,12 @@
 # Avisos de software de terceros
 
-Qetara 1.3.1 utiliza software de terceros bajo sus respectivas licencias. La licencia MIT de [Qetara](LICENSE) se aplica a su propio código; no sustituye las licencias de estas dependencias.
+Qetara utiliza software y recursos de terceros bajo sus respectivos términos. La licencia MIT de [Qetara](LICENSE) se aplica a su propio código; no sustituye las licencias de estos componentes.
 
 El inventario base del 6 de septiembre de 2026 combina los archivos Gradle, los POM de Maven descargados para la compilación, el modelo de bibliotecas del artefacto Android **debug** y los JAR presentes en la distribución Windows generada. El [inventario verificable](licenses/dependency-inventory.json) conserva coordenadas, versiones, licencia declarada, URL del POM y SHA-256 del POM inspeccionado: 91 componentes en el modelo Android, 33 JAR de terceros en Windows y 119 coordenadas distintas entre ambos. El modelo Android incluye herramientas de inspección habilitadas para debug. No representa un inventario completo de cada biblioteca nativa incrustada, del SDK Android ni del runtime Java.
 
 Flash reutiliza Noise Java y las bibliotecas ya incluidas. La verificación de la entrega 1.3.0 contrasta el modelo Android y los JAR Windows con este inventario; no se atribuye una nueva auditoría de licencias a un cambio de versión del producto.
+
+El [inventario Android release del 11 de septiembre de 2026](licenses/android-release-dependency-inventory.json), generado desde el modelo de bibliotecas de lint release para Qetara 1.4.0, contiene 88 coordenadas. Los hashes SHA-256 de sus 88 POM resueltos coinciden con los del inventario anterior. Esta comprobación verifica declaraciones e identidad de los POM; no constituye una auditoría exhaustiva del código nativo incrustado ni amplía el alcance de las licencias declaradas por sus autores.
 
 ## Aplicación y bibliotecas de ejecución
 
@@ -14,6 +16,7 @@ Flash reutiliza Noise Java y las bibliotecas ya incluidas. La verificación de l
 | AndroidX Core / Core KTX | 1.18.0 | Integración Android | Apache 2.0 |
 | AndroidX Core Splashscreen | 1.2.0 | Inicio Android | Apache 2.0 |
 | AndroidX AppCompat | 1.7.1 | Compatibilidad Android | Apache 2.0 |
+| AndroidX Graphics Path | 1.0.1; cuatro ABI Android | Consulta nativa de segmentos de Path | Apache 2.0; AOSP 2006, 2013, 2017, 2022; [fuentes y procedencia nativa](licenses/androidx-graphics-path-1.0.1-PROVENANCE.md) |
 | Jetpack Compose (BOM 2026.01.00) | UI 1.10.1; Material 3 1.4.0; iconos 1.7.8 | Interfaz Android | Apache 2.0 |
 | Kotlin standard library | Android 2.2.20; Windows 2.2.10, adaptadores JDK 2.1.21 | Lenguaje y biblioteca estándar | Apache 2.0 |
 | Kotlin Coroutines | Android 1.11.0; Windows 1.8.0 | Concurrencia | Apache 2.0 |
@@ -22,10 +25,31 @@ Flash reutiliza Noise Java y las bibliotecas ya incluidas. La verificación de l
 | Skia | revisión a00c390e98, paquete m132-a00c390e98-1 declarado por Skiko | Motor gráfico nativo | [Licencia BSD de Skia](licenses/skia-a00c390e98-LICENSE.txt); sus componentes conservan términos propios |
 | Noise Java, `kr.jclab:noise-java` | 0.0.1 | Transporte cifrado Android y Windows | POM: Apache 2.0; código de origen: avisos MIT y dominio público preservados [aquí](licenses/noise-java-0.0.1-NOTICES.txt) |
 | Noto Sans Syriac | archivos Regular y Black incluidos en design/brand/fonts | Recursos tipográficos de marca | [SIL Open Font License 1.1](design/brand/fonts/OFL.txt), Copyright 2022 The Noto Project Authors |
+| Circum Icons, Klarr Agency | doce SVG exportados en design/penpot/extracted-icons | Recursos de diseño conservados en el código fuente | [MPL 2.0](licenses/Circum-Icons-MPL-2.0.txt); [procedencia por archivo](design/penpot/extracted-icons/PROVENANCE.md) |
+| GitHub Invertocat | PNG idéntico en Android y PC | Botón de enlace al perfil del desarrollador | [Aviso y permiso contextual de uso](licenses/GitHub-Invertocat-NOTICE.txt); no es un recurso bajo MIT |
 
 Las bibliotecas AndroidX, Kotlin y Compose incluyen dependencias transitivas de sus respectivas familias. Las versiones concretas del artefacto inspeccionado se detallan en el inventario; no se deducen únicamente de las versiones declaradas directamente en Gradle. También se incluyen las declaraciones Apache 2.0 de JetBrains Annotations, JSpecify y Guava ListenableFuture (esta última heredada de su POM padre).
 
 El texto de [Apache License 2.0](licenses/Apache-2.0.txt) acompaña este proyecto. Los proyectos y sus fuentes se identifican mediante los enlaces declarados por sus POM dentro del inventario.
+
+## Código nativo AndroidX Graphics Path
+
+`androidx.graphics:graphics-path:1.0.1` incorpora `libandroidx.graphics.path.so` para cuatro ABI Android. La [revisión de fuentes y hashes](licenses/androidx-graphics-path-1.0.1-PROVENANCE.md) fija el árbol oficial `8a05a22af450d589ef911d772a001a49dcb05b71` enlazado desde las notas de la versión. Los archivos C++ y encabezados propios, incluidos los auxiliares `filament::math`, llevan Apache 2.0 y conservan estas atribuciones originales:
+
+- Copyright 2022 The Android Open Source Project.
+- Copyright (C) 2006 The Android Open Source Project — también en `Conic.cpp`.
+- Copyright 2013 The Android Open Source Project — `math/TVecHelpers.h` y `math/vec2.h`.
+- Copyright (C) 2017 The Android Open Source Project — `math/compiler.h`.
+
+La revisión no identificó una biblioteca Skia redistribuida por este componente: sus estructuras acceden al Path del sistema Android. La configuración `-nostdlib++` y las dependencias ELF respaldan la ausencia de un runtime libc++ enlazado; la procedencia documenta también la excepción LLVM aplicable a fragmentos de encabezados compilados. No se acredita una reconstrucción nativa con bytes idénticos.
+
+## Recursos gráficos y tipográficos
+
+La revisión del 11 de septiembre de 2026 identificó los doce SVG exportados de Penpot con recursos de Circum Icons y conservó su MPL 2.0. La [tabla de procedencia](design/penpot/extracted-icons/PROVENANCE.md) fija las revisiones comparadas y distingue la transformación del SVG de la autoría original. No se encontraron referencias a esta carpeta desde los módulos de aplicación; forma parte del código fuente distribuido. Esta revisión no acredita los paquetes `.penpot` de referencia excluidos de Git.
+
+Los TTF Noto Sans Syriac contienen metadatos de la versión 3.000 y su aviso OFL 1.1; su [procedencia e inventario](design/brand/fonts/PROVENANCE.md) conserva los hashes locales. La licencia completa acompaña las fuentes y también se incorpora a los avisos Android y PC.
+
+El Invertocat se utiliza para enlazar a `https://github.com/IntelogNatanael`. El [Brand Toolkit oficial de GitHub](https://brand.github.com/foundations/logo) contempla el uso como botón hacia un perfil o proyecto GitHub. Ese permiso no es una licencia libre general del logotipo ni permite presentarlo como marca propia o atribuir respaldo de GitHub. No se conservó una URL de descarga original de los PNG; el [aviso](licenses/GitHub-Invertocat-NOTICE.txt) registra ese límite. No se afirma aceptación por una tienda de aplicaciones.
 
 ## Avisos de Noise Java
 

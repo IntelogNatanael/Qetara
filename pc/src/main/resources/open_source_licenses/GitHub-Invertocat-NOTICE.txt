@@ -1,0 +1,25 @@
+GitHub Invertocat
+================
+
+The GitHub Invertocat is a trademark/logo of GitHub, Inc. It is not
+licensed under Qetara's MIT license.
+
+Qetara uses this logo as a social button linking to the developer's
+GitHub profile: https://github.com/IntelogNatanael
+
+GitHub's official Brand Toolkit expressly identifies a social button
+linking to a GitHub profile or project as a permitted use. That permission
+is contextual; it is not a general open-source license for the artwork.
+Do not imply GitHub endorsement, use it as Qetara's own logo, or assume
+that it can be reused or modified for other purposes.
+
+Official source and usage terms, reviewed 2026-09-11:
+https://brand.github.com/foundations/logo
+
+The Android and PC files named ic_github_invertocat_white.png are identical:
+SHA-256 0d4c235fef9efec54174a7c005fc0fe0ce2d63d35c21898ab5148587111397a9
+
+The original download URL and any image-processing history were not
+recorded with these PNG files. This notice documents the observed use
+and the owner's published terms; it does not certify an unmodified match
+to a particular official download or approval by any application store.
