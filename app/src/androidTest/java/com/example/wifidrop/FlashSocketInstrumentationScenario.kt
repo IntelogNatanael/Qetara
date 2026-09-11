@@ -12,8 +12,11 @@ import java.net.ServerSocket
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
-/** Opt-in emulator fixture. Only test-created private cache files and loopback sockets are used. */
-internal class FlashSocketInstrumentationScenario(private val instrumentation: Instrumentation) {
+/** Opt-in fixture using private test files; control stays on loopback even for optional LAN payloads. */
+internal class FlashSocketInstrumentationScenario(
+    private val instrumentation: Instrumentation,
+    private val pcHost: String = "127.0.0.1"
+) {
     fun run() {
         val directory = File(instrumentation.targetContext.cacheDir, "flash-sockets-${System.nanoTime()}")
         val receivedDirectory = File(directory, "received").apply { check(mkdirs()) }
@@ -44,7 +47,8 @@ internal class FlashSocketInstrumentationScenario(private val instrumentation: I
                 }
             }
             override fun onError(error: FlashError) = post { errors += "${error.code}: ${error.message}" }
-        }, FlashConfig(port = 39892, discoveryEnabled = false, bindAddress = "127.0.0.1",
+        }, FlashConfig(port = 39892, discoveryEnabled = false,
+            bindAddress = if (pcHost == "127.0.0.1") "127.0.0.1" else null,
             lifetimeMs = 180_000, approvalTimeoutMs = 60_000))
         val result = Bundle()
         try {
@@ -67,7 +71,7 @@ internal class FlashSocketInstrumentationScenario(private val instrumentation: I
                                 val payload = ByteArrayOutputStream()
                                 val body = DataOutputStream(payload)
                                 when (command) {
-                                    "DISCOVER" -> engine.discoverAt("127.0.0.1", 39893)
+                                    "DISCOVER" -> engine.discoverAt(pcHost, 39893)
                                     "BATCH" -> {
                                         val peer = engine.snapshot().peers.single()
                                         val files = listOf(131_072, 524_319).mapIndexed { index, size ->
@@ -123,7 +127,8 @@ internal class FlashSocketInstrumentationScenario(private val instrumentation: I
             result.putInt("files_received", receivedHashes.size)
             result.putInt("files_sent", outgoingCompleted)
             result.putInt("android_sdk", Build.VERSION.SDK_INT)
-            result.putString("transport", "Flash real TCP via ADB forwarding; Android batch helper; no physical Wi-Fi discovery")
+            result.putString("transport", if (pcHost == "127.0.0.1") "ADB forwarded TCP payload and control"
+                else "LAN TCP payload to $pcHost; ADB control only; no UDP discovery")
         } catch (failure: Throwable) {
             result.putString("result", "FAIL")
             result.putString("failure", failure.stackTraceToString())

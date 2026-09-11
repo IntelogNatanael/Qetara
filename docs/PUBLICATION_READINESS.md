@@ -1,12 +1,14 @@
 # Preparación de la publicación pública
 
-Qetara 1.4.0, código Android 7. Auditoría iniciada el 11 de septiembre de 2026 sobre el historial hasta `3e9e383c46a745604e3427a54ae42f9185e1981b`, más los cambios de preparación descritos aquí. Este documento registra resultados y condiciones de publicación; no anuncia una release pública ni la aceptación de F-Droid.
+Qetara 1.4.0, código Android 7. Preparación del 11 de septiembre de 2026; código de la candidata fijado en `588a92f2617815b5744eeb91a1da463c5c685f90`. Este documento registra resultados y condiciones de publicación; no anuncia una release pública ni la aceptación de F-Droid.
 
 ## Historial y material privado
 
 Gitleaks 8.30.1, con reglas predeterminadas, examinó todas las referencias y reflogs (`--all --reflog --full-history`) y el árbol publicable. La descarga Windows x64 se contrastó con el checksum oficial y con el digest de la API de GitHub: `d29144deff3a68aa93ced33dddf84b7fdc26070add4aa0f4513094c8332afc4e`. Se usaron redacción completa, inspección de archivos comprimidos y decodificación limitada; las excepciones de comentarios no se aceptaron.
 
-Sus dos coincidencias por ámbito se revisaron: una clave de `SavedStateHandle` y `TOKEN_ALPHABET` son identificadores y datos del protocolo, no credenciales. Una segunda inspección local cubrió 28 objetos commit y 501 objetos blob, incluidos los no alcanzables, y buscó formatos de claves, tokens, contraseñas, rutas privadas y datos personales. No se identificaron credenciales reales expuestas. Estos métodos no demuestran ausencia absoluta de secretos.
+El pase sobre la candidata examinó 29 commits por referencias/reflog y 300 archivos publicables. Sus tres coincidencias por ámbito se revisaron: una clave de `SavedStateHandle` y `TOKEN_ALPHABET` son identificadores y datos del protocolo; la tercera es el checksum público de Gitleaks escrito arriba. No son credenciales. Una inspección local previa cubrió 28 objetos commit y 501 objetos blob, incluidos los no alcanzables, y buscó formatos de claves, tokens, contraseñas, rutas privadas y datos personales. No se identificaron credenciales reales expuestas. Estos métodos no demuestran ausencia absoluta de secretos.
+
+Un pase adicional revisó los diez archivos posteriores de documentación, herramienta de compilación y QA por Wi-Fi física: cero errores y únicamente el falso positivo conocido del checksum público. Se comprobaron también los quince enlaces locales de esos documentos. Las últimas adiciones textuales registran el resultado de la herramienta y aclaran que la clave no forma parte de la entrega; no incorporan credenciales.
 
 Los almacenes de firma y su configuración se localizaron fuera del repositorio. `.gitignore` protege también los directorios locales de herramientas, entregas y archivos `.env`, sin depender solamente del `exclude` de esta copia. La entrega de fuentes debe salir de un commit mediante Git, no de comprimir el directorio de trabajo con sus archivos ignorados.
 
@@ -24,19 +26,19 @@ Android incorpora código nativo de `androidx.graphics:graphics-path:1.0.1`; no 
 
 El usuario eligió `io.github.intelognatanael.qetara`; se conserva la clave de distribución existente. Los detalles y efectos para las instalaciones anteriores están en [Identidad Android](ANDROID_IDENTITY.md). La versión y su código se centralizan en `gradle.properties`, y Build Tools se fija en 36.0.0.
 
-La firma se aplica a una copia de la compilación unsigned, fuera de Gradle. Antes de distribuir se comprueban el identificador, la versión, la alineación ZIP y la firma contra la huella esperada. El APK debug no sustituye al APK de distribución.
+La firma se aplicó a una copia de la compilación unsigned limpia, fuera de Gradle, preservando la alineación ZIP. Se comprobaron el identificador, la versión, la alineación ZIP de 16 KiB y la firma contra la huella esperada. El APK debug no sustituye al APK de distribución.
 
 ## Verificación de la candidata
 
-Los resultados de compilación, pruebas, reconstrucción y empaquetado se registrarán sobre el commit concreto de la candidata en `docs/VALIDATION-1.4.0.md`. Hasta disponer de esos resultados no se declara terminada la verificación ni conseguida la reproducibilidad en F-Droid.
+Los resultados están en [Validación 1.4.0](VALIDATION-1.4.0.md): 301 pruebas automatizadas iniciales aprobadas, cero errores de lint, comprobaciones instrumentadas sobre el APK final en emulador y teléfono, y lotes Flash de dos archivos por dirección a través de una Wi-Fi real. Dos clones limpios Windows y Linux produjeron APKs idénticos; la copia pública de firma también produjo un APK firmado idéntico. Véase [Reproducibilidad](REPRODUCIBILITY-1.4.0.md). Esta verificación local no equivale a una compilación o aceptación oficial de F-Droid.
 
 La ejecución anterior de CI [34599364412](https://github.com/IntelogNatanael/Qetara/actions/runs/34599364412) completó las compilaciones y pruebas de sus cuatro trabajos, pero falló al subir artefactos por cuota agotada. El workflow revisado sigue construyendo y probando Android y PC; la subida opcional queda limitada a informes en ejecuciones manuales, con retención de tres días. No se borraron artefactos existentes ni se aumentó la cuota. Los paquetes con Java no se suben desde CI sin sus fuentes correspondientes.
 
-El empaquetado Windows debe utilizar `scripts/package.ps1` y el paquete de fuentes correspondiente al runtime. La procedencia, hashes y correspondencia de versión se verifican en cada ejecución. No se presenta la mera presencia del workflow como evidencia de una ejecución nueva correcta.
+La nueva ejecución de CI [34602646699](https://github.com/IntelogNatanael/Qetara/actions/runs/34602646699) aprobó los cuatro trabajos para el commit de la candidata. El empaquetado Windows utilizó `scripts/package.ps1` y el paquete de fuentes correspondiente al runtime; verificó su procedencia, hashes y correspondencia de versión. El ejecutable extraído del portable aprobó la autoprueba de transferencia y reanudación con su Java incluido. El APK Android de entrega procede de la compilación limpia, según [el procedimiento de release](RELEASING.md).
 
 ## Antes de la publicación y de F-Droid
 
-La aceptación funcional debe incluir selección y envío de varios archivos, cancelación y búsqueda inicial/manual de Flash, además de instalación y apertura de archivos. Las pruebas instrumentadas o de sockets deben distinguirse de un recorrido físico con Android y PC en un router real.
+La aceptación de la release estable debe completar el recorrido visual de selección y envío de varios archivos, cancelación y descubrimiento UDP inicial/manual de Flash, además de instalación MSI. El informe distingue la cobertura automatizada, los contratos instrumentados y la transferencia física ya completados de esos recorridos pendientes.
 
 Quedan fuera de estos tres pasos la acción de hacer público GitHub, publicar la release y enviar la solicitud al catálogo. Para esa fase deben quedar revisados el contacto privado de seguridad, la ficha y capturas de la aplicación y la receta F-Droid. La reutilización de nuestra firma en F-Droid exige verificar la reconstrucción y copia de firma; la aceptación final corresponde a sus mantenedores.
 
