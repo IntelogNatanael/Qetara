@@ -2,9 +2,21 @@ package com.example.wifidrop.pc
 
 import java.io.File
 import org.junit.Assert.assertEquals
+import org.junit.Assume.assumeTrue
 import org.junit.Test
 
 class DesktopFileSelectionTest {
+    @Test
+    fun windowsPathCasingDoesNotSelectTheSameFileTwice() {
+        assumeTrue(File("report.pdf") == File("REPORT.PDF"))
+        val original = File("report.pdf")
+        val accumulated = mergeDesktopFileSelections(
+            existing = listOf(original),
+            added = listOf(File("REPORT.PDF"), File("notes.txt"))
+        )
+        assertEquals(listOf(original, File("notes.txt")), accumulated)
+    }
+
     @Test
     fun sequentialSelectionsAccumulateInTheirOriginalOrder() {
         val first = listOf(File("photo.jpg"), File("report.pdf"))

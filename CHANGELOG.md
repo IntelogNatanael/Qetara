@@ -1,5 +1,15 @@
 # Cambios en Qetara
 
+## En desarrollo — selección múltiple
+
+- Al activar Flash, PC inicia automáticamente la búsqueda de receptores, como Android. La búsqueda manual sigue disponible para actualizar la lista.
+- PC y Flash permiten acumular archivos y enviarlos en orden; Flash mantiene la verificación y aceptación independiente de cada archivo.
+- Las selecciones sucesivas de Android conservan su orden aunque el proveedor tarde en responder. Borrar o enviar una selección invalida las importaciones pendientes sin bloquear una selección nueva.
+- Flash espera el resultado del archivo anterior antes de avanzar. Cancelar detiene los pendientes incluso si la confirmación del archivo actual ya estaba en camino.
+- Los archivos ausentes o ilegibles bloquean el lote antes de iniciarlo; la selección se conserva para revisarla.
+- Volver a elegir la misma URI en Flash Android no duplica su copia temporal. En Windows, cambiar las mayúsculas de una ruta tampoco duplica la selección.
+- Cancelar una importación Flash recoge los temporales incluso cuando la escritura acaba justo antes de volver al hilo principal.
+
 ## 1.3.1 — 7 de septiembre de 2026
 
 Corrección de Android, compatible con Qetara PC 1.3.0.

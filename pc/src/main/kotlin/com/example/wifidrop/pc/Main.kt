@@ -2322,7 +2322,7 @@ private fun runDesktopGui(cli: CliArgs) {
         }
 
         fun sendFile() {
-            if (sendingPhase == DesktopTaskPhase.STARTING || sendingPhase == DesktopTaskPhase.RUNNING) return
+            if (activeSendCancellation != null) return
 
             val token = runCatching { requireValidToken(tokenText) }
                 .getOrElse {
@@ -2411,7 +2411,7 @@ private fun runDesktopGui(cli: CliArgs) {
                         val completedForFile = completedCount
                         SwingUtilities.invokeLater {
                             selectedSendFiles = selectedSendFiles.filterNot {
-                                it.absoluteFile.normalize().path == file.absoluteFile.normalize().path
+                                it.absoluteFile.normalize() == file.absoluteFile.normalize()
                             }
                             sendingProgress = completedForFile.toFloat() / files.size
                             addTransfer(DesktopTransferEntry(UUID.randomUUID().toString(), LocalTime.now().format(uiLogTimeFormatter), file.name, file.length(), host, false))

@@ -28,7 +28,6 @@ import java.io.File
 import java.io.InputStream
 import java.net.Inet4Address
 import java.net.NetworkInterface
-import java.util.ArrayDeque
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicReference
 import java.util.concurrent.ConcurrentHashMap
@@ -44,11 +43,7 @@ class FlashForegroundService : Service() {
     private var importJob: Job? = null
     private val importStream = AtomicReference<InputStream?>()
     private val exportJobs = mutableListOf<Job>()
-    private val outgoingFiles = mutableMapOf<String, File>()
-    private val pendingOutgoingFiles = ArrayDeque<File>()
-    private var pendingOutgoingPeer: FlashPeer? = null
-    private var outgoingBatchTotal = 0
-    private var outgoingBatchCompleted = 0
+    private val outgoingBatch = FlashOutgoingBatch()
     private val operationNames = ConcurrentHashMap<String, String>()
     private var multicastLock: WifiManager.MulticastLock? = null
     private var wakeLock: PowerManager.WakeLock? = null
@@ -148,10 +143,10 @@ class FlashForegroundService : Service() {
                     stopFlash("Flash terminó. Los archivos recibidos se conservan.")
                 }
                 refreshNotification()
-                if (state.operations.isEmpty() && pendingOutgoingFiles.isNotEmpty()) {
+                if (state.operations.isEmpty()) {
                     pumpOutgoingBatch()
                 }
-                }
+            }
         }
 
         override fun onApproval(approval: FlashApproval) = post(activation) {
@@ -199,21 +194,20 @@ class FlashForegroundService : Service() {
             if (completed.outgoing) {
                 addResult(FlashAndroidResult(completed.operationId, completed.fileName,
                     FlashResultKind.DELIVERED, "El otro equipo confirmó la recepción y verificación del archivo."))
-                val sentFile = outgoingFiles.remove(completed.operationId)
-                if (sentFile != null) outgoingBatchCompleted += 1
-                val remaining = pendingOutgoingFiles.size
+                val batch = outgoingBatch.complete(completed.operationId)
+                val sentFile = batch?.file
                 FlashAndroidRuntime.update { old -> old.copy(
-                    status = if (remaining > 0) {
-                        "Entrega $outgoingBatchCompleted de $outgoingBatchTotal confirmada. Preparando el siguiente archivo."
-                    } else if (outgoingBatchTotal > 1) {
-                        "$outgoingBatchTotal archivos entregados y confirmados."
+                    status = if (batch != null && batch.remaining > 0) {
+                        "Entrega ${batch.completed} de ${batch.total} confirmada. Preparando el siguiente archivo."
+                    } else if (batch != null && batch.completed > 1) {
+                        "${batch.completed} archivos entregados y confirmados."
                     } else {
                         "Entrega confirmada por el otro equipo."
                     },
                     selectedFiles = old.selectedFiles.filterNot { it == sentFile }
                 ) }
                 sentFile?.let { file -> scope.launch(Dispatchers.IO) { file.delete(); file.parentFile?.delete() } }
-                if (remaining == 0) resetOutgoingBatch()
+                pumpOutgoingBatch()
             }
             operationNames.remove(completed.operationId)
             refreshNotification()
@@ -224,7 +218,7 @@ class FlashForegroundService : Service() {
             error.operationId?.let { id ->
                 val name = operationNames.remove(id) ?: "Archivo"
                 FlashAndroidRuntime.update { it.copy(results = recordFlashFailure(it.results, id, name, copy, error.code == "cancelled")) }
-                if (outgoingFiles.remove(id) != null) resetOutgoingBatch()
+                outgoingBatch.fail(id)
             }
             FlashAndroidRuntime.update { it.copy(status = copy) }
             refreshNotification()
@@ -250,9 +244,14 @@ class FlashForegroundService : Service() {
 
     private fun selectFiles(rawUris: List<Uri>) {
         val state = FlashAndroidRuntime.state.value
-        if (!state.active || state.importing || state.engine?.operations?.isNotEmpty() == true) return
-        val uris = rawUris.distinctBy(Uri::toString)
-        if (uris.isEmpty()) return
+        if (!state.active || state.importing || outgoingBatch.active || state.engine?.operations?.isNotEmpty() == true) return
+        if (rawUris.isEmpty()) return
+        val pendingUris = importSources.pending(rawUris.map(Uri::toString), state.selectedFiles).toSet()
+        val uris = rawUris.distinctBy(Uri::toString).filter { it.toString() in pendingUris }
+        if (uris.isEmpty()) {
+            FlashAndroidRuntime.update { it.copy(status = "Los archivos elegidos ya están preparados.") }
+            return
+        }
         val activation = ticket
         FlashAndroidRuntime.update { it.copy(importing = true, status = "Preparando ${uris.size} archivo(s)…") }
         importJob = scope.launch {
@@ -260,7 +259,7 @@ class FlashForegroundService : Service() {
             var committed = false
             try {
                 uris.forEachIndexed { index, uri ->
-                    val prepared = withContext(Dispatchers.IO) {
+                    prepareFlashImportFile(staged) {
                         var name = "Archivo"
                         var knownSize: Long? = null
                         contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME, OpenableColumns.SIZE), null, null, null)?.use { cursor ->
@@ -300,14 +299,15 @@ class FlashForegroundService : Service() {
                             importStream.set(null)
                         }
                     }
-                    staged += prepared
                     if (fence.accepts(activation) && index + 1 < uris.size) {
                         FlashAndroidRuntime.update { it.copy(status = "Preparando ${index + 1} de ${uris.size} archivos…") }
                     }
                 }
                 if (fence.accepts(activation)) {
+                    val previousSelection = FlashAndroidRuntime.state.value.selectedFiles
+                    val selected = importSources.commit(uris.map(Uri::toString).zip(staged),
+                        previousSelection)
                     FlashAndroidRuntime.update { old ->
-                        val selected = old.selectedFiles + staged
                         old.copy(selectedFiles = selected, importing = false,
                             status = if (selected.size == 1) {
                                 "Archivo preparado. Elige el equipo receptor y envía la solicitud."
@@ -316,6 +316,10 @@ class FlashForegroundService : Service() {
                             })
                     }
                     committed = true
+                    val replaced = previousSelection.toSet() - selected.toSet()
+                    if (replaced.isNotEmpty()) scope.launch(Dispatchers.IO) {
+                        replaced.forEach { file -> file.delete(); file.parentFile?.delete() }
+                    }
                 }
             } catch (_: CancellationException) {
                 if (fence.accepts(activation)) FlashAndroidRuntime.update { it.copy(importing = false, status = "Selección cancelada.") }
@@ -333,18 +337,18 @@ class FlashForegroundService : Service() {
     private fun sendSelected() {
         val state = FlashAndroidRuntime.state.value
         val currentEngine = engine ?: return
-        if (!state.active || state.importing || state.engine?.operations?.isNotEmpty() == true) return
+        if (!state.active || state.importing || outgoingBatch.active || state.engine?.operations?.isNotEmpty() == true) return
         val peer = resolveSelectedFlashPeer(state.selectedPeer, currentEngine.snapshot().peers, System.currentTimeMillis())
-        val files = state.selectedFiles.filter(File::isFile)
+        val files = state.selectedFiles
         if (peer == null || files.isEmpty()) {
             FlashAndroidRuntime.update { it.copy(status = "Vuelve a elegir un equipo disponible y al menos un archivo.") }
             return
         }
-        pendingOutgoingFiles.clear()
-        pendingOutgoingFiles.addAll(files)
-        pendingOutgoingPeer = peer
-        outgoingBatchTotal = files.size
-        outgoingBatchCompleted = 0
+        if (!canSendFlashFiles(files)) {
+            FlashAndroidRuntime.update { it.copy(status = "Uno de los archivos ya no está disponible o no se puede leer. Revisa la selección.") }
+            return
+        }
+        if (!outgoingBatch.start(files, peer)) return
         FlashAndroidRuntime.update { it.copy(status = if (files.size == 1) {
             "Preparando el envío. Compara la verificación en ambos equipos."
         } else {
@@ -357,20 +361,20 @@ class FlashForegroundService : Service() {
         val state = FlashAndroidRuntime.state.value
         val currentEngine = engine ?: return
         if (!state.active || state.importing || currentEngine.snapshot().operations.isNotEmpty()) return
-        val file = pendingOutgoingFiles.pollFirst() ?: return
-        val peer = resolveSelectedFlashPeer(pendingOutgoingPeer, currentEngine.snapshot().peers, System.currentTimeMillis())
-        if (peer == null || !file.isFile) {
+        val request = outgoingBatch.next() ?: return
+        val file = request.file
+        val peer = resolveSelectedFlashPeer(request.peer, currentEngine.snapshot().peers, System.currentTimeMillis())
+        if (peer == null || !isReadableFlashFile(file)) {
             resetOutgoingBatch()
             FlashAndroidRuntime.update { it.copy(status = "El equipo o uno de los archivos ya no está disponible. Revisa la selección.") }
             return
         }
         runCatching { currentEngine.send(file, peer) }
             .onSuccess { id ->
-                outgoingFiles[id] = file
+                outgoingBatch.started(id)
                 operationNames[id] = file.name
-                val position = outgoingBatchCompleted + 1
-                FlashAndroidRuntime.update { it.copy(status = if (outgoingBatchTotal > 1) {
-                    "Archivo $position de $outgoingBatchTotal: compara la verificación en ambos equipos."
+                FlashAndroidRuntime.update { it.copy(status = if (request.total > 1) {
+                    "Archivo ${request.position} de ${request.total}: compara la verificación en ambos equipos."
                 } else {
                     "Solicitando conexión. Compara la verificación en ambos equipos."
                 }) }
@@ -382,10 +386,7 @@ class FlashForegroundService : Service() {
     }
 
     private fun resetOutgoingBatch() {
-        pendingOutgoingFiles.clear()
-        pendingOutgoingPeer = null
-        outgoingBatchTotal = 0
-        outgoingBatchCompleted = 0
+        outgoingBatch.reset()
     }
 
     private fun answer(requestId: String, accepted: Boolean) {
@@ -501,6 +502,7 @@ class FlashForegroundService : Service() {
         private const val ACTION_STOP = "com.example.wifidrop.flash.STOP"
         private const val EXTRA_LABEL = "label"
         private const val MAX_FILE_BYTES = 16L * 1024 * 1024 * 1024
+        private val importSources = FlashImportSources()
         @Volatile private var current: FlashForegroundService? = null
 
         internal fun activate(context: Context, label: String) {
@@ -518,20 +520,25 @@ class FlashForegroundService : Service() {
         internal fun chooseFiles(uris: List<Uri>) { current?.selectFiles(uris) }
         internal fun send() { current?.sendSelected() }
         internal fun approve(requestId: String, accepted: Boolean) { current?.answer(requestId, accepted) }
-        internal fun cancel(operationId: String) { current?.engine?.cancel(operationId) }
+        internal fun cancel(operationId: String) {
+            val service = current ?: return
+            service.outgoingBatch.cancelPending(operationId)
+            service.engine?.cancel(operationId)
+        }
         internal fun cancelImport() {
             val service = current ?: return
             service.importJob?.cancel()
             service.importStream.getAndSet(null)?.let { input -> service.scope.launch(Dispatchers.IO) { runCatching { input.close() } } }
         }
         internal fun selectPeer(peer: FlashPeer) {
-            if (FlashAndroidRuntime.state.value.active && FlashAndroidRuntime.state.value.engine?.operations?.isEmpty() == true) {
+            if (current?.outgoingBatch?.active != true && FlashAndroidRuntime.state.value.active && FlashAndroidRuntime.state.value.engine?.operations?.isEmpty() == true) {
                 FlashAndroidRuntime.update { it.copy(selectedPeer = peer) }
             }
         }
         internal fun clearFiles() {
             val state = FlashAndroidRuntime.state.value
-            if (state.engine?.operations?.isNotEmpty() == true || state.importing) return
+            if (current?.outgoingBatch?.active == true || state.engine?.operations?.isNotEmpty() == true || state.importing) return
+            importSources.clear()
             FlashAndroidRuntime.update { it.copy(selectedFiles = emptyList()) }
             current?.scope?.launch(Dispatchers.IO) {
                 state.selectedFiles.forEach { file -> file.delete(); file.parentFile?.delete() }

@@ -6,7 +6,7 @@ Flash permite compartir archivos puntuales por la red local sin preparar credenc
 
 1. Conecta ambos equipos a la misma red local. Abre **Flash** en Qetara y actívalo en los dos.
 2. En el equipo que envía, elige uno o varios archivos. Puedes volver a **Agregar archivos** para acumular otra selección; elegirlos todavía no comparte su contenido.
-3. Busca y selecciona el otro equipo. Si no aparece, usa su dirección IP local; Flash también debe estar activo allí. En redes con aislamiento de clientes, ni la búsqueda ni la dirección manual pueden atravesar ese aislamiento.
+3. Al activar Flash, Qetara busca automáticamente otros equipos con Flash activo, tanto en Android como en PC. Selecciona el receptor de la lista. Puedes pulsar **Buscar** (Android) o **Buscar equipos** (PC) otra vez para actualizarla, por ejemplo si el otro equipo acaba de activar Flash. Si no aparece, usa su dirección IP local. En redes con aislamiento de clientes, ni la búsqueda ni la dirección manual pueden atravesar ese aislamiento.
 4. Inicia el envío. Qetara procesa la selección en orden, un archivo por operación. Para cada archivo, comprueba su nombre y tamaño, el equipo y la verificación que muestran las dos pantallas. Los cuatro grupos deben coincidir exactamente. Acepta en ambos equipos únicamente después de compararlos; si no coinciden, rechaza.
 5. Sigue el progreso del lote. El resultado de cada operación confirma si el receptor terminó de guardar y verificar ese archivo. Puedes cancelar durante la espera o la transferencia y abrir los archivos recibidos cuando terminen.
 6. Desactiva Flash para dejar de estar disponible. También termina automáticamente al cumplirse 30 minutos desde la activación.

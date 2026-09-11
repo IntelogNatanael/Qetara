@@ -1,4 +1,24 @@
-# Validación de Qetara 1.3.0
+# Validación de Qetara
+
+## Búsqueda inicial de Flash — 11 de septiembre de 2026
+
+PC inicia la búsqueda de receptores inmediatamente después de activar Flash, igual que Android. La búsqueda manual sigue disponible. Si se cancela la activación durante el arranque, no se solicita la búsqueda automática; activar una sesión ya activa tampoco la repite.
+
+Se ejecutó `gradlew.bat -PqetaraDesktopOnly=true :pc:test --offline --no-daemon --max-workers=2 --console=plain` con el entorno preparado del proyecto: compilación correcta y **57 pruebas PC**, sin fallos, errores ni omisiones. Las cuatro regresiones nuevas verifican el descubrimiento inicial, la búsqueda manual posterior, la activación repetida y la cancelación durante el arranque mediante un transporte simulado. No se volvió a probar descubrimiento UDP entre equipos físicos ni se cambió la interfaz.
+
+## Robustez de selección múltiple — 10 de septiembre de 2026
+
+Revisión de `fix/multiple-file-selection` (`00e4a5d`) frente a `main` (`6b2bf61`), con mejoras preparadas en `codex/improve-multiple-file-selection`. La rama de origen añade un commit y modifica 19 archivos; esta revisión refuerza la coordinación de importaciones y lotes descrita en [Cambios](../CHANGELOG.md).
+
+En Windows x64, con el entorno de `Preparar-entorno.ps1` (Temurin 21.0.12.1+1 y Android SDK 36), se ejecutó `scripts/verify.ps1 -Offline`. Compilación PC, APK debug Android, pruebas y lint finalizaron correctamente. Los informes contabilizan **297 pruebas: 199 Android, 53 PC y 45 del protocolo**, sin fallos, errores ni omisiones. Se añadieron 24 regresiones respecto a la rama de origen. Gradle reutilizó los resultados del protocolo sin cambios; volvió a ejecutar las pruebas Android y PC.
+
+Las nuevas pruebas cubren resultados de Flash anteriores al retorno de `send`, callbacks ajenos o tardíos, cancelación frente a una confirmación ya en camino, conservación de pendientes, selección de archivos ausentes, importaciones superpuestas, invalidación de cargas lentas, limpieza al cancelar y deduplicación de URI/rutas Windows. Los escenarios del controlador PC usan transporte simulado para forzar el orden de callbacks; los helpers Android se prueban como lógica JVM.
+
+Lint terminó con cero errores y tres advertencias ya documentadas: `ModifierParameter`, `UsableSpace` y `UseKtx`. La autoprueba CLI completó una transferencia local de 2 MiB y su reanudación desde un parcial; ambas verificaron el hash recibido. El APK de prueba está en `app/build/outputs/apk/debug/app-debug.apk`.
+
+Esta comprobación no incluye recorridos visuales, instalación en un teléfono ni una nueva prueba Flash entre dispositivos físicos. Penpot MCP no estuvo disponible; las mejoras se limitaron a coordinación, selección y lógica de envío. Las evidencias de entrega y recorridos gráficos que siguen corresponden a las validaciones anteriores.
+
+## Entrega 1.3.0 y validación anterior de selección múltiple
 
 Entrega local para Android y Windows x64, verificada el 7 de septiembre de 2026. Los resultados anteriores se conservan en [1.2.0](VALIDATION-1.2.0.md) y [1.1.0](VALIDATION-1.1.0.md).
 

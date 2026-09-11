@@ -18,7 +18,7 @@ internal data class DesktopTransferEntry(
 )
 
 internal fun mergeDesktopFileSelections(existing: List<File>, added: List<File>): List<File> =
-    (existing + added).distinctBy { it.absoluteFile.normalize().path }
+    (existing + added).distinctBy { it.absoluteFile.normalize() }
 
 internal class DesktopTransferCancellation {
     private val cancelled = AtomicBoolean(false)

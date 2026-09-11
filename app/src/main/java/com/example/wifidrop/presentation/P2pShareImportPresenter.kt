@@ -7,7 +7,6 @@ import androidx.core.net.toUri
 import com.example.wifidrop.FileTransfer
 import com.example.wifidrop.IncomingShareBus
 import com.example.wifidrop.IncomingSharePayload
-import java.util.concurrent.atomic.AtomicLong
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -31,7 +30,7 @@ class P2pShareImportPresenter(
     restoredState: P2pSavedAttachments = P2pSavedAttachments()
 ) {
     private val appContext = context.applicationContext
-    private val revisions = P2pAttachmentContext.entries.associateWith { AtomicLong() }
+    private val imports = P2pAttachmentContext.entries.associateWith { P2pAttachmentImportQueue() }
     private val _state = MutableStateFlow(P2pShareImportState(
         attachments = P2pAttachmentDrafts(activeContext = restoredState.activeContext),
         incomingShareEventId = restoredState.incomingShareEventId
@@ -56,7 +55,7 @@ class P2pShareImportPresenter(
 
     suspend fun restoreSelections(snapshot: P2pSavedAttachments) {
         val tickets = P2pAttachmentContext.entries.associateWith { context ->
-            val ticket = revisions.getValue(context).incrementAndGet()
+            val ticket = imports.getValue(context).replace()
             if (snapshot.files[context].orEmpty().isNotEmpty()) {
                 updateDraft(context) { it.copy(status = "Recuperando selección...") }
             }
@@ -74,7 +73,7 @@ class P2pShareImportPresenter(
         }
         P2pAttachmentContext.entries.forEach { context ->
             // Choosing, clearing or sending files while restoration runs must win over the old snapshot.
-            if (revisions.getValue(context).get() != tickets.getValue(context)) return@forEach
+            if (!imports.getValue(context).isCurrentReplacement(tickets.getValue(context))) return@forEach
             val files = recovered.files[context].orEmpty().map { P2pOutboundSelection(it.uri.toUri(), it.name) }
             updateDraft(context) {
                 P2pAttachmentDraft(files = files, status = restoredAttachmentStatus(
@@ -86,10 +85,8 @@ class P2pShareImportPresenter(
 
     suspend fun importPickedUris(uris: List<Uri>, context: P2pAttachmentContext) {
         if (uris.isEmpty()) return
-        val ticket = revisions.getValue(context).incrementAndGet()
         updateDraft(context) { it.copy(status = "Agregando archivos...") }
-        val loaded = loadOutboundSelections(uris)
-        if (revisions.getValue(context).get() == ticket && loaded.isNotEmpty()) {
+        imports.getValue(context).append(load = { loadOutboundSelections(uris) }) { loaded ->
             updateDraft(context) { draft ->
                 val merged = mergeAttachmentFiles(
                     existing = draft.files,
@@ -115,9 +112,9 @@ class P2pShareImportPresenter(
             return
         }
         val context = P2pAttachmentContext.FILES
-        val ticket = revisions.getValue(context).incrementAndGet()
+        val ticket = imports.getValue(context).replace()
         val loaded = loadOutboundSelections(sharePayload.uris)
-        if (revisions.getValue(context).get() == ticket && loaded.isNotEmpty()) {
+        if (imports.getValue(context).isCurrentReplacement(ticket) && loaded.isNotEmpty()) {
             _state.update {
                 it.copy(
                     attachments = it.attachments.update(context) { draft ->
@@ -134,7 +131,7 @@ class P2pShareImportPresenter(
     }
 
     fun clearSelectedFiles(context: P2pAttachmentContext) {
-        revisions.getValue(context).incrementAndGet()
+        imports.getValue(context).replace()
         updateDraft(context) { P2pAttachmentDraft() }
     }
 
@@ -143,19 +140,19 @@ class P2pShareImportPresenter(
     }
 
     fun markFilesQueued(status: String, clearSelectionAfterSend: Boolean) {
-        revisions.getValue(P2pAttachmentContext.FILES).incrementAndGet()
+        imports.getValue(P2pAttachmentContext.FILES).replace()
         updateDraft(P2pAttachmentContext.FILES) {
             it.copy(files = if (clearSelectionAfterSend) emptyList() else it.files, status = status)
         }
     }
 
     fun markDirectComposerFilesQueued(fileCount: Int) {
-        revisions.getValue(P2pAttachmentContext.DIRECT_CHAT).incrementAndGet()
+        imports.getValue(P2pAttachmentContext.DIRECT_CHAT).replace()
         updateDraft(P2pAttachmentContext.DIRECT_CHAT) { P2pAttachmentDraft(status = "Enviando $fileCount archivo(s).") }
     }
 
     fun markChannelComposerFilesQueued(fileCount: Int) {
-        revisions.getValue(P2pAttachmentContext.CHANNEL).incrementAndGet()
+        imports.getValue(P2pAttachmentContext.CHANNEL).replace()
         updateDraft(P2pAttachmentContext.CHANNEL) {
             P2pAttachmentDraft(status = if (fileCount == 1) "Publicado 1 archivo en el canal Wi‑Fi."
                 else "Publicados $fileCount archivos en el canal Wi‑Fi.")
