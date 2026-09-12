@@ -8,9 +8,11 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -60,8 +62,10 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
@@ -97,6 +101,8 @@ internal fun P2pDownloadsTab(
     var sort by rememberSaveable { mutableStateOf(DownloadFileSort.NEWEST) }
     var historyFilter by rememberSaveable { mutableStateOf(DownloadHistoryFilter.ALL) }
     var showSortMenu by rememberSaveable { mutableStateOf(false) }
+    var searchFocused by remember { mutableStateOf(false) }
+    val compactSearch = searchFocused && WindowInsets.ime.getBottom(LocalDensity.current) > 0
     val listState = rememberLazyListState()
     val files by produceState<List<DownloadFileSnapshot>>(emptyList(), state.receivedFiles) {
         value = withContext(Dispatchers.IO) {
@@ -110,7 +116,12 @@ internal fun P2pDownloadsTab(
     val hasQuery = query.isNotBlank()
     val resultCount = if (section == DownloadLibrarySection.FILES) visibleFiles.size else visibleHistory.size
 
-    LaunchedEffect(section, query, sort, historyFilter) { listState.scrollToItem(0) }
+    LaunchedEffect(section, query, sort, historyFilter, compactSearch) {
+        if (!compactSearch) listState.scrollToItem(0)
+    }
+    LaunchedEffect(compactSearch) {
+        if (compactSearch) listState.scrollToItem(0)
+    }
     LaunchedEffect(Unit) { onRefresh() }
 
     fun openFile(file: File) {
@@ -129,10 +140,10 @@ internal fun P2pDownloadsTab(
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 state = listState,
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 20.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = if (compactSearch) 8.dp else 20.dp),
+                verticalArrangement = Arrangement.spacedBy(if (compactSearch) 8.dp else 16.dp)
             ) {
-                item("library-header") {
+                if (!compactSearch) item("library-header") {
                     Column(
                         modifier = Modifier.fillMaxWidth(),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -190,7 +201,7 @@ internal fun P2pDownloadsTab(
                         }
                     }
                 }
-                item("library-sections") {
+                if (!compactSearch) item("library-sections") {
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         DownloadLibrarySection.entries.forEach { option ->
                             FilterChip(
@@ -208,7 +219,7 @@ internal fun P2pDownloadsTab(
                         OutlinedTextField(
                             value = query,
                             onValueChange = { query = it.take(160) },
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier.fillMaxWidth().onFocusChanged { searchFocused = it.isFocused },
                             singleLine = true,
                             label = { Text(if (section == DownloadLibrarySection.FILES) "Buscar archivo" else "Buscar archivo o equipo") },
                             leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
@@ -224,7 +235,15 @@ internal fun P2pDownloadsTab(
                     }
                 }
                 item("library-filters") {
-                    if (section == DownloadLibrarySection.FILES && files.isNotEmpty()) {
+                    if (compactSearch) {
+                        Text(
+                            "$resultCount ${if (resultCount == 1) "resultado" else "resultados"}" +
+                                if (section == DownloadLibrarySection.ACTIVITY && historyFilter != DownloadHistoryFilter.ALL)
+                                    " · ${historyFilter.title}" else "",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    } else if (section == DownloadLibrarySection.FILES && files.isNotEmpty()) {
                         FlowRow(
                             Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -342,6 +361,7 @@ private fun DownloadEmptyState(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun ReceivedFileRow(item: DownloadFileSnapshot, onOpen: () -> Unit, onShare: () -> Unit) {
     var moreExpanded by rememberSaveable(item.file.absolutePath) { mutableStateOf(false) }
@@ -353,44 +373,58 @@ private fun ReceivedFileRow(item: DownloadFileSnapshot, onOpen: () -> Unit, onSh
         contentColor = MaterialTheme.colorScheme.onSurface,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
-        Row(
-            Modifier.padding(start = 16.dp, top = 16.dp, end = 8.dp, bottom = 16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        Column(
+            Modifier.padding(start = 16.dp, top = 16.dp, end = 8.dp, bottom = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            Surface(color = MaterialTheme.colorScheme.primaryContainer,
-                contentColor = MaterialTheme.colorScheme.onPrimaryContainer, shape = RoundedCornerShape(12.dp)) {
-                Icon(
-                    downloadFileIcon(item.file.extension),
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                    modifier = Modifier.padding(12.dp).size(24.dp)
-                )
-            }
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(item.file.name, style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                Text(
-                    "${formatBytes(item.bytes)} · ${formatHistoryTime(item.modifiedAtMs)}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            Box {
-                IconButton(onClick = { moreExpanded = true }, modifier = Modifier.size(48.dp)) {
-                    Icon(Icons.Rounded.MoreVert, contentDescription = "Acciones para ${item.file.name}")
+            Row(
+                Modifier.fillMaxWidth().padding(end = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Surface(color = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer, shape = RoundedCornerShape(12.dp)) {
+                    Icon(
+                        downloadFileIcon(item.file.extension),
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.padding(4.dp).size(24.dp)
+                    )
                 }
-                DropdownMenu(expanded = moreExpanded, onDismissRequest = { moreExpanded = false }) {
-                    DropdownMenuItem(
-                        text = { Text("Abrir archivo") },
-                        leadingIcon = { Icon(Icons.Rounded.FolderOpen, contentDescription = null) },
-                        onClick = { moreExpanded = false; onOpen() }
-                    )
-                    DropdownMenuItem(
-                        text = { Text("Compartir") },
-                        leadingIcon = { Icon(Icons.Rounded.Share, contentDescription = null) },
-                        onClick = { moreExpanded = false; onShare() }
-                    )
+                Text(item.file.name, modifier = Modifier.weight(1f), style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold)
+            }
+            Row(
+                Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                FlowRow(
+                    Modifier.weight(1f),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(formatBytes(item.bytes), style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(formatHistoryTime(item.modifiedAtMs), style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Box {
+                    IconButton(onClick = { moreExpanded = true }, modifier = Modifier.size(48.dp)) {
+                        Icon(Icons.Rounded.MoreVert, contentDescription = "Acciones para ${item.file.name}")
+                    }
+                    DropdownMenu(expanded = moreExpanded, onDismissRequest = { moreExpanded = false }) {
+                        DropdownMenuItem(
+                            text = { Text("Abrir archivo") },
+                            leadingIcon = { Icon(Icons.Rounded.FolderOpen, contentDescription = null) },
+                            onClick = { moreExpanded = false; onOpen() }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Compartir") },
+                            leadingIcon = { Icon(Icons.Rounded.Share, contentDescription = null) },
+                            onClick = { moreExpanded = false; onShare() }
+                        )
+                    }
                 }
             }
         }

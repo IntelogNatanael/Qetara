@@ -1,5 +1,11 @@
 # Validación de Qetara
 
+## Revisión de GUI en teléfono físico — 12 de septiembre de 2026
+
+El [informe físico](MOBILE_PHYSICAL_REVIEW-2026-09-12.md) registra el recorrido de la GUI de `642503c` y los ajustes posteriores de biblioteca, búsqueda con teclado y controles de tamaño de texto. La actualización conservó los cinco archivos existentes. Se comprobaron los temas claro y oscuro, además de Descargas con texto del sistema al 200 %; se restauraron los ajustes originales al terminar.
+
+La compilación release, `lintRelease` y `testDebugUnitTest` terminaron correctamente: **199 pruebas Android aprobadas**, cero errores de lint y dos advertencias preexistentes. La [galería](../design/figma/mobile-physical-review/README.md) identifica el APK instalado y los hashes de sus fuentes. Este pase no añade pruebas de transferencia ni constituye una nueva candidata de publicación.
+
 ## Integración de la GUI para main — 11 de septiembre de 2026
 
 Árbol de trabajo de `codex/prepare-public-release`, basado en `12b5f55c28f2444f43134ff5a104f67b51c24541`, versión 1.4.0/código 7. Incluye el diseño Android y escritorio, Inter local y el aleph de cabecera sin fondo en ambos temas.

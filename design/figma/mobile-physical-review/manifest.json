@@ -1,0 +1,51 @@
+{
+  "date": "2026-09-12",
+  "baseCommit": "642503c4ee752458fe9827cc503c1b087906cf54",
+  "sourceKind": "working-tree GUI QA build",
+  "workingTreeSources": [
+    {
+      "path": "app/src/main/java/com/example/wifidrop/P2pDownloadsTab.kt",
+      "sha256": "8490fbfcbfea83afd625dd95c6e1f82f6b8838f2b8230778915f70be39ad4f60"
+    },
+    {
+      "path": "app/src/main/java/com/example/wifidrop/P2pPreferencesDialog.kt",
+      "sha256": "2dd2a53b0432a6c8aea28f1af8b3fe1b61e3f2b8d12de42afe48df0d551b8d23"
+    }
+  ],
+  "installedApkSha256": "021afa4b2446c8591a49196250ff735bfbf3411ec4eb02c7243f82bf813761c5",
+  "installedApkBytes": 14860325,
+  "androidApi": 36,
+  "screenPixels": [
+    1080,
+    2372
+  ],
+  "densityDpi": 480,
+  "appFontScale": 1.0,
+  "images": [
+    {
+      "file": "updated-downloads-light.png",
+      "sha256": "9a7e60bec6076b0cfa92bd50f82f6428cb065d1113a931dc818985c4ebb7629e",
+      "theme": "light",
+      "systemFontScale": 1.0
+    },
+    {
+      "file": "updated-search-results-light.png",
+      "sha256": "841ebfb3140b81ba7c8d71e7e7f210991efb4c430e8f60585b52096821bae33c",
+      "theme": "light",
+      "systemFontScale": 1.0
+    },
+    {
+      "file": "updated-preferences-light.png",
+      "sha256": "1fbda709587f6bf48694d03cda82bd907d030516f3840efaf5186f65c99dc675",
+      "theme": "light",
+      "systemFontScale": 1.0
+    },
+    {
+      "file": "updated-results-large-dark.png",
+      "sha256": "02ed7dfe11aeeb1a9d7101234dc79e74f972d55c93f6afc94a7f812a32e70eca",
+      "theme": "dark",
+      "systemFontScale": 2.0
+    }
+  ],
+  "figmaReviewCompleted": false
+}

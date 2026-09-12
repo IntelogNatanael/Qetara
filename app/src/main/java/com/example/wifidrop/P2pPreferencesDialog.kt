@@ -4,7 +4,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -75,13 +77,17 @@ internal fun QetaraPreferencesDialog(
                                             onClick = {
                                                 onFontScaleChange((state.fontScale - 0.05f).coerceAtLeast(0.85f))
                                             },
-                                            enabled = state.fontScale > 0.85f
+                                            enabled = state.fontScale > 0.85f,
+                                            modifier = Modifier.heightIn(min = 48.dp),
+                                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
                                         ) {
                                             Text("A-")
                                         }
                                         OutlinedButton(
                                             onClick = { onFontScaleChange(1.0f) },
-                                            enabled = kotlin.math.abs(state.fontScale - 1.0f) > 0.01f
+                                            enabled = kotlin.math.abs(state.fontScale - 1.0f) > 0.01f,
+                                            modifier = Modifier.heightIn(min = 48.dp),
+                                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
                                         ) {
                                             Text("Normal")
                                         }
@@ -89,7 +95,9 @@ internal fun QetaraPreferencesDialog(
                                             onClick = {
                                                 onFontScaleChange((state.fontScale + 0.05f).coerceAtMost(1.25f))
                                             },
-                                            enabled = state.fontScale < 1.25f
+                                            enabled = state.fontScale < 1.25f,
+                                            modifier = Modifier.heightIn(min = 48.dp),
+                                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
                                         ) {
                                             Text("A+")
                                         }
