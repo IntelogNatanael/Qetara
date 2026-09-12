@@ -1,9 +1,12 @@
 # Qetara · Referencia móvil
 
-Referencia implementada en el árbol de trabajo el 11 de septiembre de 2026.
-La variante actual integra el aleph y el nombre sin fondo propio en ambos
-temas y adapta la tinta del símbolo al texto. La compilación, lint y las capturas
-en ambos temas están en la [revisión de marca adaptable](mobile-brand-adaptive/README.md).
+Referencia actualizada el 12 de septiembre de 2026. El modo claro comparte
+el fondo gris azulado con el icono Android; tarjetas y navegación utilizan
+matices de esa misma familia. El aleph y el nombre siguen sin fondo propio
+en la cabecera, con tinta adaptada al tema. La compilación, lint, contrastes
+y capturas físicas están en la [revisión de superficies](mobile-surface-review/README.md).
+La [revisión de marca adaptable](mobile-brand-adaptive/README.md) conserva
+la evidencia del ajuste anterior de la cabecera.
 La [revisión de la marca anterior](mobile-brand-review/README.md) conserva las
 pruebas y capturas de la variante con una base clara en oscuro.
 La revisión de color anterior a ese ajuste está en la
@@ -40,11 +43,11 @@ El tema sigue el modo claro u oscuro del sistema mediante
 | --- | --- | --- |
 | `primary` | `#0A6B77` | `#88D3D7` |
 | `onPrimary` | `#FFFFFF` | `#00363E` |
-| `background` | `#F4F6F5` | `#101B22` |
-| `surface` | `#FFFFFF` | `#182831` |
+| `background` | `#E7EFF2` | `#101B22` |
+| `surface` | `#F1F5F7` | `#182831` |
 | `onSurface` | `#102A43` | `#E7EFF2` |
 | `onSurfaceVariant` | `#536672` | `#AFC2CA` |
-| `outlineVariant` | `#DDE5E5` | `#344A54` |
+| `outlineVariant` | `#C3D2DC` | `#344A54` |
 | `error` | `#B3261E` | `#FFB4AB` |
 
 El fondo separa las tarjetas, el acento identifica acciones y selección y los
@@ -69,7 +72,11 @@ sincronizar y enviar comparten el acento de actividad; una cancelación es neutr
 
 El recurso `ic_launcher_foreground` permanece idéntico a HEAD: conserva su
 path, tinta original `#102A43`, viewport 108 × 108, escala uniforme `0.65625`
-y proporción. No se modifican el launcher ni su fondo original.
+y proporción. El fondo del launcher cambia de marfil `#FFF7ED` a gris
+azulado `#E7EFF2`, igual que el fondo claro de la GUI. Los diez WEBP de
+compatibilidad se regeneran mediante `scripts/generate-icons.py --android-only`.
+La pantalla de inicio y la ventana nativa usan los colores de fondo y texto
+del tema; el splash conserva su geometría propia y adapta la tinta en oscuro.
 
 La cabecera reutiliza ese recurso mediante `Image` y aplica únicamente en la
 GUI `ColorFilter.tint(MaterialTheme.colorScheme.onBackground)`: `#102A43`
@@ -83,8 +90,9 @@ de 40 × 40 dp y se elimina el espacio adicional de 10 dp: el margen propio
 del vector separa el trazo del nombre. El modo de conexión sigue debajo,
 alineado con la palabra, y el conjunto conserva el acceso al selector de modo.
 La altura de la cabecera se ajusta a la fila de marca y al tamaño del texto.
-La inspección de código y del recurso está completa; todavía no se atribuyen
-compilaciones ni capturas nuevas a esta variante de tinta adaptada.
+La revisión actual incluye compilación, lint e inspección física de la
+cabecera en ambos temas. El informe distingue las capturas de Android de las
+comprobaciones estáticas del splash y las ilustraciones SVG del comparador.
 
 ## Tipografía y forma
 

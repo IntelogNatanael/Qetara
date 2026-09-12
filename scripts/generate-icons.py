@@ -11,7 +11,9 @@ from PIL import Image, ImageDraw
 
 ROOT = Path(__file__).resolve().parents[1]
 parser = argparse.ArgumentParser(description=__doc__)
-parser.add_argument("--desktop-only", action="store_true", help="Export desktop icons without changing Android resources")
+targets = parser.add_mutually_exclusive_group()
+targets.add_argument("--desktop-only", action="store_true", help="Export desktop icons without changing Android resources")
+targets.add_argument("--android-only", action="store_true", help="Export Android icons without changing desktop resources")
 options = parser.parse_args()
 NS = "{http://schemas.android.com/apk/res/android}"
 RES = ROOT / "app/src/main/res"
@@ -71,13 +73,20 @@ for density, px in (() if options.desktop_only else (("mdpi", 48), ("hdpi", 72),
     rounded.putalpha(mask)
     rounded.resize((px, px), Image.Resampling.LANCZOS).save(target / "ic_launcher_round.webp", lossless=True)
 
-desktop = ROOT / "pc/src/main/resources"
-# Desktop owns its mask; unlike Android, there is no launcher to apply it.
-# Keep the same 24/108 corner radius as QetaraWindowIconPainter and qetara-brand.svg.
-desktop_mask = Image.new("L", (size, size))
-ImageDraw.Draw(desktop_mask).rounded_rectangle((0, 0, size-1, size-1), radius=size*24/108, fill=255)
-canvas.putalpha(desktop_mask)
-canvas.save(desktop / "qetara.png")
-canvas.save(desktop / "qetara.ico", sizes=[(16,16), (24,24), (32,32), (48,48), (64,64), (128,128), (256,256)])
-canvas.save(desktop / "qetara.icns")
-print("Exported existing Qetara vector for " + ("Windows, Linux and macOS." if options.desktop_only else "Android, Windows, Linux and macOS."))
+if not options.android_only:
+    desktop = ROOT / "pc/src/main/resources"
+    # Desktop owns its mask; unlike Android, there is no launcher to apply it.
+    # Keep the same 24/108 corner radius as QetaraWindowIconPainter and qetara-brand.svg.
+    desktop_mask = Image.new("L", (size, size))
+    ImageDraw.Draw(desktop_mask).rounded_rectangle((0, 0, size-1, size-1), radius=size*24/108, fill=255)
+    canvas.putalpha(desktop_mask)
+    canvas.save(desktop / "qetara.png")
+    canvas.save(desktop / "qetara.ico", sizes=[(16,16), (24,24), (32,32), (48,48), (64,64), (128,128), (256,256)])
+    canvas.save(desktop / "qetara.icns")
+
+exported_platforms = (
+    "Android" if options.android_only else
+    "Windows, Linux and macOS" if options.desktop_only else
+    "Android, Windows, Linux and macOS"
+)
+print(f"Exported existing Qetara vector for {exported_platforms}.")

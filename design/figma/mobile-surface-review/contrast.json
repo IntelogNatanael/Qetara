@@ -1,0 +1,1399 @@
+{
+  "schema_version": 1,
+  "review_date": "2026-09-12",
+  "generated_at_utc": "2026-09-12T14:46:32.753790+00:00",
+  "status": "source_palette_calculated_runtime_validation_separate",
+  "source": {
+    "theme_path": "app/src/main/java/com/example/wifidrop/P2pRouteTheme.kt",
+    "theme_raw_sha256": "6ea065c1ea6798686694fe1cdac8bf05511007839c64424e5fe717351373ec70",
+    "base_commit": "f556bf865d534e22ef5c78c07abeafa8f72f395a",
+    "scope": "Current working-tree Android color schemes and launcher/splash source resources."
+  },
+  "method": {
+    "space": "Opaque 8-bit sRGB",
+    "channel_normalization": "c = channel / 255",
+    "linearization": "c_linear = c / 12.92 when c <= 0.04045; otherwise ((c + 0.055) / 1.055)^2.4",
+    "relative_luminance": "L = 0.2126 * R_linear + 0.7152 * G_linear + 0.0722 * B_linear",
+    "contrast": "(max(L_foreground, L_background) + 0.05) / (min(L_foreground, L_background) + 0.05)",
+    "rounding": "Ratios displayed to six decimals; threshold flags evaluated before rounding.",
+    "review_thresholds": {
+      "active_normal_size_text_or_link": 4.5,
+      "input_outline_candidate": 3.0
+    },
+    "pair_selection": "Semantic content/container pairs; main text, secondary text and primary action color on every neutral surface/background; secondary text on tonal panels; outline on every neutral surface/background. Outline/surface and outline/background are explicit rows."
+  },
+  "limitations": [
+    "These are color-role calculations from source, not a claim of global WCAG conformity or a rendered accessibility audit.",
+    "Candidate pair inclusion does not establish that every combination is rendered by a current screen.",
+    "Disabled alpha, state overlays, elevation tint, compositing, antialiasing, images and system-rendered components are not evaluated.",
+    "Font size, weight, focus visibility, keyboard behavior and touch target dimensions are outside this artifact.",
+    "outlineVariant is a decorative separator role and is excluded from input-outline threshold findings.",
+    "Device screenshots and parent-led runtime tests are separate evidence and are not claimed by this calculation.",
+    "HEAD identity comparisons normalize CRLF/LF; raw source hashes are separately identified."
+  ],
+  "schemes": {
+    "light": {
+      "colors": {
+        "primary": "#0A6B77",
+        "onPrimary": "#FFFFFF",
+        "primaryContainer": "#DDF1F0",
+        "onPrimaryContainer": "#075460",
+        "secondary": "#536672",
+        "onSecondary": "#FFFFFF",
+        "secondaryContainer": "#DEE8EE",
+        "onSecondaryContainer": "#536672",
+        "tertiary": "#765722",
+        "onTertiary": "#FFFFFF",
+        "tertiaryContainer": "#F7EBCD",
+        "onTertiaryContainer": "#574016",
+        "background": "#E7EFF2",
+        "onBackground": "#102A43",
+        "surface": "#F1F5F7",
+        "onSurface": "#102A43",
+        "surfaceVariant": "#DEE8EE",
+        "onSurfaceVariant": "#536672",
+        "surfaceDim": "#D7E3E9",
+        "surfaceBright": "#F5F8FA",
+        "surfaceContainerLowest": "#F7FAFB",
+        "surfaceContainerLow": "#EDF3F5",
+        "surfaceContainer": "#E7EFF2",
+        "surfaceContainerHigh": "#DEE8EE",
+        "surfaceContainerHighest": "#D7E3E9",
+        "outline": "#667E8B",
+        "outlineVariant": "#C3D2DC",
+        "inverseSurface": "#22373E",
+        "inverseOnSurface": "#EAF0F0",
+        "inversePrimary": "#88D3D7",
+        "surfaceTint": "#0A6B77",
+        "error": "#B3261E",
+        "onError": "#FFFFFF",
+        "errorContainer": "#FCE4E2",
+        "onErrorContainer": "#7A1D1D"
+      },
+      "relative_luminances": {
+        "primary": 0.11911829,
+        "onPrimary": 1.0,
+        "primaryContainer": 0.84574016,
+        "onPrimaryContainer": 0.07230347,
+        "secondary": 0.12556647,
+        "onSecondary": 1.0,
+        "secondaryContainer": 0.79415867,
+        "onSecondaryContainer": 0.12556647,
+        "tertiary": 0.10783435,
+        "onTertiary": 1.0,
+        "tertiaryContainer": 0.83598596,
+        "onTertiaryContainer": 0.05750956,
+        "background": 0.85132733,
+        "onBackground": 0.02171335,
+        "surface": 0.90720988,
+        "onSurface": 0.02171335,
+        "surfaceVariant": 0.79415867,
+        "onSurfaceVariant": 0.12556647,
+        "surfaceDim": 0.75268435,
+        "surfaceBright": 0.93449408,
+        "surfaceContainerLowest": 0.95110406,
+        "surfaceContainerLow": 0.88698281,
+        "surfaceContainer": 0.85132733,
+        "surfaceContainerHigh": 0.79415867,
+        "surfaceContainerHighest": 0.75268435,
+        "outline": 0.1961057,
+        "outlineVariant": 0.62862596,
+        "inverseSurface": 0.03420258,
+        "inverseOnSurface": 0.86103872,
+        "inversePrimary": 0.56729068,
+        "surfaceTint": 0.11911829,
+        "error": 0.1106367,
+        "onError": 1.0,
+        "errorContainer": 0.81673239,
+        "onErrorContainer": 0.05105013
+      },
+      "pairs": [
+        {
+          "category": "semantic_text_pair",
+          "foreground_role": "onBackground",
+          "background_role": "background",
+          "foreground": "#102A43",
+          "background": "#E7EFF2",
+          "contrast_ratio": 12.568473,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "semantic_text_pair",
+          "foreground_role": "onSurface",
+          "background_role": "surface",
+          "foreground": "#102A43",
+          "background": "#F1F5F7",
+          "contrast_ratio": 13.347721,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "semantic_text_pair",
+          "foreground_role": "onPrimary",
+          "background_role": "primary",
+          "foreground": "#FFFFFF",
+          "background": "#0A6B77",
+          "contrast_ratio": 6.208672,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "semantic_text_pair",
+          "foreground_role": "onPrimaryContainer",
+          "background_role": "primaryContainer",
+          "foreground": "#075460",
+          "background": "#DDF1F0",
+          "contrast_ratio": 7.323915,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "semantic_text_pair",
+          "foreground_role": "onSecondary",
+          "background_role": "secondary",
+          "foreground": "#FFFFFF",
+          "background": "#536672",
+          "contrast_ratio": 5.980641,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "semantic_text_pair",
+          "foreground_role": "onSecondaryContainer",
+          "background_role": "secondaryContainer",
+          "foreground": "#536672",
+          "background": "#DEE8EE",
+          "contrast_ratio": 4.8082,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "semantic_text_pair",
+          "foreground_role": "onTertiary",
+          "background_role": "tertiary",
+          "foreground": "#FFFFFF",
+          "background": "#765722",
+          "contrast_ratio": 6.652544,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "semantic_text_pair",
+          "foreground_role": "onTertiaryContainer",
+          "background_role": "tertiaryContainer",
+          "foreground": "#574016",
+          "background": "#F7EBCD",
+          "contrast_ratio": 8.240997,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "semantic_text_pair",
+          "foreground_role": "onError",
+          "background_role": "error",
+          "foreground": "#FFFFFF",
+          "background": "#B3261E",
+          "contrast_ratio": 6.536489,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "semantic_text_pair",
+          "foreground_role": "onErrorContainer",
+          "background_role": "errorContainer",
+          "foreground": "#7A1D1D",
+          "background": "#FCE4E2",
+          "contrast_ratio": 8.577251,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "semantic_text_pair",
+          "foreground_role": "inverseOnSurface",
+          "background_role": "inverseSurface",
+          "foreground": "#EAF0F0",
+          "background": "#22373E",
+          "contrast_ratio": 10.819605,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "semantic_text_pair",
+          "foreground_role": "inversePrimary",
+          "background_role": "inverseSurface",
+          "foreground": "#88D3D7",
+          "background": "#22373E",
+          "contrast_ratio": 7.331018,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "active_main_text_on_neutral_surface",
+          "foreground_role": "onSurface",
+          "background_role": "background",
+          "foreground": "#102A43",
+          "background": "#E7EFF2",
+          "contrast_ratio": 12.568473,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "active_main_text_on_neutral_surface",
+          "foreground_role": "onSurface",
+          "background_role": "surface",
+          "foreground": "#102A43",
+          "background": "#F1F5F7",
+          "contrast_ratio": 13.347721,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "active_main_text_on_neutral_surface",
+          "foreground_role": "onSurface",
+          "background_role": "surfaceVariant",
+          "foreground": "#102A43",
+          "background": "#DEE8EE",
+          "contrast_ratio": 11.77129,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "active_main_text_on_neutral_surface",
+          "foreground_role": "onSurface",
+          "background_role": "surfaceDim",
+          "foreground": "#102A43",
+          "background": "#D7E3E9",
+          "contrast_ratio": 11.192955,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "active_main_text_on_neutral_surface",
+          "foreground_role": "onSurface",
+          "background_role": "surfaceBright",
+          "foreground": "#102A43",
+          "background": "#F5F8FA",
+          "contrast_ratio": 13.728183,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "active_main_text_on_neutral_surface",
+          "foreground_role": "onSurface",
+          "background_role": "surfaceContainerLowest",
+          "foreground": "#102A43",
+          "background": "#F7FAFB",
+          "contrast_ratio": 13.9598,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "active_main_text_on_neutral_surface",
+          "foreground_role": "onSurface",
+          "background_role": "surfaceContainerLow",
+          "foreground": "#102A43",
+          "background": "#EDF3F5",
+          "contrast_ratio": 13.065667,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "active_main_text_on_neutral_surface",
+          "foreground_role": "onSurface",
+          "background_role": "surfaceContainer",
+          "foreground": "#102A43",
+          "background": "#E7EFF2",
+          "contrast_ratio": 12.568473,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "active_main_text_on_neutral_surface",
+          "foreground_role": "onSurface",
+          "background_role": "surfaceContainerHigh",
+          "foreground": "#102A43",
+          "background": "#DEE8EE",
+          "contrast_ratio": 11.77129,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "active_main_text_on_neutral_surface",
+          "foreground_role": "onSurface",
+          "background_role": "surfaceContainerHighest",
+          "foreground": "#102A43",
+          "background": "#D7E3E9",
+          "contrast_ratio": 11.192955,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "active_secondary_text_on_neutral_surface",
+          "foreground_role": "onSurfaceVariant",
+          "background_role": "background",
+          "foreground": "#536672",
+          "background": "#E7EFF2",
+          "contrast_ratio": 5.133824,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "active_secondary_text_on_neutral_surface",
+          "foreground_role": "onSurfaceVariant",
+          "background_role": "surface",
+          "foreground": "#536672",
+          "background": "#F1F5F7",
+          "contrast_ratio": 5.452122,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "active_secondary_text_on_neutral_surface",
+          "foreground_role": "onSurfaceVariant",
+          "background_role": "surfaceVariant",
+          "foreground": "#536672",
+          "background": "#DEE8EE",
+          "contrast_ratio": 4.8082,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "active_secondary_text_on_neutral_surface",
+          "foreground_role": "onSurfaceVariant",
+          "background_role": "surfaceDim",
+          "foreground": "#536672",
+          "background": "#D7E3E9",
+          "contrast_ratio": 4.571968,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "active_secondary_text_on_neutral_surface",
+          "foreground_role": "onSurfaceVariant",
+          "background_role": "surfaceBright",
+          "foreground": "#536672",
+          "background": "#F5F8FA",
+          "contrast_ratio": 5.607529,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "active_secondary_text_on_neutral_surface",
+          "foreground_role": "onSurfaceVariant",
+          "background_role": "surfaceContainerLowest",
+          "foreground": "#536672",
+          "background": "#F7FAFB",
+          "contrast_ratio": 5.702137,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "active_secondary_text_on_neutral_surface",
+          "foreground_role": "onSurfaceVariant",
+          "background_role": "surfaceContainerLow",
+          "foreground": "#536672",
+          "background": "#EDF3F5",
+          "contrast_ratio": 5.336912,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "active_secondary_text_on_neutral_surface",
+          "foreground_role": "onSurfaceVariant",
+          "background_role": "surfaceContainer",
+          "foreground": "#536672",
+          "background": "#E7EFF2",
+          "contrast_ratio": 5.133824,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "active_secondary_text_on_neutral_surface",
+          "foreground_role": "onSurfaceVariant",
+          "background_role": "surfaceContainerHigh",
+          "foreground": "#536672",
+          "background": "#DEE8EE",
+          "contrast_ratio": 4.8082,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "active_secondary_text_on_neutral_surface",
+          "foreground_role": "onSurfaceVariant",
+          "background_role": "surfaceContainerHighest",
+          "foreground": "#536672",
+          "background": "#D7E3E9",
+          "contrast_ratio": 4.571968,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "active_link_or_action_on_neutral_surface",
+          "foreground_role": "primary",
+          "background_role": "background",
+          "foreground": "#0A6B77",
+          "background": "#E7EFF2",
+          "contrast_ratio": 5.329567,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "active_link_or_action_on_neutral_surface",
+          "foreground_role": "primary",
+          "background_role": "surface",
+          "foreground": "#0A6B77",
+          "background": "#F1F5F7",
+          "contrast_ratio": 5.660002,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "active_link_or_action_on_neutral_surface",
+          "foreground_role": "primary",
+          "background_role": "surfaceVariant",
+          "foreground": "#0A6B77",
+          "background": "#DEE8EE",
+          "contrast_ratio": 4.991528,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "active_link_or_action_on_neutral_surface",
+          "foreground_role": "primary",
+          "background_role": "surfaceDim",
+          "foreground": "#0A6B77",
+          "background": "#D7E3E9",
+          "contrast_ratio": 4.746289,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "active_link_or_action_on_neutral_surface",
+          "foreground_role": "primary",
+          "background_role": "surfaceBright",
+          "foreground": "#0A6B77",
+          "background": "#F5F8FA",
+          "contrast_ratio": 5.821334,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "active_link_or_action_on_neutral_surface",
+          "foreground_role": "primary",
+          "background_role": "surfaceContainerLowest",
+          "foreground": "#0A6B77",
+          "background": "#F7FAFB",
+          "contrast_ratio": 5.919549,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "active_link_or_action_on_neutral_surface",
+          "foreground_role": "primary",
+          "background_role": "surfaceContainerLow",
+          "foreground": "#0A6B77",
+          "background": "#EDF3F5",
+          "contrast_ratio": 5.540399,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "active_link_or_action_on_neutral_surface",
+          "foreground_role": "primary",
+          "background_role": "surfaceContainer",
+          "foreground": "#0A6B77",
+          "background": "#E7EFF2",
+          "contrast_ratio": 5.329567,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "active_link_or_action_on_neutral_surface",
+          "foreground_role": "primary",
+          "background_role": "surfaceContainerHigh",
+          "foreground": "#0A6B77",
+          "background": "#DEE8EE",
+          "contrast_ratio": 4.991528,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "active_link_or_action_on_neutral_surface",
+          "foreground_role": "primary",
+          "background_role": "surfaceContainerHighest",
+          "foreground": "#0A6B77",
+          "background": "#D7E3E9",
+          "contrast_ratio": 4.746289,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "secondary_text_on_tonal_panel",
+          "foreground_role": "onSurfaceVariant",
+          "background_role": "primaryContainer",
+          "foreground": "#536672",
+          "background": "#DDF1F0",
+          "contrast_ratio": 5.102,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "secondary_text_on_tonal_panel",
+          "foreground_role": "onSurfaceVariant",
+          "background_role": "secondaryContainer",
+          "foreground": "#536672",
+          "background": "#DEE8EE",
+          "contrast_ratio": 4.8082,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "secondary_text_on_tonal_panel",
+          "foreground_role": "onSurfaceVariant",
+          "background_role": "tertiaryContainer",
+          "foreground": "#536672",
+          "background": "#F7EBCD",
+          "contrast_ratio": 5.046442,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "secondary_text_on_tonal_panel",
+          "foreground_role": "onSurfaceVariant",
+          "background_role": "errorContainer",
+          "foreground": "#536672",
+          "background": "#FCE4E2",
+          "contrast_ratio": 4.936776,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "input_outline_candidate",
+          "foreground_role": "outline",
+          "background_role": "background",
+          "foreground": "#667E8B",
+          "background": "#E7EFF2",
+          "contrast_ratio": 3.662359,
+          "review_threshold": 3.0,
+          "below_review_threshold": false
+        },
+        {
+          "category": "input_outline_candidate",
+          "foreground_role": "outline",
+          "background_role": "surface",
+          "foreground": "#667E8B",
+          "background": "#F1F5F7",
+          "contrast_ratio": 3.889426,
+          "review_threshold": 3.0,
+          "below_review_threshold": false
+        },
+        {
+          "category": "input_outline_candidate",
+          "foreground_role": "outline",
+          "background_role": "surfaceVariant",
+          "foreground": "#667E8B",
+          "background": "#DEE8EE",
+          "contrast_ratio": 3.430066,
+          "review_threshold": 3.0,
+          "below_review_threshold": false
+        },
+        {
+          "category": "input_outline_candidate",
+          "foreground_role": "outline",
+          "background_role": "surfaceDim",
+          "foreground": "#667E8B",
+          "background": "#D7E3E9",
+          "contrast_ratio": 3.261543,
+          "review_threshold": 3.0,
+          "below_review_threshold": false
+        },
+        {
+          "category": "input_outline_candidate",
+          "foreground_role": "outline",
+          "background_role": "surfaceBright",
+          "foreground": "#667E8B",
+          "background": "#F5F8FA",
+          "contrast_ratio": 4.00029,
+          "review_threshold": 3.0,
+          "below_review_threshold": false
+        },
+        {
+          "category": "input_outline_candidate",
+          "foreground_role": "outline",
+          "background_role": "surfaceContainerLowest",
+          "foreground": "#667E8B",
+          "background": "#F7FAFB",
+          "contrast_ratio": 4.067781,
+          "review_threshold": 3.0,
+          "below_review_threshold": false
+        },
+        {
+          "category": "input_outline_candidate",
+          "foreground_role": "outline",
+          "background_role": "surfaceContainerLow",
+          "foreground": "#667E8B",
+          "background": "#EDF3F5",
+          "contrast_ratio": 3.807237,
+          "review_threshold": 3.0,
+          "below_review_threshold": false
+        },
+        {
+          "category": "input_outline_candidate",
+          "foreground_role": "outline",
+          "background_role": "surfaceContainer",
+          "foreground": "#667E8B",
+          "background": "#E7EFF2",
+          "contrast_ratio": 3.662359,
+          "review_threshold": 3.0,
+          "below_review_threshold": false
+        },
+        {
+          "category": "input_outline_candidate",
+          "foreground_role": "outline",
+          "background_role": "surfaceContainerHigh",
+          "foreground": "#667E8B",
+          "background": "#DEE8EE",
+          "contrast_ratio": 3.430066,
+          "review_threshold": 3.0,
+          "below_review_threshold": false
+        },
+        {
+          "category": "input_outline_candidate",
+          "foreground_role": "outline",
+          "background_role": "surfaceContainerHighest",
+          "foreground": "#667E8B",
+          "background": "#D7E3E9",
+          "contrast_ratio": 3.261543,
+          "review_threshold": 3.0,
+          "below_review_threshold": false
+        }
+      ],
+      "summary": {
+        "text_pair_count": 46,
+        "input_outline_pair_count": 10,
+        "text_pairs_below_4_5": [],
+        "input_outline_pairs_below_3": [],
+        "minimum_text_pair": {
+          "category": "active_secondary_text_on_neutral_surface",
+          "foreground_role": "onSurfaceVariant",
+          "background_role": "surfaceDim",
+          "foreground": "#536672",
+          "background": "#D7E3E9",
+          "contrast_ratio": 4.571968,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        "minimum_outline_pair": {
+          "category": "input_outline_candidate",
+          "foreground_role": "outline",
+          "background_role": "surfaceDim",
+          "foreground": "#667E8B",
+          "background": "#D7E3E9",
+          "contrast_ratio": 3.261543,
+          "review_threshold": 3.0,
+          "below_review_threshold": false
+        }
+      }
+    },
+    "dark": {
+      "colors": {
+        "primary": "#88D3D7",
+        "onPrimary": "#00363E",
+        "primaryContainer": "#104D55",
+        "onPrimaryContainer": "#BCEFF0",
+        "secondary": "#AFC2CA",
+        "onSecondary": "#22373E",
+        "secondaryContainer": "#22343D",
+        "onSecondaryContainer": "#AFC2CA",
+        "tertiary": "#E4C78F",
+        "onTertiary": "#422E09",
+        "tertiaryContainer": "#584320",
+        "onTertiaryContainer": "#F7EBCD",
+        "background": "#101B22",
+        "onBackground": "#E7EFF2",
+        "surface": "#182831",
+        "onSurface": "#E7EFF2",
+        "surfaceVariant": "#2A3E47",
+        "onSurfaceVariant": "#AFC2CA",
+        "surfaceDim": "#101B22",
+        "surfaceBright": "#32434C",
+        "surfaceContainerLowest": "#0C171D",
+        "surfaceContainerLow": "#14232B",
+        "surfaceContainer": "#182831",
+        "surfaceContainerHigh": "#22343D",
+        "surfaceContainerHighest": "#2A3E47",
+        "outline": "#7D959F",
+        "outlineVariant": "#344A54",
+        "inverseSurface": "#E1E9EC",
+        "inverseOnSurface": "#22373E",
+        "inversePrimary": "#0A6B77",
+        "surfaceTint": "#88D3D7",
+        "error": "#FFB4AB",
+        "onError": "#690005",
+        "errorContainer": "#5A252A",
+        "onErrorContainer": "#FFD9DB"
+      },
+      "relative_luminances": {
+        "primary": 0.56729068,
+        "onPrimary": 0.02986134,
+        "primaryContainer": 0.06073791,
+        "onPrimaryContainer": 0.78715641,
+        "secondary": 0.51961801,
+        "onSecondary": 0.03420258,
+        "secondaryContainer": 0.03132986,
+        "onSecondaryContainer": 0.51961801,
+        "tertiary": 0.59323998,
+        "onTertiary": 0.03131964,
+        "tertiaryContainer": 0.06193301,
+        "onTertiaryContainer": 0.83598596,
+        "background": 0.01009518,
+        "onBackground": 0.85132733,
+        "surface": 0.01933525,
+        "onSurface": 0.85132733,
+        "surfaceVariant": 0.04392422,
+        "onSurfaceVariant": 0.51961801,
+        "surfaceDim": 0.01009518,
+        "surfaceBright": 0.05214222,
+        "surfaceContainerLowest": 0.00779663,
+        "surfaceContainerLow": 0.01525204,
+        "surfaceContainer": 0.01933525,
+        "surfaceContainerHigh": 0.03132986,
+        "surfaceContainerHighest": 0.04392422,
+        "outline": 0.28358069,
+        "outlineVariant": 0.06267716,
+        "inverseSurface": 0.80341507,
+        "inverseOnSurface": 0.03420258,
+        "inversePrimary": 0.11911829,
+        "surfaceTint": 0.56729068,
+        "error": 0.56842791,
+        "onError": 0.03014215,
+        "errorContainer": 0.03663962,
+        "onErrorContainer": 0.76000181
+      },
+      "pairs": [
+        {
+          "category": "semantic_text_pair",
+          "foreground_role": "onBackground",
+          "background_role": "background",
+          "foreground": "#E7EFF2",
+          "background": "#101B22",
+          "contrast_ratio": 14.998329,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "semantic_text_pair",
+          "foreground_role": "onSurface",
+          "background_role": "surface",
+          "foreground": "#E7EFF2",
+          "background": "#182831",
+          "contrast_ratio": 12.999554,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "semantic_text_pair",
+          "foreground_role": "onPrimary",
+          "background_role": "primary",
+          "foreground": "#00363E",
+          "background": "#88D3D7",
+          "contrast_ratio": 7.729531,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "semantic_text_pair",
+          "foreground_role": "onPrimaryContainer",
+          "background_role": "primaryContainer",
+          "foreground": "#BCEFF0",
+          "background": "#104D55",
+          "contrast_ratio": 7.5598,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "semantic_text_pair",
+          "foreground_role": "onSecondary",
+          "background_role": "secondary",
+          "foreground": "#22373E",
+          "background": "#AFC2CA",
+          "contrast_ratio": 6.764852,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "semantic_text_pair",
+          "foreground_role": "onSecondaryContainer",
+          "background_role": "secondaryContainer",
+          "foreground": "#AFC2CA",
+          "background": "#22343D",
+          "contrast_ratio": 7.003799,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "semantic_text_pair",
+          "foreground_role": "onTertiary",
+          "background_role": "tertiary",
+          "foreground": "#422E09",
+          "background": "#E4C78F",
+          "contrast_ratio": 7.91002,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "semantic_text_pair",
+          "foreground_role": "onTertiaryContainer",
+          "background_role": "tertiaryContainer",
+          "foreground": "#F7EBCD",
+          "background": "#584320",
+          "contrast_ratio": 7.915323,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "semantic_text_pair",
+          "foreground_role": "onError",
+          "background_role": "error",
+          "foreground": "#690005",
+          "background": "#FFB4AB",
+          "contrast_ratio": 7.716637,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "semantic_text_pair",
+          "foreground_role": "onErrorContainer",
+          "background_role": "errorContainer",
+          "foreground": "#FFD9DB",
+          "background": "#5A252A",
+          "contrast_ratio": 9.349092,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "semantic_text_pair",
+          "foreground_role": "inverseOnSurface",
+          "background_role": "inverseSurface",
+          "foreground": "#22373E",
+          "background": "#E1E9EC",
+          "contrast_ratio": 10.13526,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "semantic_text_pair",
+          "foreground_role": "inversePrimary",
+          "background_role": "inverseSurface",
+          "foreground": "#0A6B77",
+          "background": "#E1E9EC",
+          "contrast_ratio": 5.046261,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "active_main_text_on_neutral_surface",
+          "foreground_role": "onSurface",
+          "background_role": "background",
+          "foreground": "#E7EFF2",
+          "background": "#101B22",
+          "contrast_ratio": 14.998329,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "active_main_text_on_neutral_surface",
+          "foreground_role": "onSurface",
+          "background_role": "surface",
+          "foreground": "#E7EFF2",
+          "background": "#182831",
+          "contrast_ratio": 12.999554,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "active_main_text_on_neutral_surface",
+          "foreground_role": "onSurface",
+          "background_role": "surfaceVariant",
+          "foreground": "#E7EFF2",
+          "background": "#2A3E47",
+          "contrast_ratio": 9.596325,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "active_main_text_on_neutral_surface",
+          "foreground_role": "onSurface",
+          "background_role": "surfaceDim",
+          "foreground": "#E7EFF2",
+          "background": "#101B22",
+          "contrast_ratio": 14.998329,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "active_main_text_on_neutral_surface",
+          "foreground_role": "onSurface",
+          "background_role": "surfaceBright",
+          "foreground": "#E7EFF2",
+          "background": "#32434C",
+          "contrast_ratio": 8.824239,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "active_main_text_on_neutral_surface",
+          "foreground_role": "onSurface",
+          "background_role": "surfaceContainerLowest",
+          "foreground": "#E7EFF2",
+          "background": "#0C171D",
+          "contrast_ratio": 15.594807,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "active_main_text_on_neutral_surface",
+          "foreground_role": "onSurface",
+          "background_role": "surfaceContainerLow",
+          "foreground": "#E7EFF2",
+          "background": "#14232B",
+          "contrast_ratio": 13.813014,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "active_main_text_on_neutral_surface",
+          "foreground_role": "onSurface",
+          "background_role": "surfaceContainer",
+          "foreground": "#E7EFF2",
+          "background": "#182831",
+          "contrast_ratio": 12.999554,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "active_main_text_on_neutral_surface",
+          "foreground_role": "onSurface",
+          "background_role": "surfaceContainerHigh",
+          "foreground": "#E7EFF2",
+          "background": "#22343D",
+          "contrast_ratio": 11.082367,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "active_main_text_on_neutral_surface",
+          "foreground_role": "onSurface",
+          "background_role": "surfaceContainerHighest",
+          "foreground": "#E7EFF2",
+          "background": "#2A3E47",
+          "contrast_ratio": 9.596325,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "active_secondary_text_on_neutral_surface",
+          "foreground_role": "onSurfaceVariant",
+          "background_role": "background",
+          "foreground": "#AFC2CA",
+          "background": "#101B22",
+          "contrast_ratio": 9.478597,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "active_secondary_text_on_neutral_surface",
+          "foreground_role": "onSurfaceVariant",
+          "background_role": "surface",
+          "foreground": "#AFC2CA",
+          "background": "#182831",
+          "contrast_ratio": 8.215418,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "active_secondary_text_on_neutral_surface",
+          "foreground_role": "onSurfaceVariant",
+          "background_role": "surfaceVariant",
+          "foreground": "#AFC2CA",
+          "background": "#2A3E47",
+          "contrast_ratio": 6.064655,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "active_secondary_text_on_neutral_surface",
+          "foreground_role": "onSurfaceVariant",
+          "background_role": "surfaceDim",
+          "foreground": "#AFC2CA",
+          "background": "#101B22",
+          "contrast_ratio": 9.478597,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "active_secondary_text_on_neutral_surface",
+          "foreground_role": "onSurfaceVariant",
+          "background_role": "surfaceBright",
+          "foreground": "#AFC2CA",
+          "background": "#32434C",
+          "contrast_ratio": 5.576715,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "active_secondary_text_on_neutral_surface",
+          "foreground_role": "onSurfaceVariant",
+          "background_role": "surfaceContainerLowest",
+          "foreground": "#AFC2CA",
+          "background": "#0C171D",
+          "contrast_ratio": 9.855557,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "active_secondary_text_on_neutral_surface",
+          "foreground_role": "onSurfaceVariant",
+          "background_role": "surfaceContainerLow",
+          "foreground": "#AFC2CA",
+          "background": "#14232B",
+          "contrast_ratio": 8.729505,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "active_secondary_text_on_neutral_surface",
+          "foreground_role": "onSurfaceVariant",
+          "background_role": "surfaceContainer",
+          "foreground": "#AFC2CA",
+          "background": "#182831",
+          "contrast_ratio": 8.215418,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "active_secondary_text_on_neutral_surface",
+          "foreground_role": "onSurfaceVariant",
+          "background_role": "surfaceContainerHigh",
+          "foreground": "#AFC2CA",
+          "background": "#22343D",
+          "contrast_ratio": 7.003799,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "active_secondary_text_on_neutral_surface",
+          "foreground_role": "onSurfaceVariant",
+          "background_role": "surfaceContainerHighest",
+          "foreground": "#AFC2CA",
+          "background": "#2A3E47",
+          "contrast_ratio": 6.064655,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "active_link_or_action_on_neutral_surface",
+          "foreground_role": "primary",
+          "background_role": "background",
+          "foreground": "#88D3D7",
+          "background": "#101B22",
+          "contrast_ratio": 10.271883,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "active_link_or_action_on_neutral_surface",
+          "foreground_role": "primary",
+          "background_role": "surface",
+          "foreground": "#88D3D7",
+          "background": "#182831",
+          "contrast_ratio": 8.902985,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "active_link_or_action_on_neutral_surface",
+          "foreground_role": "primary",
+          "background_role": "surfaceVariant",
+          "foreground": "#88D3D7",
+          "background": "#2A3E47",
+          "contrast_ratio": 6.572221,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "active_link_or_action_on_neutral_surface",
+          "foreground_role": "primary",
+          "background_role": "surfaceDim",
+          "foreground": "#88D3D7",
+          "background": "#101B22",
+          "contrast_ratio": 10.271883,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "active_link_or_action_on_neutral_surface",
+          "foreground_role": "primary",
+          "background_role": "surfaceBright",
+          "foreground": "#88D3D7",
+          "background": "#32434C",
+          "contrast_ratio": 6.043443,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "active_link_or_action_on_neutral_surface",
+          "foreground_role": "primary",
+          "background_role": "surfaceContainerLowest",
+          "foreground": "#88D3D7",
+          "background": "#0C171D",
+          "contrast_ratio": 10.680392,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "active_link_or_action_on_neutral_surface",
+          "foreground_role": "primary",
+          "background_role": "surfaceContainerLow",
+          "foreground": "#88D3D7",
+          "background": "#14232B",
+          "contrast_ratio": 9.460098,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "active_link_or_action_on_neutral_surface",
+          "foreground_role": "primary",
+          "background_role": "surfaceContainer",
+          "foreground": "#88D3D7",
+          "background": "#182831",
+          "contrast_ratio": 8.902985,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "active_link_or_action_on_neutral_surface",
+          "foreground_role": "primary",
+          "background_role": "surfaceContainerHigh",
+          "foreground": "#88D3D7",
+          "background": "#22343D",
+          "contrast_ratio": 7.589964,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "active_link_or_action_on_neutral_surface",
+          "foreground_role": "primary",
+          "background_role": "surfaceContainerHighest",
+          "foreground": "#88D3D7",
+          "background": "#2A3E47",
+          "contrast_ratio": 6.572221,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "secondary_text_on_tonal_panel",
+          "foreground_role": "onSurfaceVariant",
+          "background_role": "primaryContainer",
+          "foreground": "#AFC2CA",
+          "background": "#104D55",
+          "contrast_ratio": 5.143839,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "secondary_text_on_tonal_panel",
+          "foreground_role": "onSurfaceVariant",
+          "background_role": "secondaryContainer",
+          "foreground": "#AFC2CA",
+          "background": "#22343D",
+          "contrast_ratio": 7.003799,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "secondary_text_on_tonal_panel",
+          "foreground_role": "onSurfaceVariant",
+          "background_role": "tertiaryContainer",
+          "foreground": "#AFC2CA",
+          "background": "#584320",
+          "contrast_ratio": 5.088919,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "secondary_text_on_tonal_panel",
+          "foreground_role": "onSurfaceVariant",
+          "background_role": "errorContainer",
+          "foreground": "#AFC2CA",
+          "background": "#5A252A",
+          "contrast_ratio": 6.574567,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        {
+          "category": "input_outline_candidate",
+          "foreground_role": "outline",
+          "background_role": "background",
+          "foreground": "#7D959F",
+          "background": "#101B22",
+          "contrast_ratio": 5.550873,
+          "review_threshold": 3.0,
+          "below_review_threshold": false
+        },
+        {
+          "category": "input_outline_candidate",
+          "foreground_role": "outline",
+          "background_role": "surface",
+          "foreground": "#7D959F",
+          "background": "#182831",
+          "contrast_ratio": 4.811127,
+          "review_threshold": 3.0,
+          "below_review_threshold": false
+        },
+        {
+          "category": "input_outline_candidate",
+          "foreground_role": "outline",
+          "background_role": "surfaceVariant",
+          "foreground": "#7D959F",
+          "background": "#2A3E47",
+          "contrast_ratio": 3.551594,
+          "review_threshold": 3.0,
+          "below_review_threshold": false
+        },
+        {
+          "category": "input_outline_candidate",
+          "foreground_role": "outline",
+          "background_role": "surfaceDim",
+          "foreground": "#7D959F",
+          "background": "#101B22",
+          "contrast_ratio": 5.550873,
+          "review_threshold": 3.0,
+          "below_review_threshold": false
+        },
+        {
+          "category": "input_outline_candidate",
+          "foreground_role": "outline",
+          "background_role": "surfaceBright",
+          "foreground": "#7D959F",
+          "background": "#32434C",
+          "contrast_ratio": 3.265845,
+          "review_threshold": 3.0,
+          "below_review_threshold": false
+        },
+        {
+          "category": "input_outline_candidate",
+          "foreground_role": "outline",
+          "background_role": "surfaceContainerLowest",
+          "foreground": "#7D959F",
+          "background": "#0C171D",
+          "contrast_ratio": 5.771628,
+          "review_threshold": 3.0,
+          "below_review_threshold": false
+        },
+        {
+          "category": "input_outline_candidate",
+          "foreground_role": "outline",
+          "background_role": "surfaceContainerLow",
+          "foreground": "#7D959F",
+          "background": "#14232B",
+          "contrast_ratio": 5.112188,
+          "review_threshold": 3.0,
+          "below_review_threshold": false
+        },
+        {
+          "category": "input_outline_candidate",
+          "foreground_role": "outline",
+          "background_role": "surfaceContainer",
+          "foreground": "#7D959F",
+          "background": "#182831",
+          "contrast_ratio": 4.811127,
+          "review_threshold": 3.0,
+          "below_review_threshold": false
+        },
+        {
+          "category": "input_outline_candidate",
+          "foreground_role": "outline",
+          "background_role": "surfaceContainerHigh",
+          "foreground": "#7D959F",
+          "background": "#22343D",
+          "contrast_ratio": 4.101577,
+          "review_threshold": 3.0,
+          "below_review_threshold": false
+        },
+        {
+          "category": "input_outline_candidate",
+          "foreground_role": "outline",
+          "background_role": "surfaceContainerHighest",
+          "foreground": "#7D959F",
+          "background": "#2A3E47",
+          "contrast_ratio": 3.551594,
+          "review_threshold": 3.0,
+          "below_review_threshold": false
+        }
+      ],
+      "summary": {
+        "text_pair_count": 46,
+        "input_outline_pair_count": 10,
+        "text_pairs_below_4_5": [],
+        "input_outline_pairs_below_3": [],
+        "minimum_text_pair": {
+          "category": "semantic_text_pair",
+          "foreground_role": "inversePrimary",
+          "background_role": "inverseSurface",
+          "foreground": "#0A6B77",
+          "background": "#E1E9EC",
+          "contrast_ratio": 5.046261,
+          "review_threshold": 4.5,
+          "below_review_threshold": false
+        },
+        "minimum_outline_pair": {
+          "category": "input_outline_candidate",
+          "foreground_role": "outline",
+          "background_role": "surfaceBright",
+          "foreground": "#7D959F",
+          "background": "#32434C",
+          "contrast_ratio": 3.265845,
+          "review_threshold": 3.0,
+          "below_review_threshold": false
+        }
+      }
+    }
+  },
+  "source_invariants": {
+    "foreground": {
+      "path": "app/src/main/res/drawable/ic_launcher_foreground.xml",
+      "working_tree_raw_sha256": "3f6feaa3dac9e1ef82679cb206dc7d17602f884220528411d184192a0e97ee2e",
+      "head_raw_sha256": "3f6feaa3dac9e1ef82679cb206dc7d17602f884220528411d184192a0e97ee2e",
+      "identical_to_head_after_newline_normalization": true,
+      "xml_structure_identical_to_head": true,
+      "head_git_blob": "9d6eacabc344f24613f1736c96a30e1a228fd0fc"
+    },
+    "dark_color_scheme": {
+      "identical_block_to_head_after_newline_normalization": true,
+      "working_tree_normalized_block_sha256": "364fbcd692a3785c53597fba0e06ce6ea82f90881220423532fbf700be426f41",
+      "head_normalized_block_sha256": "364fbcd692a3785c53597fba0e06ce6ea82f90881220423532fbf700be426f41"
+    },
+    "splash": {
+      "path": "app/src/main/res/drawable/ic_qetara_splash.xml",
+      "geometry_and_all_non_fill_attributes_identical_to_head": true,
+      "head_fill": "#102A43",
+      "current_fill": "@color/qetara_on_background",
+      "current_fill_resolves_through_day_night_resources": {
+        "light": {
+          "qetara_background": "#E7EFF2",
+          "qetara_on_background": "#102A43",
+          "matches_compose_background": true,
+          "matches_compose_on_background": true
+        },
+        "dark": {
+          "qetara_background": "#101B22",
+          "qetara_on_background": "#E7EFF2",
+          "matches_compose_background": true,
+          "matches_compose_on_background": true
+        }
+      }
+    }
+  }
+}

@@ -1,5 +1,11 @@
 # Validación de Qetara
 
+## Superficies y marca móvil — 12 de septiembre de 2026
+
+La [revisión estética](../design/figma/mobile-surface-review/README.md) unifica el fondo claro y el icono Android en gris azulado, con tarjetas de la misma familia y splash adaptado al tema. Conserva el vector original del aleph. Incluye comparación visual, cinco pestañas claras, preferencias, Flash desactivado, Descargas en oscuro y comprobación del icono instalado en el teléfono.
+
+Compilación release y lint correctos, cero errores y dos advertencias previas. Se calcularon 112 pares de contraste; sus límites y los hashes del APK y recursos están en la galería. Las pruebas unitarias y al 200 % del pase anterior conservan su alcance original.
+
 ## Revisión de GUI en teléfono físico — 12 de septiembre de 2026
 
 El [informe físico](MOBILE_PHYSICAL_REVIEW-2026-09-12.md) registra el recorrido de la GUI de `642503c` y los ajustes posteriores de biblioteca, búsqueda con teclado y controles de tamaño de texto. La actualización conservó los cinco archivos existentes. Se comprobaron los temas claro y oscuro, además de Descargas con texto del sistema al 200 %; se restauraron los ajustes originales al terminar.

@@ -1,0 +1,147 @@
+{
+  "date": "2026-09-12",
+  "baseCommit": "f556bf865d534e22ef5c78c07abeafa8f72f395a",
+  "sourceKind": "Working-tree Android aesthetic QA build",
+  "package": "io.github.intelognatanael.qetara",
+  "versionName": "1.4.0",
+  "versionCode": 7,
+  "installedApkBytes": 14856229,
+  "installedApkSha256": "e002d3f0962f0ad8c0aa1bcc8e528b2a5c5a6e60e698a801e5ade4245f9b361b",
+  "installedCopyPulledAndMatched": true,
+  "sourceFiles": [
+    {
+      "path": "app/src/main/java/com/example/wifidrop/P2pRouteTheme.kt",
+      "sha256": "6ea065c1ea6798686694fe1cdac8bf05511007839c64424e5fe717351373ec70"
+    },
+    {
+      "path": "app/src/main/res/drawable/ic_launcher_background.xml",
+      "sha256": "082bb6f2862581e815a50a95dd82c8c7fa94d2c42611c9f3f1ece8389133484e"
+    },
+    {
+      "path": "app/src/main/res/drawable/ic_qetara_splash.xml",
+      "sha256": "b1e3d63c78223fbc0d1005f93f6bc23295d7bc27a1a9247867b5bc7a3f7ff67f"
+    },
+    {
+      "path": "app/src/main/res/mipmap-hdpi/ic_launcher_round.webp",
+      "sha256": "2275f2a8f9ccfb23bc78a5eee130d6192f425db50cd07c058bb2b7c1111aee8c"
+    },
+    {
+      "path": "app/src/main/res/mipmap-hdpi/ic_launcher.webp",
+      "sha256": "912e33a518e39266ad1c6f9204ca2788857a7855cfd0e90f6d4b4ac6420d983c"
+    },
+    {
+      "path": "app/src/main/res/mipmap-mdpi/ic_launcher_round.webp",
+      "sha256": "f2fa849d4e8e54601f39205e909ec4158878f2405e7207820bede2fba337406c"
+    },
+    {
+      "path": "app/src/main/res/mipmap-mdpi/ic_launcher.webp",
+      "sha256": "cc66296f4fe64ba93cd0b1ea4b094a89cb168b6fec1070eba85c28c314fcea5c"
+    },
+    {
+      "path": "app/src/main/res/mipmap-xhdpi/ic_launcher_round.webp",
+      "sha256": "fd8aea479293ba203e7e1882fbfb78c4deb3bbc5910c09d9c807c9d372cba5d7"
+    },
+    {
+      "path": "app/src/main/res/mipmap-xhdpi/ic_launcher.webp",
+      "sha256": "2fb8bf4da9b8a81c45a153bb986cbb4360addd834e52ca2ab7724fbbb8df8cef"
+    },
+    {
+      "path": "app/src/main/res/mipmap-xxhdpi/ic_launcher_round.webp",
+      "sha256": "8f9cb1db1cb0b566c0a0dd7260b387133c2447105749af3d95e17acf7d94a817"
+    },
+    {
+      "path": "app/src/main/res/mipmap-xxhdpi/ic_launcher.webp",
+      "sha256": "4b7e1970d2b9cca5014cf306c023b1a44f8aa6f5b277e8db40baad58eb830a80"
+    },
+    {
+      "path": "app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.webp",
+      "sha256": "f2058084224b36e00986c4c384ee94a4f62be6c2db625977f2590c13b40983a5"
+    },
+    {
+      "path": "app/src/main/res/mipmap-xxxhdpi/ic_launcher.webp",
+      "sha256": "5adc5226d1df6a0c16179e795c5e0f59090af642e24a13ac433f039b1400325b"
+    },
+    {
+      "path": "app/src/main/res/values-night/colors.xml",
+      "sha256": "a55777045e44ad15529ae993987987e0ddaacb4e07682956039ec211ec3156b1"
+    },
+    {
+      "path": "app/src/main/res/values-night/themes.xml",
+      "sha256": "3f928d7cf597f1976387bdcb78ce1924ec23018e3ab1ff8cda51a311b4d4d95f"
+    },
+    {
+      "path": "app/src/main/res/values/colors.xml",
+      "sha256": "4a47140fa917139e7e7f5fb3c1ce8212f0b21bfefc2d2539eee5abb112e0b45e"
+    },
+    {
+      "path": "app/src/main/res/values/themes.xml",
+      "sha256": "3f928d7cf597f1976387bdcb78ce1924ec23018e3ab1ff8cda51a311b4d4d95f"
+    },
+    {
+      "path": "scripts/generate-icons.py",
+      "sha256": "78c9df14ba2762dfc0ce273189b1f6c4e842ee6ae460e64364cf1f5d8af0c52b"
+    }
+  ],
+  "theme": {
+    "path": "app/src/main/java/com/example/wifidrop/P2pRouteTheme.kt",
+    "sha256": "6ea065c1ea6798686694fe1cdac8bf05511007839c64424e5fe717351373ec70"
+  },
+  "originalForegroundSha256": "3f6feaa3dac9e1ef82679cb206dc7d17602f884220528411d184192a0e97ee2e",
+  "originalForegroundUnchanged": true,
+  "androidApi": 36,
+  "screenPixels": [
+    1080,
+    2372
+  ],
+  "densityDpi": 480,
+  "images": [
+    {
+      "file": "channel-light.png",
+      "sha256": "93d5aff0c2911d58d479ab09af9b2542e86431865ce532ded166c3a1ecdb05e1",
+      "bytes": 148587,
+      "systemFontScale": 1.0,
+      "theme": "light"
+    },
+    {
+      "file": "chat-light.png",
+      "sha256": "e799448a0884a60ddbdccafa5a4dcc1dc0064f8c2175a8868371d16cbcdcd30e",
+      "bytes": 137332,
+      "systemFontScale": 1.0,
+      "theme": "light"
+    },
+    {
+      "file": "library-dark.png",
+      "sha256": "d648ff90876f0903fba529b746e644dccc5f5556d8844d5148d68faea320c86a",
+      "bytes": 166831,
+      "systemFontScale": 1.0,
+      "theme": "dark"
+    },
+    {
+      "file": "library-light.png",
+      "sha256": "3b071e87edcbd413bca3d8ba3d7c6d3cb0524ea57979246ca22e72ff8326d326",
+      "bytes": 163788,
+      "systemFontScale": 1.0,
+      "theme": "light"
+    },
+    {
+      "file": "preferences-light.png",
+      "sha256": "2145c0a6600de8c61957bee265a281c2eae9713414723dfc201aa34fb3f95362",
+      "bytes": 197540,
+      "systemFontScale": 1.0,
+      "theme": "light"
+    },
+    {
+      "file": "send-light.png",
+      "sha256": "4a441824345c42e66706336bb1d7a6518601d0beaee4556036242e09abd1e388",
+      "bytes": 158046,
+      "systemFontScale": 1.0,
+      "theme": "light"
+    }
+  ],
+  "beforeImage": {
+    "apkSha256": "021afa4b2446c8591a49196250ff735bfbf3411ec4eb02c7243f82bf813761c5",
+    "path": "../mobile-physical-review/updated-downloads-light.png",
+    "sha256": "9a7e60bec6076b0cfa92bd50f82f6428cb065d1113a931dc818985c4ebb7629e"
+  },
+  "figmaReviewCompleted": false
+}

@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "date": "2026-09-11",
-  "status": "Adaptive borderless header brand implemented and inspected in light/dark emulator views",
+  "date": "2026-09-12",
+  "status": "Blue-gray light surfaces and Android launcher background implemented and physically inspected; original symbol geometry preserved",
   "source": {
     "file": "app/src/main/java/com/example/wifidrop/P2pRouteTheme.kt",
-    "sha256": "463b7a3ab27b64a671d63088b18ac663a5bb8652ec5d7d0480cfb44086b92690",
-    "revision": "working tree",
+    "sha256": "6ea065c1ea6798686694fe1cdac8bf05511007839c64424e5fe717351373ec70",
+    "revision": "Working tree based on f556bf865d534e22ef5c78c07abeafa8f72f395a",
     "note": "Explicit Material 3 overrides only; unspecified color roles retain Material 3 defaults."
   },
   "reference": {
     "local": "design/figma/MOBILE.md",
-    "brandReview": "design/figma/mobile-brand-adaptive/README.md",
-    "previousBrandReview": "design/figma/mobile-brand-review/README.md",
+    "brandReview": "design/figma/mobile-surface-review/README.md",
+    "previousBrandReview": "design/figma/mobile-brand-adaptive/README.md",
     "figmaFileKey": "FZhnKBdDPJWpPrbxn3AGQQ",
     "figmaStatus": "Starter MCP limit; remote file has no frames; no Figma review completed"
   },
@@ -23,27 +23,27 @@
       "onPrimaryContainer": "#075460",
       "secondary": "#536672",
       "onSecondary": "#FFFFFF",
-      "secondaryContainer": "#EAF0EF",
+      "secondaryContainer": "#DEE8EE",
       "onSecondaryContainer": "#536672",
       "tertiary": "#765722",
       "onTertiary": "#FFFFFF",
       "tertiaryContainer": "#F7EBCD",
       "onTertiaryContainer": "#574016",
-      "background": "#F4F6F5",
+      "background": "#E7EFF2",
       "onBackground": "#102A43",
-      "surface": "#FFFFFF",
+      "surface": "#F1F5F7",
       "onSurface": "#102A43",
-      "surfaceVariant": "#EAF0F0",
+      "surfaceVariant": "#DEE8EE",
       "onSurfaceVariant": "#536672",
-      "surfaceDim": "#DDE5E5",
-      "surfaceBright": "#FFFFFF",
-      "surfaceContainerLowest": "#FFFFFF",
-      "surfaceContainerLow": "#F7F9F8",
-      "surfaceContainer": "#F0F4F3",
-      "surfaceContainerHigh": "#EAF0EF",
-      "surfaceContainerHighest": "#E2EAE9",
-      "outline": "#788D94",
-      "outlineVariant": "#DDE5E5",
+      "surfaceDim": "#D7E3E9",
+      "surfaceBright": "#F5F8FA",
+      "surfaceContainerLowest": "#F7FAFB",
+      "surfaceContainerLow": "#EDF3F5",
+      "surfaceContainer": "#E7EFF2",
+      "surfaceContainerHigh": "#DEE8EE",
+      "surfaceContainerHighest": "#D7E3E9",
+      "outline": "#667E8B",
+      "outlineVariant": "#C3D2DC",
       "inverseSurface": "#22373E",
       "inverseOnSurface": "#EAF0F0",
       "inversePrimary": "#88D3D7",
@@ -226,8 +226,8 @@
   "validation": {
     "sourceInspection": "complete",
     "fontByteIdentityWithDesktop": "verified for all four TTFs",
-    "runtimeVisual": "Current brand: light/dark at 360 x 800 dp, font 100%; launcher geometry unchanged",
-    "note": "Current APK and images: design/figma/mobile-brand-adaptive/README.md. Earlier checks remain attached to their own APK hashes. Figma unavailable; no complete accessibility audit claimed."
+    "runtimeVisual": "Android 16 physical phone, 360 dp width, 100% text: five light tabs, preferences, Flash off and dark library; installed icon inspected in Android app details",
+    "note": "APK and images: design/figma/mobile-surface-review/README.md. Splash geometry and day/night resource colors checked in source; no splash animation capture or complete accessibility audit. Figma quota prevented remote review."
   },
   "brand": {
     "symbol": "app/src/main/res/drawable/ic_launcher_foreground.xml",
@@ -259,7 +259,12 @@
       "modeIndentDp": 40,
       "alignment": "Symbol and wordmark share a vertically centered row; mode below."
     },
-    "note": "The header has no backing in either theme and matches the wordmark through adaptive tint. The original launcher resource, path, viewport, scale and aspect ratio are unchanged; only GUI ink adapts. Light and dark runtime views inspected."
+    "note": "Original launcher foreground is unchanged: path, ink, viewport, scale and aspect ratio. Launcher backdrop now matches light GUI background; header remains borderless and tinted with onBackground. Splash uses day/night onBackground ink with its existing geometry.",
+    "launcherBackdrop": "#E7EFF2",
+    "splashBackground": {
+      "light": "#E7EFF2",
+      "dark": "#101B22"
+    }
   },
   "componentColorRules": {
     "selection": [
