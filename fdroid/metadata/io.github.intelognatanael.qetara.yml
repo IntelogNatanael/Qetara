@@ -1,0 +1,54 @@
+Categories:
+  - Connectivity
+  - File Transfer
+  - Messaging
+License: MIT
+SourceCode: https://github.com/IntelogNatanael/Qetara
+IssueTracker: https://github.com/IntelogNatanael/Qetara/issues
+
+AutoName: Qetara
+Summary: Share files and messages between devices on your local network
+Description: |-
+  Share files and messages between Android devices and a desktop computer on
+  the same local network, without an account. Android devices can also connect
+  using Wi-Fi Direct.
+
+  Select multiple files, track each transfer, cancel pending files and open
+  received downloads. Android's share menu can send files to Qetara.
+
+  The optional Flash mode offers nearby file sharing with confirmation on both
+  devices. It starts disabled and expires after 30 minutes.
+
+RepoType: git
+Repo: https://github.com/IntelogNatanael/Qetara.git
+
+Builds:
+  - versionName: 1.4.0
+    versionCode: 7
+    commit: 588a92f2617815b5744eeb91a1da463c5c685f90
+    subdir: app
+    gradle:
+      - yes
+
+AllowedAPKSigningKeys: 5f5cdbfb03c1f62f7dc42aee12a5ea4a347b767ccfc268eb450ca69c98ba7a3b
+
+MaintainerNotes: |-
+  Candidate recipe, not yet submitted. At validation time the upstream source
+  repository is private and the signed candidate has no public download URL.
+  Public source access and a versioned binary URL must be supplied before
+  requesting inclusion; do not invent or activate a Binaries URL.
+
+  Build exactly the pinned commit with JDK 21, Android platform 36 revision 2
+  and Build Tools 36.0.0. A clean checkout is required: a previous incremental
+  Compose build retained different stability bytecode. Clean Windows/Linux
+  builds were byte-identical. Preserve the upstream ART profile and VCS info.
+
+  The developer-signed candidate has SHA-256
+  5d9e28651ffdaf0216d0a82c049b287851906065bbc713eefa77d793670e22f6.
+  Signing used apksigner 36 with --alignment-preserved true; standard
+  apksigcopier 1.1.1 reproduced it from the clean Linux unsigned APK.
+
+AutoUpdateMode: None
+UpdateCheckMode: None
+CurrentVersion: 1.4.0
+CurrentVersionCode: 7

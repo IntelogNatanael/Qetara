@@ -1,0 +1,46 @@
+{
+  "method": "sRGB relative luminance; opaque role pairs, not full UI accessibility certification",
+  "contrast": {
+    "light": {
+      "onSurface/surface": 14.64,
+      "onSurfaceVariant/surface": 5.98,
+      "onSurfaceVariant/surfaceContainerLow": 5.66,
+      "onSurfaceVariant/surfaceContainerHigh": 5.19,
+      "onPrimary/primary": 6.21,
+      "onPrimaryContainer/primaryContainer": 7.32,
+      "onSecondary/secondary": 5.98,
+      "onSecondaryContainer/secondaryContainer": 5.19,
+      "onTertiaryContainer/tertiaryContainer": 8.24,
+      "onErrorContainer/errorContainer": 8.58,
+      "symbol/brandBackdrop": 12.7
+    },
+    "dark": {
+      "onSurface/surface": 13.0,
+      "onSurfaceVariant/surface": 8.22,
+      "onSurfaceVariant/surfaceContainerLow": 8.73,
+      "onSurfaceVariant/surfaceContainerHigh": 7.0,
+      "onPrimary/primary": 7.73,
+      "onPrimaryContainer/primaryContainer": 7.56,
+      "onSecondary/secondary": 6.76,
+      "onSecondaryContainer/secondaryContainer": 7.0,
+      "onTertiaryContainer/tertiaryContainer": 7.92,
+      "onErrorContainer/errorContainer": 9.35,
+      "symbol/brandBackdrop": 12.49
+    }
+  },
+  "symbol": {
+    "source": "app/src/main/res/drawable/ic_launcher_foreground.xml",
+    "unchangedFromHead": true,
+    "normalizedSha256": "3f6feaa3dac9e1ef82679cb206dc7d17602f884220528411d184192a0e97ee2e",
+    "ink": "#102A43",
+    "viewport": [
+      108,
+      108
+    ],
+    "scale": [
+      0.65625,
+      0.65625
+    ]
+  },
+  "themeSha256": "4b43b14217d26b63cc98deccaaab63dac383b49b7bcea4be41015c8a362b2b28"
+}

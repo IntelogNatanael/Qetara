@@ -48,7 +48,8 @@ internal fun QetaraPreferencesDialog(
                             )
                             Surface(
                                 shape = RoundedCornerShape(14.dp),
-                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
+                                color = MaterialTheme.colorScheme.surfaceContainerLow,
+                                contentColor = MaterialTheme.colorScheme.onSurface
                             ) {
                                 Column(
                                     modifier = Modifier

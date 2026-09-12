@@ -1,5 +1,25 @@
 # Validación de Qetara
 
+## Integración de la GUI para main — 11 de septiembre de 2026
+
+Árbol de trabajo de `codex/prepare-public-release`, basado en `12b5f55c28f2444f43134ff5a104f67b51c24541`, versión 1.4.0/código 7. Incluye el diseño Android y escritorio, Inter local y el aleph de cabecera sin fondo en ambos temas.
+
+`scripts/verify.ps1 -Offline` terminó correctamente con JDK 21 y SDK 36: compilación Android debug y clases PC, lint Android y suites JVM. Los informes contienen **301 pruebas aprobadas** (199 Android, 57 PC y 45 de protocolo), cero fallos y dos escenarios PC opt-in omitidos: sockets con emulador y UDP con teléfono. Las suites Android y PC se ejecutaron en este pase; Gradle reutilizó los resultados vigentes de protocolo y las tareas de compilación y lint sin cambios. La autoprueba CLI aprobó envío completo y reanudación, con comprobación de hash en ambos casos.
+
+`:app:assembleDebugAndroidTest --offline --no-daemon --max-workers=2 --console=plain` también terminó correctamente. Se compiló el runner y sus escenarios; no se conectó un teléfono ni se ejecutó instrumentación en esta integración.
+
+`:pc:createDistributable` terminó correctamente con `-PqetaraDesktopOnly=true --offline --no-daemon --max-workers=2 --console=plain`. Se comprobó que el JAR empaqueta los cuatro TTF Inter, sus dos archivos OFL, ambos inventarios de avisos y el SVG de marca con bytes idénticos a los recursos fuente. El inventario embebido de terceros incluye ahora Inter y coincide con el documento raíz, normalizando los finales de línea.
+
+La evidencia visual está en los informes de [escritorio](DESKTOP_DESIGN_REVIEW-2026-09-11.md), [móvil](MOBILE_DESIGN_REVIEW-2026-09-11.md), [color](MOBILE_COLOR_REVIEW-2026-09-11.md) y [marca final](../design/figma/mobile-brand-adaptive/README.md). Cada galería conserva los hashes y el alcance de su iteración. Este pase no genera una nueva release, MSI ni validación oficial F-Droid.
+
+## Candidata 1.4.0 — 11 de septiembre de 2026
+
+La [validación de la candidata](VALIDATION-1.4.0.md) reúne la evidencia del código `588a92f2617815b5744eeb91a1da463c5c685f90`: 301 pruebas automatizadas iniciales, lint sin errores, nueve comprobaciones instrumentadas por dispositivo y lotes Flash TCP en emulador y teléfono físico. Las builds limpias Windows y Linux y la copia de firma produjeron APKs idénticos.
+
+Se añadieron la [instalación MSI y autoprueba del ejecutable instalado](MSI_VALIDATION-1.4.0.md), la [validación local completa de la receta con fdroidserver](FDROID_VALIDATION-1.4.0.md) y el [descubrimiento UDP físico](UDP_VALIDATION-1.4.0.md). UDP aprobó las cuatro comprobaciones en el segundo intento sin cambiar el arnés; el primero falló por timeout de una búsqueda automática adicional y se conserva por separado. No se determinó la causa de ese fallo.
+
+Siguen pendientes el recorrido visual completo de envío y cancelación y el nuevo paquete de entrega, según [Preparación de publicación](PUBLICATION_READINESS.md). Las revisiones de diseño posteriores figuran en la sección de integración anterior. La prueba local con fdroidserver no equivale a la ejecución del servidor oficial, aceptación o publicación en F-Droid. Las secciones siguientes conservan el alcance histórico de cada comprobación anterior.
+
 ## Búsqueda inicial de Flash — 11 de septiembre de 2026
 
 PC inicia la búsqueda de receptores inmediatamente después de activar Flash, igual que Android. La búsqueda manual sigue disponible. Si se cancela la activación durante el arranque, no se solicita la búsqueda automática; activar una sesión ya activa tampoco la repite.

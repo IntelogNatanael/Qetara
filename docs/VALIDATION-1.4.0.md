@@ -22,8 +22,11 @@ El nuevo `scripts/build-android-release.ps1` se ejecutó después con `-Ref 588a
 | --- | --- |
 | APK final firmado, 14.020.330 bytes | `5d9e28651ffdaf0216d0a82c049b287851906065bbc713eefa77d793670e22f6` |
 | APK sin firma, Windows y Linux | `9e1744b2820b1931af675f33c01ec803c2ce0604f5b3373be69cd742194ee9bf` |
+| MSI instalado, 55.565.118 bytes | `05245a66781441811e22ec2572508f194492e90a31f8e7230e483d9d99ee5fe5` |
 
-El empaquetado Windows generó MSI, ZIP portable y JAR. El ZIP se extrajo y se ejecutó su propio `Qetara.exe` con el runtime incluido: la autoprueba CLI de transferencia de 2 MiB y reanudación terminó con código cero. El MSI se generó pero no se instaló nuevamente en el equipo. Las fuentes correspondientes a Java, sus avisos y los hashes de procedencia acompañan la entrega. Los paquetes Windows no tienen una nueva firma Authenticode.
+El empaquetado Windows generó MSI, ZIP portable y JAR. El ZIP se extrajo y se ejecutó su propio `Qetara.exe` con el runtime incluido: la autoprueba CLI de transferencia de 2 MiB y reanudación terminó con código cero. Después se instaló el MSI por usuario: código 0, sin reinicio, producto registrado como 1.4.0 y 190 archivos instalados. El ejecutable instalado también aprobó su autoprueba de transferencia y reanudación; los hashes del ejecutable, JAR principal y 149 archivos del runtime coinciden con el portable. Las diferencias de empaquetado, los avisos y el alcance están en [Validación MSI](MSI_VALIDATION-1.4.0.md). No se probaron actualización o desinstalación. Las fuentes correspondientes a Java acompañan la entrega; el MSI no tiene firma Authenticode.
+
+La [validación local de F-Droid](FDROID_VALIDATION-1.4.0.md) ejecutó después fdroidserver 2.4.5 en Ubuntu WSL aislado: `readmeta`, formato, lint, escáner de fuentes, build y escáner del APK terminaron correctamente. Compiló exclusivamente el commit fijado, mediante un origen Git local y herramientas configuradas para este ensayo. El APK sin firma obtuvo nuevamente el hash indicado arriba; apksigcopier 1.1.1 reprodujo el APK firmado exacto y la verificación de firma pasó. La receta conserva el origen HTTPS previsto, todavía privado; faltan las URLs públicas necesarias para la inclusión. No se ejecutó el build-server o CI oficial de F-Droid.
 
 ## Comprobaciones sobre el APK final
 
@@ -37,10 +40,18 @@ En el teléfono, los datos viajaron directamente por TCP a través de la Wi-Fi y
 
 La prueba de PC comprueba que activar Flash solicita búsqueda, que repetir la activación es idempotente y que se puede buscar otra vez. El descubrimiento de pares del arnés usa direcciones explícitas: **no valida descubrimiento UDP**, el servicio Android ni el recorrido visual de selección de archivos. La cancelación y otros estados conservan la cobertura automatizada previa; no se les atribuye aquí una nueva prueba manual física.
 
+## Descubrimiento UDP físico
+
+Un [arnés separado](UDP_VALIDATION-1.4.0.md) comprobó después la búsqueda inicial y manual mediante UDP real entre PC y el teléfono en la misma Wi-Fi, con el servicio Android de producción. No proporcionó direcciones explícitas a los motores y no envió archivos. La aplicación instalada mantuvo el SHA-256 firmado indicado arriba antes y después.
+
+El primer intento aprobó tres comprobaciones y falló por timeout de 20 segundos en una búsqueda automática PC adicional, antes de ejecutar la fase manual Android. El segundo aprobó las cuatro comprobaciones con el mismo APK de instrumentación y arnés PC, sin cambiar esperas ni añadir consultas de rescate: JUnit sin fallos, `checks=4`, `explicit_discovery=0` y Android `result=PASS`. Ambos detuvieron el servicio propio; al terminar se retiró el forward de control.
+
+Se conservan ambos resultados. No se capturaron paquetes ni se estableció la causa del timeout inicial; el segundo intento aprobado no demuestra fiabilidad en todos los arranques o routers. Esta prueba amplía la evidencia de descubrimiento y servicio Android, sin sustituir los lotes TCP anteriores ni el recorrido visual pendiente.
+
 ## Integración continua y alcance
 
-La ejecución [34602646699](https://github.com/IntelogNatanael/Qetara/actions/runs/34602646699), vinculada a `588a92f`, terminó correctamente en sus cuatro trabajos: Android, Windows, macOS y Linux. Incluye compilaciones y pruebas; la subida rutinaria de artefactos se desactivó para evitar el fallo previo por cuota. La prueba Flash optativa se omite en CI cuando no hay un dispositivo preparado; sus dos ejecuciones aprobadas descritas arriba fueron locales.
+La ejecución [34602646699](https://github.com/IntelogNatanael/Qetara/actions/runs/34602646699), vinculada a `588a92f`, terminó correctamente en sus cuatro trabajos: Android, Windows, macOS y Linux. Incluye compilaciones y pruebas; la subida rutinaria de artefactos se desactivó para evitar el fallo previo por cuota. La prueba Flash optativa de lotes se omite en CI cuando no hay un dispositivo preparado; sus ejecuciones sobre emulador y teléfono fueron locales. El nuevo arnés UDP y su ejecución física posterior no formaron parte de esa ejecución de CI.
 
-La candidata está preparada para revisión con binarios, fuentes, licencias y sumas SHA-256. Esta evidencia no cubre todas las versiones de Android ni sustituye la comprobación de instalación MSI, descubrimiento UDP y recorridos visuales antes de una release estable. No se ejecutó el servidor de compilación ni una receta completa de F-Droid.
+La candidata está preparada para revisión con binarios, fuentes, licencias y sumas SHA-256. Se completaron la instalación MSI, una repetición UDP física aprobada con el fallo previo documentado y la validación local de la receta F-Droid. Siguen pendientes el recorrido visual de selección, envío y cancelación de lotes y la generación y comprobación del nuevo paquete de entrega. Esta evidencia no cubre todas las versiones de Android, routers o entornos de instalación, ni acredita aceptación oficial de F-Droid.
 
 Los criterios de publicación, auditoría e identidad se conservan en [Preparación de publicación](PUBLICATION_READINESS.md) e [Identidad Android](ANDROID_IDENTITY.md). No se ha publicado una release pública ni enviado una solicitud a F-Droid desde esta preparación.

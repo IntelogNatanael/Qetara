@@ -1,11 +1,11 @@
 package com.example.wifidrop
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
@@ -19,24 +19,20 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -49,40 +45,18 @@ import androidx.compose.ui.unit.sp
 
 @Composable
 internal fun QetaraBackdrop(modifier: Modifier = Modifier) {
-    Box(modifier = modifier) {
-        Box(
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(top = 28.dp, end = 4.dp)
-                .size(220.dp)
-                .background(
-                    brush = Brush.radialGradient(
-                        colors = listOf(
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.24f),
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
-                            Color.Transparent
-                        )
-                    ),
-                    shape = CircleShape
-                )
-        )
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .padding(start = 8.dp, bottom = 92.dp)
-                .size(240.dp)
-                .background(
-                    brush = Brush.radialGradient(
-                        colors = listOf(
-                            MaterialTheme.colorScheme.secondary.copy(alpha = 0.18f),
-                            MaterialTheme.colorScheme.tertiary.copy(alpha = 0.08f),
-                            Color.Transparent
-                        )
-                    ),
-                    shape = CircleShape
-                )
-        )
-    }
+    Box(modifier.background(MaterialTheme.colorScheme.background))
+}
+
+/** Keeps the launcher geometry and safe area, matching the wordmark's color in either theme. */
+@Composable
+internal fun QetaraBrandIcon(modifier: Modifier = Modifier) {
+    Image(
+        painter = painterResource(R.drawable.ic_launcher_foreground),
+        contentDescription = null,
+        modifier = modifier.size(40.dp),
+        colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.onBackground)
+    )
 }
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -96,7 +70,8 @@ internal fun DirectFlowPanel(
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(18.dp),
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.72f)
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        contentColor = MaterialTheme.colorScheme.onSurface
     ) {
         Column(
             modifier = Modifier
@@ -121,12 +96,12 @@ internal fun DirectFlowPanel(
                 steps.forEach { step ->
                     val containerColor = when {
                         step.done -> MaterialTheme.colorScheme.primaryContainer
-                        step.active -> MaterialTheme.colorScheme.tertiaryContainer
-                        else -> MaterialTheme.colorScheme.surfaceVariant
+                        step.active -> MaterialTheme.colorScheme.primaryContainer
+                        else -> MaterialTheme.colorScheme.surfaceContainerHigh
                     }
                     val contentColor = when {
                         step.done -> MaterialTheme.colorScheme.onPrimaryContainer
-                        step.active -> MaterialTheme.colorScheme.onTertiaryContainer
+                        step.active -> MaterialTheme.colorScheme.onPrimaryContainer
                         else -> MaterialTheme.colorScheme.onSurfaceVariant
                     }
                     StatusChip(
@@ -154,7 +129,7 @@ internal fun DeveloperFooter(
         TextButton(
             onClick = onOpenGithub,
             colors = ButtonDefaults.textButtonColors(
-                contentColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.76f)
+                contentColor = MaterialTheme.colorScheme.onSurfaceVariant
             )
         ) {
             Row(
@@ -166,7 +141,7 @@ internal fun DeveloperFooter(
                     painter = painterResource(id = R.drawable.ic_github_invertocat_white),
                     contentDescription = null,
                     modifier = Modifier.size(14.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.76f)
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
                     "Creado por Intelog Natanael",
@@ -192,9 +167,10 @@ internal fun QetaraBottomNavigation(
 ) {
     Surface(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
+        shape = RoundedCornerShape(20.dp),
         color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 2.dp
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        tonalElevation = 0.dp
     ) {
         BoxWithConstraints(Modifier.fillMaxWidth()) {
             val density = LocalDensity.current
@@ -205,20 +181,18 @@ internal fun QetaraBottomNavigation(
             } ?: 0
             val availableItemWidthPx = with(density) { maxWidth.toPx() } / tabs.size.coerceAtLeast(1)
             val compactLabels = widestLabelPx + with(density) { 8.dp.toPx() } > availableItemWidthPx
-            NavigationBar(
+            Column {
+            Row(
                 modifier = Modifier.fillMaxWidth().selectableGroup().semantics { stateDescription = statusLabel },
-                containerColor = Color.Transparent,
-                tonalElevation = 0.dp,
-                // The outer Scaffold owns system bars.
-                windowInsets = WindowInsets(0, 0, 0, 0)
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 tabs.forEachIndexed { index, tab ->
                     val selected = selectedTabIndex == index
                     val label = tabLabel(tab)
                     Column(
                         modifier = Modifier
-                            .weight(if (compactLabels && selected) 2f else 1f)
-                            .heightIn(min = 80.dp)
+                            .weight(1f)
+                            .heightIn(min = if (compactLabels) 56.dp else 80.dp)
                             .selectable(selected = selected, role = Role.Tab, onClick = { onTabSelected(index, tab) })
                             .semantics(mergeDescendants = true) { contentDescription = label }
                             .padding(horizontal = 2.dp, vertical = 8.dp),
@@ -236,7 +210,7 @@ internal fun QetaraBottomNavigation(
                                 modifier = Modifier.padding(horizontal = if (compactLabels) 8.dp else 16.dp, vertical = 4.dp).size(24.dp)
                             )
                         }
-                        if (!compactLabels || selected) {
+                        if (!compactLabels) {
                             Text(
                                 label,
                                 modifier = Modifier.clearAndSetSemantics { },
@@ -248,6 +222,17 @@ internal fun QetaraBottomNavigation(
                         }
                     }
                 }
+            }
+            if (compactLabels) {
+                // Keep a full label at large text sizes without taking width away from the tabs.
+                Text(
+                    tabLabel(tabs[selectedTabIndex.coerceIn(tabs.indices)]),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp).clearAndSetSemantics { },
+                    style = MaterialTheme.typography.labelMedium,
+                    textAlign = TextAlign.Center,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
             }
         }
     }

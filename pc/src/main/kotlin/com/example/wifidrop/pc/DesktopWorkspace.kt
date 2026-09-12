@@ -2,6 +2,7 @@ package com.example.wifidrop.pc
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.VerticalScrollbar
 import androidx.compose.foundation.rememberScrollbarAdapter
@@ -15,6 +16,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
@@ -23,6 +26,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import java.io.File
 
 internal data class DesktopWorkspaceState(
@@ -95,8 +99,12 @@ internal data class DesktopWorkspaceActions(
     val onOpenFlash: () -> Unit = {}
 )
 
-private enum class WorkspaceTab(val label: String) {
-    SHARE("Compartir"), RECEIVE("Recibir"), CHAT("Mensajes"), ACTIVITY("Actividad"), SETTINGS("Ajustes")
+private enum class WorkspaceTab(val label: String, val title: String, val subtitle: String, val glyph: WorkspaceGlyph) {
+    SHARE("Compartir", "Compartir archivos", "Elige archivos y un equipo de tu red.", WorkspaceGlyph.SHARE),
+    RECEIVE("Recibir", "Recibir archivos", "Activa la recepción y comparte tu sesión.", WorkspaceGlyph.RECEIVE),
+    CHAT("Mensajes", "Mensajes", "Conversa con los equipos de tu sesión.", WorkspaceGlyph.CHAT),
+    ACTIVITY("Actividad", "Actividad", "El registro de esta sesión se borra al cerrar Qetara.", WorkspaceGlyph.ACTIVITY),
+    SETTINGS("Ajustes", "Ajustes", "Preferencias de este equipo y conexión local.", WorkspaceGlyph.SETTINGS)
 }
 
 @Composable
@@ -117,181 +125,205 @@ internal fun DesktopWorkspace(
         pageScroll.scrollTo(0)
     }
     Surface(color = qetaraCanvas, modifier = Modifier.fillMaxSize()) {
-        Column(Modifier.fillMaxSize().padding(horizontal = 24.dp, vertical = 16.dp)) {
-            Row(Modifier.fillMaxWidth().padding(bottom = 14.dp), verticalAlignment = Alignment.CenterVertically) {
-                QetaraLogoMark(Modifier.size(46.dp), qetaraInk)
-                Column(Modifier.weight(1f).padding(start = 12.dp)) {
-                    Text("Qetara", style = MaterialTheme.typography.h5, fontWeight = FontWeight.Bold)
-                    Text("Cerca de ti. Bajo tu control.", style = MaterialTheme.typography.caption, color = qetaraTeal)
-                }
-                OutlinedButton(actions.onOpenFlash, enabled = !flashVisible, modifier = Modifier.padding(end = 12.dp)) {
-                    Text((if (state.flashActive) "Flash activo" else "Flash") + if (state.flashApprovals > 0) " (${state.flashApprovals})" else "")
-                }
-                Column(horizontalAlignment = Alignment.End) {
-                    StatusBadge(
-                        if (state.flashActive) {
-                            if (state.receiverPhase == DesktopTaskPhase.RUNNING) "Recepción habitual activa" else "Recepción habitual desactivada"
-                        } else if (state.receiverPhase == DesktopTaskPhase.RUNNING) "Disponible para recibir" else "Recepción desactivada",
-                        state.receiverPhase == DesktopTaskPhase.RUNNING
-                    )
-                    Text(
-                        state.deviceName.ifBlank { "Este equipo" },
-                        style = MaterialTheme.typography.caption,
-                        modifier = Modifier.padding(top = 5.dp),
-                        color = qetaraInk.copy(alpha = .7f)
-                    )
+        BoxWithConstraints(Modifier.fillMaxSize()) {
+            val expandedNavigation = maxWidth >= 1040.dp
+            Row(Modifier.fillMaxSize()) {
+                WorkspaceNavigation(expandedNavigation, selectedTab, state, flashVisible, { selectedTab = it }, actions.onOpenFlash)
+                Box(Modifier.fillMaxHeight().width(1.dp).background(qetaraLine))
+                Column(Modifier.weight(1f).fillMaxHeight().padding(24.dp), verticalArrangement = Arrangement.spacedBy(24.dp)) {
+                    if (flashVisible) {
+                        // Flash keeps its existing exit action; normal navigation cannot close it.
+                        Box(Modifier.weight(1f).fillMaxWidth()) { flashContent() }
+                        StatusBadge(
+                            if (state.receiverPhase == DesktopTaskPhase.RUNNING) "Recepción habitual activa" else "Recepción habitual desactivada",
+                            state.receiverPhase == DesktopTaskPhase.RUNNING
+                        )
+                    } else {
+                        WorkspaceHeader(selectedTab, state)
+                        state.notice?.let { WorkspaceNotice(it, actions.onDismissNotice) }
+                        BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
+                            val wide = maxWidth >= 760.dp
+                            val scrolling = Modifier.fillMaxSize().verticalScroll(pageScroll).padding(end = 12.dp)
+                            when (selectedTab) {
+                                WorkspaceTab.SHARE -> Column(scrolling, verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                                    if (wide) {
+                                        Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
+                                            Column(Modifier.weight(1.5f), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                                                SendCard(state, actions)
+                                                RecentTransfers(state.transfers.takeLast(3).reversed(), actions)
+                                            }
+                                            Column(Modifier.weight(1f)) { SessionCard(state, actions) }
+                                        }
+                                    } else {
+                                        if (!state.credentialsReady) SessionCard(state, actions)
+                                        SendCard(state, actions)
+                                        if (state.credentialsReady) SessionCard(state, actions)
+                                        RecentTransfers(state.transfers.takeLast(3).reversed(), actions)
+                                    }
+                                    Spacer(Modifier.height(8.dp))
+                                }
+                                WorkspaceTab.RECEIVE -> Column(scrolling, verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                                    if (wide) {
+                                        Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
+                                            Column(Modifier.weight(1.5f), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                                                ReceiveCard(state, actions)
+                                                RecentTransfers(state.transfers.filter { it.incoming }.takeLast(12).reversed(), actions)
+                                            }
+                                            Column(Modifier.weight(1f)) { SessionCard(state, actions) }
+                                        }
+                                    } else {
+                                        ReceiveCard(state, actions)
+                                        SessionCard(state, actions)
+                                        RecentTransfers(state.transfers.filter { it.incoming }.takeLast(12).reversed(), actions)
+                                    }
+                                    Spacer(Modifier.height(8.dp))
+                                }
+                                WorkspaceTab.CHAT -> Column(scrolling, verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                                    var connectionExpanded by remember { mutableStateOf(false) }
+                                    val needsConnection = !state.credentialsReady || state.receiverPhase != DesktopTaskPhase.RUNNING
+                                    if (wide && needsConnection) {
+                                        Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
+                                            ChatSurface(Modifier.weight(1.5f), chatContent)
+                                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                                                ChatConnectionCards(state, actions)
+                                            }
+                                        }
+                                    } else {
+                                        if (needsConnection) {
+                                            Surface(color = qetaraCanvasElevated, shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, qetaraLine), modifier = Modifier.fillMaxWidth()) {
+                                                Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                                    Text("Conexión", Modifier.weight(1f), style = MaterialTheme.typography.subtitle2, color = qetaraInk)
+                                                    OutlinedButton({ connectionExpanded = !connectionExpanded }, modifier = Modifier.heightIn(min = 44.dp), shape = RoundedCornerShape(8.dp)) {
+                                                        Text(if (connectionExpanded) "Ocultar datos" else "Mostrar datos")
+                                                    }
+                                                }
+                                            }
+                                            if (connectionExpanded) ChatConnectionCards(state, actions)
+                                        }
+                                        ChatSurface(content = chatContent)
+                                    }
+                                }
+                                WorkspaceTab.ACTIVITY -> activityContent(Modifier.fillMaxSize())
+                                WorkspaceTab.SETTINGS -> Column(scrolling, verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                                    SettingsCards(state, actions, wide) { showLicenses = true }
+                                    Spacer(Modifier.height(8.dp))
+                                }
+                            }
+                            if (selectedTab != WorkspaceTab.ACTIVITY && pageScroll.maxValue > 0) {
+                                VerticalScrollbar(rememberScrollbarAdapter(pageScroll), Modifier.align(Alignment.CenterEnd).fillMaxHeight())
+                            }
+                        }
+                    }
                 }
             }
-            if (flashVisible) {
-                Box(Modifier.weight(1f).fillMaxWidth()) { flashContent() }
-                return@Column
+        }
+    }
+}
+
+@Composable
+private fun WorkspaceNavigation(expanded: Boolean, selectedTab: WorkspaceTab, state: DesktopWorkspaceState, flashVisible: Boolean, onSelectTab: (WorkspaceTab) -> Unit, onOpenFlash: () -> Unit) {
+    Surface(color = qetaraCanvasElevated, modifier = Modifier.width(if (expanded) 176.dp else 76.dp).fillMaxHeight()) {
+        Column(Modifier.padding(horizontal = if (expanded) 16.dp else 8.dp, vertical = 24.dp)) {
+            if (expanded) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    QetaraLogoMark(Modifier.size(48.dp), qetaraInk)
+                    Text("Qetara", fontSize = 20.sp, fontWeight = FontWeight.SemiBold, color = qetaraInk)
+                }
+            } else {
+                Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+                    QetaraLogoMark(Modifier.size(48.dp), qetaraInk)
+                    Text("Qetara", style = MaterialTheme.typography.caption, fontWeight = FontWeight.SemiBold, color = qetaraInk)
+                }
             }
-            ScrollableTabRow(
-                selectedTabIndex = selectedTab.ordinal,
-                backgroundColor = qetaraCanvas,
-                contentColor = qetaraInk,
-                edgePadding = 0.dp,
-                divider = { Divider(color = qetaraLine) }
-            ) {
+            Spacer(Modifier.height(24.dp))
+            Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 WorkspaceTab.entries.forEach { tab ->
-                    Tab(
-                        selected = selectedTab == tab,
-                        onClick = { selectedTab = tab },
-                        text = { Text(tab.label + if (tab == WorkspaceTab.CHAT && state.unreadMessages > 0) " (" + state.unreadMessages + ")" else "", fontWeight = if (selectedTab == tab) FontWeight.Bold else FontWeight.Normal) }
-                    )
+                    WorkspaceNavigationItem(tab.label, tab.glyph, !flashVisible && selectedTab == tab, expanded, !flashVisible, if (tab == WorkspaceTab.CHAT) state.unreadMessages else 0) { onSelectTab(tab) }
                 }
+                Divider(Modifier.padding(vertical = 8.dp), color = qetaraLine)
+                WorkspaceNavigationItem("Flash", WorkspaceGlyph.FLASH, flashVisible, expanded, !flashVisible, state.flashApprovals, state.flashActive, onOpenFlash)
             }
-            state.notice?.let { notice ->
-                Surface(
-                    color = qetaraMist,
-                    shape = RoundedCornerShape(10.dp),
-                    modifier = Modifier.fillMaxWidth().padding(top = 10.dp).semantics { liveRegion = LiveRegionMode.Polite }
-                ) {
-                    Row(Modifier.padding(start = 14.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Text(notice, Modifier.weight(1f), style = MaterialTheme.typography.body2)
-                        TextButton(actions.onDismissNotice) { Text("Cerrar") }
-                    }
-                }
+            Spacer(Modifier.height(16.dp))
+            Divider(color = qetaraLine)
+            Row(Modifier.fillMaxWidth().padding(top = 16.dp), horizontalArrangement = if (expanded) Arrangement.Start else Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(6.dp).background(qetaraTeal, RoundedCornerShape(50)))
+                Text(if (expanded) "En tu red local" else "Local", Modifier.padding(start = 8.dp), style = MaterialTheme.typography.caption, color = qetaraMuted)
             }
-            BoxWithConstraints(Modifier.weight(1f).fillMaxWidth().padding(top = 20.dp)) {
-                val wide = maxWidth >= 930.dp
-                when (selectedTab) {
-                    WorkspaceTab.SHARE -> Column(
-                        Modifier.fillMaxSize().verticalScroll(pageScroll).padding(end = 12.dp),
-                        verticalArrangement = Arrangement.spacedBy(18.dp)
-                    ) {
-                        PageHeading("Tus archivos, de un equipo al otro.", "Comparte con Android o PC en tu red local. Sin subir tus archivos a una nube.")
-                        if (wide) {
-                            Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
-                                Column(Modifier.weight(1.45f), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                                    SendCard(state, actions)
-                                    RecentTransfers(state.transfers.takeLast(3).reversed(), actions)
-                                }
-                                Column(Modifier.weight(1f)) { SessionCard(state, actions) }
-                            }
-                        } else {
-                            if (!state.credentialsReady) SessionCard(state, actions)
-                            SendCard(state, actions)
-                            if (state.credentialsReady) SessionCard(state, actions)
-                            RecentTransfers(state.transfers.takeLast(3).reversed(), actions)
-                        }
-                        Spacer(Modifier.height(8.dp))
-                    }
-                    WorkspaceTab.RECEIVE -> Column(
-                        Modifier.fillMaxSize().verticalScroll(pageScroll).padding(end = 12.dp),
-                        verticalArrangement = Arrangement.spacedBy(18.dp)
-                    ) {
-                        PageHeading("Un lugar para lo que te envían.", "Activa la recepción y usa la misma sesión en el otro equipo.")
-                        if (wide) {
-                            Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
-                                Column(Modifier.weight(1.45f), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                                    ReceiveCard(state, actions)
-                                    RecentTransfers(state.transfers.filter { it.incoming }.takeLast(12).reversed(), actions)
-                                }
-                                Column(Modifier.weight(1f)) { SessionCard(state, actions) }
-                            }
-                        } else {
-                            ReceiveCard(state, actions)
-                            SessionCard(state, actions)
-                            RecentTransfers(state.transfers.filter { it.incoming }.takeLast(12).reversed(), actions)
-                        }
-                        Spacer(Modifier.height(8.dp))
-                    }
-                    WorkspaceTab.CHAT -> Column(
-                        Modifier.fillMaxSize().verticalScroll(pageScroll).padding(end = 12.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        PageHeading("La conversación también se queda cerca.", "Envía texto y archivos a equipos que usan tu mismo código y PIN.")
-                        if (state.receiverPhase != DesktopTaskPhase.RUNNING) {
-                            WorkspaceCard("Activa la recepción para poder responderte") {
-                                Text("Puedes enviar con una sesión válida. Para recibir respuestas en este equipo, activa Recibir.", style = MaterialTheme.typography.body2)
-                                Button(actions.onStartReceiver, enabled = state.receiverIssues.isEmpty() && !state.receiverBusy) {
-                                    Text("Activar recepción")
-                                }
-                            }
-                        }
-                        if (!state.credentialsReady) SessionCard(state, actions)
-                        chatContent()
-                    }
-                    WorkspaceTab.ACTIVITY -> Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                        PageHeading("Lo que está pasando.", "La actividad de esta sesión permanece en este equipo y se borra al cerrar Qetara.")
-                        activityContent(Modifier.weight(1f).fillMaxWidth())
-                    }
-                    WorkspaceTab.SETTINGS -> Column(
-                        Modifier.fillMaxSize().verticalScroll(pageScroll).padding(end = 12.dp),
-                        verticalArrangement = Arrangement.spacedBy(18.dp)
-                    ) {
-                        PageHeading("A tu manera.", "Qetara recuerda tus preferencias. El código, PIN y mensajes no se guardan en las preferencias.")
-                        WorkspaceCard("Este equipo") {
-                            OutlinedTextField(state.deviceName, actions.onDeviceNameChange, label = { Text("Nombre visible") }, singleLine = true, enabled = !state.settingsLocked, modifier = Modifier.fillMaxWidth())
-                            Text("Usa un nombre que reconozcas en el otro equipo.", style = MaterialTheme.typography.caption)
-                            Text("Huella de este equipo", style = MaterialTheme.typography.subtitle2)
-                            SelectionContainer { Text(state.identityFingerprint, fontFamily = FontFamily.Monospace) }
-                            Text("Compara esta huella con la solicitud que aparece en Android antes de aprobar la conexión.", style = MaterialTheme.typography.body2)
-                            TextButton(actions.onCopyFingerprint) { Text("Copiar huella") }
-                            if (state.settingsLocked) Text("Detén la recepción y termina el envío para cambiar los ajustes.", color = qetaraTeal, style = MaterialTheme.typography.body2)
-                        }
-                        WorkspaceCard("Conexión") {
-                            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                OutlinedTextField(state.port, actions.onPortChange, label = { Text("Puerto") }, singleLine = true, enabled = !state.settingsLocked, modifier = Modifier.weight(1f))
-                                OutlinedTextField(state.retries, actions.onRetriesChange, label = { Text("Reintentos (1–10)") }, singleLine = true, enabled = !state.settingsLocked, modifier = Modifier.weight(1f))
-                                OutlinedTextField(state.sessionMinutes, actions.onSessionMinutesChange, label = { Text("Sesión (minutos)") }, singleLine = true, enabled = !state.settingsLocked, modifier = Modifier.weight(1f))
-                            }
-                            Text("El puerto debe coincidir en ambos equipos. La recepción caduca entre 1 y 1440 minutos, según el valor elegido.", style = MaterialTheme.typography.body2, color = qetaraInk.copy(alpha = .75f))
-                            Button(actions.onSaveSettings, enabled = !state.settingsLocked) { Text("Guardar preferencias") }
-                        }
-                        WorkspaceCard("Tu red local") {
-                            if (state.localEndpoints.isEmpty()) {
-                                Text("No hay una dirección local disponible. Conéctate a Wi-Fi o Ethernet y pulsa Actualizar red.")
-                            }
-                            state.localEndpoints.forEach { endpoint ->
-                                SelectionContainer { Text(endpoint.label + " · " + endpoint.address, fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.body2) }
-                            }
-                            TextButton(actions.onRefreshPeers, enabled = state.discoveryPhase != DesktopTaskPhase.RUNNING) { Text("Actualizar red") }
-                            Text("Si no aparece otro equipo, verifica que Qetara esté abierto, la recepción activa y ambos estén en la misma red. Una red de invitados puede impedir que se vean.", style = MaterialTheme.typography.body2)
-                        }
-                        WorkspaceCard("Hecho para compartir") {
-                            Text("Qetara es software de código abierto. Puedes estudiar cómo funciona, adaptarlo y colaborar.", style = MaterialTheme.typography.body2)
-                            Text("Los archivos y mensajes viajan directamente entre los equipos. La transferencia verifica la integridad del archivo antes de confirmar su recepción.", style = MaterialTheme.typography.body2)
-                            OutlinedButton(onClick = { showLicenses = true }) { Text("Licencias de código abierto") }
-                            TextButton(actions.onOpenSource) { Text("Conocer al desarrollador en GitHub") }
-                        }
-                        Spacer(Modifier.height(8.dp))
-                    }
-                }
-                if (selectedTab != WorkspaceTab.ACTIVITY && pageScroll.maxValue > 0) {
-                    VerticalScrollbar(
-                        adapter = rememberScrollbarAdapter(pageScroll),
-                        modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight()
-                    )
-                }
+        }
+    }
+}
+
+@Composable
+private fun WorkspaceNavigationItem(label: String, glyph: WorkspaceGlyph, selected: Boolean, expanded: Boolean, enabled: Boolean, count: Int = 0, active: Boolean = false, onClick: () -> Unit) {
+    val foreground = if (selected) qetaraTeal else if (!enabled) qetaraMuted.copy(alpha = .6f) else qetaraMuted
+    Surface(color = if (selected) qetaraMist else Color.Transparent, shape = RoundedCornerShape(8.dp), modifier = Modifier.fillMaxWidth().heightIn(min = if (expanded) 48.dp else 56.dp).selectable(selected, enabled = enabled, role = Role.Tab, onClick = onClick)) {
+        if (expanded) {
+            Row(Modifier.padding(horizontal = 8.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                WorkspaceIcon(glyph, color = foreground)
+                Text(label, Modifier.weight(1f), fontSize = 14.sp, fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium, color = foreground, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                if (count > 0) NavigationCount(count)
+                else if (active) Box(Modifier.size(6.dp).background(qetaraTeal, RoundedCornerShape(50)))
             }
-            Text(
-                "RED LOCAL  ·  CÓDIGO ABIERTO  ·  EXPERIENCE LAB",
-                modifier = Modifier.padding(top = 12.dp),
-                style = MaterialTheme.typography.overline,
-                color = qetaraInk.copy(alpha = .62f)
-            )
+        } else {
+            Column(Modifier.padding(vertical = 6.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Box {
+                    WorkspaceIcon(glyph, color = foreground)
+                    if (count > 0) Box(Modifier.align(Alignment.TopEnd).offset(x = 12.dp, y = (-5).dp)) { NavigationCount(count) }
+                    else if (active) Box(Modifier.align(Alignment.TopEnd).offset(x = 5.dp).size(6.dp).background(qetaraTeal, RoundedCornerShape(50)))
+                }
+                Text(label, fontSize = 10.sp, lineHeight = 12.sp, fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium, color = foreground, maxLines = 1)
+            }
+        }
+    }
+}
+
+@Composable
+private fun NavigationCount(count: Int) {
+    Surface(color = qetaraTeal, shape = RoundedCornerShape(50)) {
+        Text(if (count > 99) "99+" else count.toString(), Modifier.padding(horizontal = 5.dp, vertical = 2.dp), fontSize = 10.sp, lineHeight = 12.sp, color = Color.White, fontWeight = FontWeight.SemiBold)
+    }
+}
+
+@Composable
+private fun WorkspaceHeader(tab: WorkspaceTab, state: DesktopWorkspaceState) {
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        if (maxWidth >= 640.dp) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(24.dp)) {
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) { PageHeading(tab.title, tab.subtitle) }
+                WorkspaceDeviceStatus(state, Modifier.widthIn(max = 224.dp))
+            }
+        } else {
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                PageHeading(tab.title, tab.subtitle)
+                WorkspaceDeviceStatus(state, Modifier.widthIn(max = 280.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun WorkspaceDeviceStatus(state: DesktopWorkspaceState, modifier: Modifier = Modifier) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            WorkspaceIcon(WorkspaceGlyph.DEVICES, Modifier.size(18.dp), qetaraMuted)
+            Text(state.deviceName.ifBlank { "Este equipo" }, style = MaterialTheme.typography.body2, color = qetaraInk, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+        StatusBadge(
+            if (state.flashActive) {
+                if (state.receiverPhase == DesktopTaskPhase.RUNNING) "Recepción habitual activa" else "Recepción habitual desactivada"
+            } else if (state.receiverPhase == DesktopTaskPhase.RUNNING) "Disponible para recibir" else "Recepción desactivada",
+            state.receiverPhase == DesktopTaskPhase.RUNNING
+        )
+    }
+}
+
+@Composable
+private fun WorkspaceNotice(notice: String, onDismiss: () -> Unit) {
+    Surface(color = qetaraMist, shape = RoundedCornerShape(12.dp), border = BorderStroke(1.dp, qetaraLine), modifier = Modifier.fillMaxWidth().semantics { liveRegion = LiveRegionMode.Polite }) {
+        Row(Modifier.padding(start = 16.dp, end = 4.dp, top = 4.dp, bottom = 4.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            WorkspaceIcon(WorkspaceGlyph.INFO, color = qetaraTeal)
+            Text(notice, Modifier.weight(1f), style = MaterialTheme.typography.body2, color = qetaraInk)
+            IconButton(onDismiss, modifier = Modifier.size(44.dp).semantics { contentDescription = "Cerrar aviso" }) { WorkspaceIcon(WorkspaceGlyph.CLOSE, Modifier.size(20.dp), qetaraMuted) }
         }
     }
 }
@@ -299,16 +331,16 @@ internal fun DesktopWorkspace(
 @Composable
 private fun PageHeading(title: String, description: String) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text(title, style = MaterialTheme.typography.h5, fontWeight = FontWeight.SemiBold)
-        Text(description, style = MaterialTheme.typography.body2, color = qetaraInk.copy(alpha = .75f))
+        Text(title, fontSize = 28.sp, lineHeight = 34.sp, fontWeight = FontWeight.SemiBold, color = qetaraInk)
+        Text(description, style = MaterialTheme.typography.body2, color = qetaraMuted)
     }
 }
 
 @Composable
 private fun WorkspaceCard(title: String, modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
     Surface(modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), color = qetaraCanvasElevated, border = BorderStroke(1.dp, qetaraLine)) {
-        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text(title, style = MaterialTheme.typography.subtitle1, fontWeight = FontWeight.Bold)
+        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            Text(title, style = MaterialTheme.typography.subtitle1, fontWeight = FontWeight.SemiBold, color = qetaraInk)
             content()
         }
     }
@@ -317,8 +349,8 @@ private fun WorkspaceCard(title: String, modifier: Modifier = Modifier, content:
 @Composable
 private fun SessionCard(state: DesktopWorkspaceState, actions: DesktopWorkspaceActions) {
     var showPin by remember { mutableStateOf(false) }
-    WorkspaceCard("Conecta los dos equipos") {
-        Text("Crea una sesión aquí o escribe el código y PIN que muestra el equipo receptor.", style = MaterialTheme.typography.body2, color = qetaraInk.copy(alpha = .75f))
+    WorkspaceCard("Sesión compartida") {
+        Text("Usa el mismo código y PIN en los dos equipos.", style = MaterialTheme.typography.body2, color = qetaraMuted)
         OutlinedTextField(
             state.token, actions.onTokenChange,
             label = { Text("Código de sesión") },
@@ -335,67 +367,87 @@ private fun SessionCard(state: DesktopWorkspaceState, actions: DesktopWorkspaceA
             enabled = !state.settingsLocked,
             isError = state.pin.isNotBlank() && !com.example.wifidrop.protocol.isValidPin(state.pin),
             visualTransformation = if (showPin) VisualTransformation.None else PasswordVisualTransformation(),
-            trailingIcon = { TextButton({ showPin = !showPin }) { Text(if (showPin) "Ocultar" else "Ver") } },
+            trailingIcon = { TextButton({ showPin = !showPin }, modifier = Modifier.heightIn(min = 44.dp)) { Text(if (showPin) "Ocultar" else "Ver") } },
             modifier = Modifier.fillMaxWidth()
         )
         if (!state.settingsLocked) {
-            OutlinedButton(actions.onCreateSession, modifier = Modifier.fillMaxWidth()) {
-                Text(if (state.credentialsReady) "Crear otra sesión" else "Crear una sesión")
+            OutlinedButton(actions.onCreateSession, modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp), shape = RoundedCornerShape(8.dp)) {
+                Text(if (state.credentialsReady) "Crear otra sesión" else "Crear sesión")
             }
         }
         if (state.credentialsReady) {
             Text(
                 if (state.receiverPhase == DesktopTaskPhase.RUNNING) "Recepción activa · " + state.sessionRemaining
-                else "Código y PIN listos. Activa Recibir si este equipo será el receptor.",
+                else "Sesión lista. Activa la recepción para recibir aquí.",
                 style = MaterialTheme.typography.body2,
                 color = qetaraTeal
             )
             if (!state.receiverBusy) {
-                Button(actions.onStartReceiver, enabled = state.receiverIssues.isEmpty(), modifier = Modifier.fillMaxWidth()) { Text("Activar recepción aquí") }
+                Button(actions.onStartReceiver, enabled = state.receiverIssues.isEmpty(), modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp), shape = RoundedCornerShape(8.dp)) { Text("Activar recepción aquí") }
             }
-            TextButton(actions.onCopySession, modifier = Modifier.fillMaxWidth()) { Text("Copiar datos para conectar") }
-        } else {
-            Text("Usa exactamente el mismo código y PIN en ambos equipos.", style = MaterialTheme.typography.caption, color = qetaraInk.copy(alpha = .75f))
+            TextButton(actions.onCopySession, modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp)) {
+                WorkspaceIcon(WorkspaceGlyph.COPY, Modifier.size(18.dp), qetaraTeal)
+                Spacer(Modifier.width(8.dp))
+                Text("Copiar sesión")
+            }
         }
         if (state.settingsLocked) {
-            Text("La sesión queda fija mientras la recepción o un envío están activos.", style = MaterialTheme.typography.caption, color = qetaraInk.copy(alpha = .75f))
+            Text("La sesión queda fija mientras hay recepción o envíos activos.", style = MaterialTheme.typography.caption, color = qetaraMuted)
         }
         Divider(color = qetaraLine)
-        Text("Comparte estos datos solo con la persona que recibirá tus archivos.", style = MaterialTheme.typography.caption, color = qetaraInk.copy(alpha = .75f))
+        Text("Comparte estos datos solo con la persona destinataria.", style = MaterialTheme.typography.caption, color = qetaraMuted)
     }
 }
 
 @Composable
 private fun SendCard(state: DesktopWorkspaceState, actions: DesktopWorkspaceActions) {
-    WorkspaceCard("1. Elige qué compartir") {
+    WorkspaceCard("Archivos para compartir") {
         DesktopFileDropZone(state.filePath, state.isFileDragActive, actions.onChooseFile, enabled = !state.sendingBusy)
         if (state.filePaths.isNotEmpty()) {
-            state.filePaths.take(3).forEach { path ->
-                val selectedFile = File(path)
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Text(selectedFile.name, Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(formatBytes(selectedFile.length()), style = MaterialTheme.typography.body2, color = qetaraTeal)
+            Surface(color = qetaraCanvas, shape = RoundedCornerShape(12.dp), border = BorderStroke(1.dp, qetaraLine)) {
+                Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
+                    state.filePaths.take(3).forEachIndexed { index, path ->
+                        if (index > 0) Divider(color = qetaraLine)
+                        val selectedFile = File(path)
+                        Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            WorkspaceIcon(WorkspaceGlyph.FILE, color = qetaraTeal)
+                            Text(selectedFile.name, Modifier.weight(1f), style = MaterialTheme.typography.body2, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(formatBytes(selectedFile.length()), style = MaterialTheme.typography.caption, color = qetaraMuted)
+                        }
+                    }
+                    if (state.selectedFilesCount > 3) Text("+${state.selectedFilesCount - 3} más", Modifier.padding(bottom = 12.dp), style = MaterialTheme.typography.caption, color = qetaraMuted)
                 }
             }
-            if (state.selectedFilesCount > 3) Text("Y ${state.selectedFilesCount - 3} archivo(s) más.", style = MaterialTheme.typography.body2)
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text("${state.selectedFilesCount} archivo(s) listos", Modifier.weight(1f), style = MaterialTheme.typography.caption, color = qetaraTeal)
-                TextButton(actions.onClearFiles, enabled = !state.sendingBusy) { Text("Quitar todos") }
+                Text(if (state.selectedFilesCount == 1) "1 archivo seleccionado" else "${state.selectedFilesCount} archivos seleccionados", Modifier.weight(1f), style = MaterialTheme.typography.caption, color = qetaraMuted)
+                TextButton(actions.onClearFiles, enabled = !state.sendingBusy, modifier = Modifier.heightIn(min = 44.dp)) { Text("Quitar todos") }
             }
         }
         Divider(color = qetaraLine)
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text("2. Elige el equipo receptor", Modifier.weight(1f), fontWeight = FontWeight.Bold)
-            TextButton(actions.onRefreshPeers, enabled = state.discoveryPhase !in listOf(DesktopTaskPhase.STARTING, DesktopTaskPhase.RUNNING)) {
-                Text(if (state.discoveryPhase == DesktopTaskPhase.RUNNING) "Buscando…" else "Buscar equipos")
+        BoxWithConstraints(Modifier.fillMaxWidth()) {
+            if (maxWidth >= 340.dp) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text("Equipo receptor", Modifier.weight(1f), style = MaterialTheme.typography.subtitle2, color = qetaraInk)
+                    SearchPeersButton(state, actions)
+                }
+            } else {
+                Column {
+                    Text("Equipo receptor", style = MaterialTheme.typography.subtitle2, color = qetaraInk)
+                    SearchPeersButton(state, actions)
+                }
             }
         }
         if (state.discoveryPhase in listOf(DesktopTaskPhase.STARTING, DesktopTaskPhase.RUNNING)) {
             LinearProgressIndicator(Modifier.fillMaxWidth(), color = qetaraTeal)
         }
         if (state.peers.isEmpty()) {
-            Text(state.discoveryStatus, style = MaterialTheme.typography.body2, color = qetaraInk.copy(alpha = .75f))
-            Text("Abre Qetara y activa Recibir en el otro equipo. También puedes escribir su IP.", style = MaterialTheme.typography.caption, color = qetaraInk.copy(alpha = .75f))
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Top) {
+                WorkspaceIcon(WorkspaceGlyph.DEVICES, color = qetaraMuted)
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(state.discoveryStatus, style = MaterialTheme.typography.body2, color = qetaraMuted)
+                    Text("Activa Recibir en el otro equipo o escribe su dirección.", style = MaterialTheme.typography.caption, color = qetaraMuted)
+                }
+            }
         } else {
             state.peers.take(8).forEach { peer ->
                 DesktopLanPeerRow(peer, state.host == peer.ip, { actions.onSelectPeer(peer) })
@@ -417,49 +469,51 @@ private fun SendCard(state: DesktopWorkspaceState, actions: DesktopWorkspaceActi
             else state.sendIssues.first(),
             modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
             style = MaterialTheme.typography.body2,
-            color = if (state.sendingPhase == DesktopTaskPhase.ERROR) MaterialTheme.colors.error else qetaraInk.copy(alpha = .8f)
+            color = if (state.sendingPhase == DesktopTaskPhase.ERROR) MaterialTheme.colors.error else qetaraMuted
         )
         if (state.sendingBusy) {
-            OutlinedButton(actions.onCancelSend, enabled = state.sendingPhase != DesktopTaskPhase.STOPPING, modifier = Modifier.fillMaxWidth()) { Text("Cancelar envío") }
+            OutlinedButton(actions.onCancelSend, enabled = state.sendingPhase != DesktopTaskPhase.STOPPING, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp), shape = RoundedCornerShape(8.dp)) { Text("Cancelar envío") }
         } else {
             Button(
                 actions.onSend,
                 enabled = state.sendIssues.isEmpty(),
                 colors = ButtonDefaults.buttonColors(backgroundColor = qetaraTeal, contentColor = Color.White),
+                shape = RoundedCornerShape(8.dp),
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
-            ) { Text(if (state.sendingPhase == DesktopTaskPhase.ERROR) "Volver a intentar" else if (state.selectedFilesCount == 1) "Enviar archivo" else "Enviar ${state.selectedFilesCount} archivos", fontWeight = FontWeight.Bold) }
+            ) { Text(if (state.sendingPhase == DesktopTaskPhase.ERROR) "Volver a intentar" else if (state.selectedFilesCount <= 1) "Enviar archivo" else "Enviar ${state.selectedFilesCount} archivos", fontWeight = FontWeight.SemiBold) }
         }
     }
 }
 
 @Composable
 private fun ReceiveCard(state: DesktopWorkspaceState, actions: DesktopWorkspaceActions) {
-    WorkspaceCard("Recibir en este equipo") {
+    WorkspaceCard("Recepción en este equipo") {
         Text(
-            state.receiverStatus,
+            if (state.receiverPhase == DesktopTaskPhase.IDLE) "Elige una carpeta y activa la recepción." else state.receiverStatus,
             modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
-            style = MaterialTheme.typography.body1,
-            color = if (state.receiverPhase == DesktopTaskPhase.ERROR) MaterialTheme.colors.error else qetaraInk
+            style = MaterialTheme.typography.body2,
+            color = if (state.receiverPhase == DesktopTaskPhase.ERROR) MaterialTheme.colors.error else qetaraMuted
         )
         state.receivingProgress?.let { LinearProgressIndicator(it, Modifier.fillMaxWidth(), color = qetaraTeal) }
         if (state.receiverPhase == DesktopTaskPhase.RUNNING) {
             StatusBadge("Sesión activa · " + state.sessionRemaining, true)
             state.localEndpoints.firstOrNull()?.let {
-                SelectionContainer { Text("Dirección: " + it.address + ":" + state.port, fontFamily = FontFamily.Monospace) }
+                SelectionContainer { Text(it.address + ":" + state.port, fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.body2) }
             }
         }
         OutlinedTextField(state.outputDirectory, actions.onOutputDirectoryChange, label = { Text("Guardar archivos en") }, singleLine = true, enabled = !state.receiverBusy, modifier = Modifier.fillMaxWidth())
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            TextButton(actions.onChooseDirectory, enabled = !state.receiverBusy) { Text("Elegir carpeta") }
-            TextButton(actions.onOpenDirectory) { Text("Abrir carpeta") }
+            TextButton(actions.onChooseDirectory, enabled = !state.receiverBusy, modifier = Modifier.heightIn(min = 44.dp)) { Text("Elegir carpeta") }
+            TextButton(actions.onOpenDirectory, modifier = Modifier.heightIn(min = 44.dp)) { Text("Abrir carpeta") }
         }
         if (!state.receiverBusy && state.receiverIssues.isNotEmpty()) {
-            Text(state.receiverIssues.first(), style = MaterialTheme.typography.body2, color = qetaraInk.copy(alpha = .75f))
+            Text(state.receiverIssues.first(), style = MaterialTheme.typography.body2, color = qetaraMuted)
         }
         Button(
             if (state.receiverBusy) actions.onStopReceiver else actions.onStartReceiver,
             enabled = if (state.receiverBusy) state.receiverPhase == DesktopTaskPhase.RUNNING else state.receiverIssues.isEmpty(),
             colors = ButtonDefaults.buttonColors(backgroundColor = if (state.receiverBusy) qetaraInk else qetaraTeal, contentColor = Color.White),
+            shape = RoundedCornerShape(8.dp),
             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
         ) {
             Text(when (state.receiverPhase) {
@@ -467,32 +521,63 @@ private fun ReceiveCard(state: DesktopWorkspaceState, actions: DesktopWorkspaceA
                 DesktopTaskPhase.STOPPING -> "Deteniendo…"
                 DesktopTaskPhase.RUNNING -> "Detener recepción"
                 else -> "Activar recepción"
-            }, fontWeight = FontWeight.Bold)
+            }, fontWeight = FontWeight.SemiBold)
         }
-        Text("Mientras esté activa, los equipos con tu código y PIN podrán enviarte archivos y mensajes.", style = MaterialTheme.typography.caption, color = qetaraInk.copy(alpha = .75f))
+        Text("Los equipos con tu código y PIN podrán enviarte archivos y mensajes mientras esté activa.", style = MaterialTheme.typography.caption, color = qetaraMuted)
+    }
+}
+
+@Composable
+private fun ChatSurface(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    Surface(color = qetaraCanvasElevated, shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, qetaraLine), modifier = modifier.fillMaxWidth()) {
+        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) { content() }
+    }
+}
+
+@Composable
+private fun ChatConnectionCards(state: DesktopWorkspaceState, actions: DesktopWorkspaceActions) {
+    if (!state.credentialsReady) SessionCard(state, actions)
+    if (state.receiverPhase != DesktopTaskPhase.RUNNING) {
+        WorkspaceCard("Recibir respuestas") {
+            Text("Activa la recepción para que puedan responderte en este equipo.", style = MaterialTheme.typography.body2, color = qetaraMuted)
+            Button(actions.onStartReceiver, enabled = state.receiverIssues.isEmpty() && !state.receiverBusy, modifier = Modifier.heightIn(min = 44.dp), shape = RoundedCornerShape(8.dp)) { Text("Activar recepción") }
+        }
     }
 }
 
 @Composable
 private fun RecentTransfers(entries: List<DesktopTransferEntry>, actions: DesktopWorkspaceActions) {
-    WorkspaceCard(if (entries.isEmpty()) "Todo listo para empezar" else "Archivos recientes") {
+    WorkspaceCard("Archivos recientes") {
         if (entries.isEmpty()) {
-            Text("Aquí aparecerán los archivos de esta sesión. Las copias recibidas se conservan en tu carpeta de destino.", style = MaterialTheme.typography.body2, color = qetaraInk.copy(alpha = .75f))
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                Surface(color = qetaraCanvas, shape = RoundedCornerShape(12.dp)) {
+                    Box(Modifier.size(44.dp), contentAlignment = Alignment.Center) { WorkspaceIcon(WorkspaceGlyph.FOLDER, color = qetaraMuted) }
+                }
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text("Aún no hay transferencias", style = MaterialTheme.typography.body2, fontWeight = FontWeight.Medium, color = qetaraInk)
+                    Text("Los archivos de esta sesión aparecerán aquí.", style = MaterialTheme.typography.caption, color = qetaraMuted)
+                }
+            }
         }
         entries.forEachIndexed { index, entry ->
             if (index > 0) Divider(color = qetaraLine)
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(entry.fileName, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(
-                        (if (entry.incoming) "Recibido de " else "Enviado a ") + entry.peer + " · " + formatBytes(entry.bytes),
-                        style = MaterialTheme.typography.caption,
-                        color = qetaraInk.copy(alpha = .75f)
-                    )
-                    Text(entry.timestamp + " · " + entry.outcome, style = MaterialTheme.typography.caption, color = qetaraTeal)
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Surface(color = qetaraCanvas, shape = RoundedCornerShape(8.dp)) {
+                    Box(Modifier.size(36.dp), contentAlignment = Alignment.Center) { WorkspaceIcon(if (entry.incoming) WorkspaceGlyph.RECEIVE else WorkspaceGlyph.SHARE, Modifier.size(20.dp), qetaraTeal) }
                 }
-                entry.path?.let { path ->
-                    TextButton({ actions.onOpenReceivedFile(path) }) { Text("Ver en carpeta") }
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                    Text(entry.fileName, style = MaterialTheme.typography.body2, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, color = qetaraInk)
+                    Text(
+                        (if (entry.incoming) "De " else "A ") + entry.peer + " · " + formatBytes(entry.bytes),
+                        style = MaterialTheme.typography.caption,
+                        color = qetaraMuted,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(entry.timestamp + " · " + entry.outcome, style = MaterialTheme.typography.caption, color = qetaraMuted)
+                    entry.path?.let { path ->
+                        TextButton({ actions.onOpenReceivedFile(path) }, modifier = Modifier.heightIn(min = 44.dp), contentPadding = PaddingValues(horizontal = 0.dp)) { Text("Ver en carpeta") }
+                    }
                 }
             }
         }
@@ -501,7 +586,112 @@ private fun RecentTransfers(entries: List<DesktopTransferEntry>, actions: Deskto
 
 @Composable
 private fun StatusBadge(label: String, active: Boolean) {
-    Surface(shape = RoundedCornerShape(50), color = if (active) Color(0xFFE3F2ED) else Color(0xFFF0EAE3)) {
-        Text(label, Modifier.padding(horizontal = 12.dp, vertical = 7.dp), style = MaterialTheme.typography.caption, fontWeight = FontWeight.SemiBold, color = if (active) qetaraTeal else qetaraInk.copy(alpha = .8f))
+    Surface(shape = RoundedCornerShape(50), color = if (active) qetaraMist else qetaraCanvas) {
+        Row(Modifier.padding(horizontal = 10.dp, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(7.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(6.dp).background(if (active) qetaraTeal else qetaraMuted, RoundedCornerShape(50)))
+            Text(label, style = MaterialTheme.typography.caption, fontWeight = FontWeight.Medium, color = if (active) qetaraTeal else qetaraMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+    }
+}
+
+@Composable
+private fun SearchPeersButton(state: DesktopWorkspaceState, actions: DesktopWorkspaceActions) {
+    TextButton(actions.onRefreshPeers, enabled = state.discoveryPhase !in listOf(DesktopTaskPhase.STARTING, DesktopTaskPhase.RUNNING), modifier = Modifier.heightIn(min = 44.dp)) {
+        WorkspaceIcon(WorkspaceGlyph.SEARCH, Modifier.size(18.dp), qetaraTeal)
+        Spacer(Modifier.width(6.dp))
+        Text(if (state.discoveryPhase == DesktopTaskPhase.RUNNING) "Buscando…" else "Buscar equipos")
+    }
+}
+
+@Composable
+private fun SettingsCards(state: DesktopWorkspaceState, actions: DesktopWorkspaceActions, wide: Boolean, onShowLicenses: () -> Unit) {
+    if (state.settingsLocked) {
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+            WorkspaceIcon(WorkspaceGlyph.LOCK, Modifier.size(18.dp), qetaraTeal)
+            Text("Detén la recepción y termina los envíos para editar los ajustes.", style = MaterialTheme.typography.body2, color = qetaraMuted)
+        }
+    }
+    if (wide) {
+        Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                DeviceSettingsCard(state, actions)
+                LocalNetworkCard(state, actions)
+            }
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                ConnectionSettingsCard(state, actions)
+                AboutCard(actions, onShowLicenses)
+            }
+        }
+    } else {
+        DeviceSettingsCard(state, actions)
+        ConnectionSettingsCard(state, actions)
+        LocalNetworkCard(state, actions)
+        AboutCard(actions, onShowLicenses)
+    }
+}
+
+@Composable
+private fun DeviceSettingsCard(state: DesktopWorkspaceState, actions: DesktopWorkspaceActions) {
+    WorkspaceCard("Este equipo") {
+        OutlinedTextField(state.deviceName, actions.onDeviceNameChange, label = { Text("Nombre visible") }, singleLine = true, enabled = !state.settingsLocked, modifier = Modifier.fillMaxWidth())
+        Text("Huella de identidad", style = MaterialTheme.typography.subtitle2, color = qetaraInk)
+        Surface(color = qetaraCanvas, shape = RoundedCornerShape(8.dp), modifier = Modifier.fillMaxWidth()) {
+            SelectionContainer { Text(state.identityFingerprint, Modifier.padding(12.dp), fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.caption, color = qetaraInk) }
+        }
+        Text("Compárala con la solicitud de Android antes de aprobar la conexión.", style = MaterialTheme.typography.body2, color = qetaraMuted)
+        TextButton(actions.onCopyFingerprint, modifier = Modifier.heightIn(min = 44.dp)) {
+            WorkspaceIcon(WorkspaceGlyph.COPY, Modifier.size(18.dp), qetaraTeal)
+            Spacer(Modifier.width(8.dp))
+            Text("Copiar huella")
+        }
+    }
+}
+
+@Composable
+private fun ConnectionSettingsCard(state: DesktopWorkspaceState, actions: DesktopWorkspaceActions) {
+    WorkspaceCard("Conexión") {
+        BoxWithConstraints(Modifier.fillMaxWidth()) {
+            if (maxWidth >= 440.dp) {
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    OutlinedTextField(state.port, actions.onPortChange, label = { Text("Puerto") }, singleLine = true, enabled = !state.settingsLocked, modifier = Modifier.weight(1f))
+                    OutlinedTextField(state.retries, actions.onRetriesChange, label = { Text("Reintentos (1–10)") }, singleLine = true, enabled = !state.settingsLocked, modifier = Modifier.weight(1f))
+                    OutlinedTextField(state.sessionMinutes, actions.onSessionMinutesChange, label = { Text("Sesión (min)") }, singleLine = true, enabled = !state.settingsLocked, modifier = Modifier.weight(1f))
+                }
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    OutlinedTextField(state.port, actions.onPortChange, label = { Text("Puerto") }, singleLine = true, enabled = !state.settingsLocked, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(state.retries, actions.onRetriesChange, label = { Text("Reintentos (1–10)") }, singleLine = true, enabled = !state.settingsLocked, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(state.sessionMinutes, actions.onSessionMinutesChange, label = { Text("Sesión (minutos)") }, singleLine = true, enabled = !state.settingsLocked, modifier = Modifier.fillMaxWidth())
+                }
+            }
+        }
+        Text("Usa el mismo puerto en ambos equipos. La recepción caduca en 1–1440 minutos.", style = MaterialTheme.typography.caption, color = qetaraMuted)
+        Button(actions.onSaveSettings, enabled = !state.settingsLocked, modifier = Modifier.heightIn(min = 44.dp), shape = RoundedCornerShape(8.dp)) { Text("Guardar preferencias") }
+        Text("El código, PIN y mensajes no se guardan en las preferencias.", style = MaterialTheme.typography.caption, color = qetaraMuted)
+    }
+}
+
+@Composable
+private fun LocalNetworkCard(state: DesktopWorkspaceState, actions: DesktopWorkspaceActions) {
+    WorkspaceCard("Red local") {
+        if (state.localEndpoints.isEmpty()) Text("Sin dirección local. Conéctate a Wi-Fi o Ethernet y actualiza la red.", style = MaterialTheme.typography.body2, color = qetaraMuted)
+        state.localEndpoints.forEach { endpoint ->
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(endpoint.label, style = MaterialTheme.typography.caption, color = qetaraMuted)
+                SelectionContainer { Text(endpoint.address, fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.body2, color = qetaraInk) }
+            }
+        }
+        TextButton(actions.onRefreshPeers, enabled = state.discoveryPhase != DesktopTaskPhase.RUNNING, modifier = Modifier.heightIn(min = 44.dp)) { Text("Actualizar red") }
+        Text("El otro equipo debe tener Qetara abierto y la recepción activa. Las redes de invitados pueden impedir la conexión.", style = MaterialTheme.typography.caption, color = qetaraMuted)
+    }
+}
+
+@Composable
+private fun AboutCard(actions: DesktopWorkspaceActions, onShowLicenses: () -> Unit) {
+    WorkspaceCard("Acerca de Qetara") {
+        Text("Código abierto. Archivos y mensajes directos entre tus equipos.", style = MaterialTheme.typography.body2, color = qetaraMuted)
+        Text("Cada archivo verifica su integridad antes de confirmar la recepción.", style = MaterialTheme.typography.caption, color = qetaraMuted)
+        OutlinedButton(onShowLicenses, modifier = Modifier.heightIn(min = 44.dp), shape = RoundedCornerShape(8.dp)) { Text("Licencias de código abierto") }
+        TextButton(actions.onOpenSource, modifier = Modifier.heightIn(min = 44.dp)) { Text("Desarrollador en GitHub") }
     }
 }

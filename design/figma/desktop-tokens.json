@@ -1,0 +1,45 @@
+{
+  "color": {
+    "canvas": "#F4F6F5",
+    "surface": "#FFFFFF",
+    "ink": "#102A43",
+    "muted": "#536672",
+    "accent": "#0A6B77",
+    "accentSoft": "#EAF4F3",
+    "border": "#DDE5E5",
+    "error": "#B3261E",
+    "appIconBackground": "#FFF7ED"
+  },
+  "font": {
+    "family": "Inter",
+    "version": "4.1",
+    "weights": [400, 500, 600, 700],
+    "title": { "size": 28, "lineHeight": 36, "weight": 600 },
+    "section": { "size": 16, "lineHeight": 24, "weight": 600 },
+    "body": { "size": 14, "lineHeight": 22, "weight": 400 },
+    "bodySmall": { "size": 13, "lineHeight": 20, "weight": 400 },
+    "caption": { "size": 12, "lineHeight": 18, "weight": 400 },
+    "button": { "size": 13, "lineHeight": 20, "weight": 600 }
+  },
+  "layout": {
+    "sidebarWidth": 176,
+    "compactRailWidth": 76,
+    "expandedNavigationBreakpoint": 1040,
+    "twoColumnContentBreakpoint": 760,
+    "pagePadding": 24,
+    "cardPadding": 20,
+    "columnGap": 24,
+    "cardRadius": 16,
+    "buttonRadius": 8,
+    "controlMinimumHeight": 44,
+    "primaryActionMinimumHeight": 48
+  },
+  "symbol": {
+    "source": "app/src/main/res/drawable/ic_launcher_foreground.xml",
+    "viewport": [108, 108],
+    "bounds": [8, 21.6103, 100, 86.3897],
+    "aspectRatio": 1.420204571,
+    "mobileForegroundScale": 0.65625,
+    "headerSlotOccupancy": 0.78
+  }
+}

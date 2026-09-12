@@ -7,7 +7,6 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
@@ -24,6 +23,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -46,6 +46,7 @@ import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material.icons.rounded.Wifi
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -54,6 +55,7 @@ import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -70,9 +72,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
@@ -669,37 +668,7 @@ fun P2pScreen(
             (state.receiving || state.sending || queueRunningCount > 0 || queuePendingCount > 0) -> null
         else -> headerHint
     }
-    val liveStateColor by animateColorAsState(
-        targetValue = when {
-            headerIsQuiet -> lerp(
-                MaterialTheme.colorScheme.surface,
-                MaterialTheme.colorScheme.surfaceVariant,
-                0.06f
-            )
-            state.sessionExpired -> lerp(
-                MaterialTheme.colorScheme.surface,
-                MaterialTheme.colorScheme.errorContainer,
-                0.16f
-            )
-            activeConnectionMode == ConnectionMode.WIFI_DIRECT && connected -> lerp(
-                MaterialTheme.colorScheme.surface,
-                MaterialTheme.colorScheme.primaryContainer,
-                0.14f
-            )
-            activeConnectionMode == ConnectionMode.LAN && state.lanConnected -> lerp(
-                MaterialTheme.colorScheme.surface,
-                MaterialTheme.colorScheme.secondaryContainer,
-                0.14f
-            )
-            else -> lerp(
-                MaterialTheme.colorScheme.surface,
-                MaterialTheme.colorScheme.surfaceVariant,
-                0.12f
-            )
-        },
-        animationSpec = tween(durationMillis = 250),
-        label = "state-chip"
-    )
+    val headerSurfaceColor = MaterialTheme.colorScheme.surface
     val headerCardPadding = if (headerIsQuiet && headerMinimized) 12.dp else compactPadding
     val headerCardSpacing = if (headerIsQuiet && headerMinimized) 6.dp else compactSpacing
     val topActionMenuItems = buildList {
@@ -728,42 +697,27 @@ fun P2pScreen(
         })
     }
     val sectionCardColors = CardDefaults.elevatedCardColors(
-        containerColor = lerp(
-            MaterialTheme.colorScheme.surface,
-            MaterialTheme.colorScheme.surfaceVariant,
-            0.14f
-        )
+        containerColor = MaterialTheme.colorScheme.surface,
+        contentColor = MaterialTheme.colorScheme.onSurface
     )
-    val shellSurfaceColor = lerp(
-        MaterialTheme.colorScheme.surface,
-        MaterialTheme.colorScheme.surfaceVariant,
-        0.1f
-    )
-    val quietPanelColor = lerp(
-        MaterialTheme.colorScheme.surface,
-        MaterialTheme.colorScheme.surfaceVariant,
-        0.26f
-    )
-
-    val bgBrush = Brush.verticalGradient(
-        colors = listOf(
-            lerp(MaterialTheme.colorScheme.background, MaterialTheme.colorScheme.surface, 0.18f),
-            lerp(MaterialTheme.colorScheme.background, MaterialTheme.colorScheme.surfaceVariant, 0.42f),
-            lerp(MaterialTheme.colorScheme.background, MaterialTheme.colorScheme.primaryContainer, 0.22f),
-            lerp(MaterialTheme.colorScheme.background, MaterialTheme.colorScheme.secondaryContainer, 0.08f)
-        )
-    )
-    val headerAuraBrush = Brush.linearGradient(
-        colors = listOf(
-            liveStateColor,
-            if (activeConnectionMode == ConnectionMode.WIFI_DIRECT) {
-                lerp(liveStateColor, MaterialTheme.colorScheme.primaryContainer, 0.3f)
-            } else {
-                lerp(liveStateColor, MaterialTheme.colorScheme.secondaryContainer, 0.24f)
-            },
-            shellSurfaceColor
-        )
-    )
+    val quietPanelColor = MaterialTheme.colorScheme.surfaceContainerLow
+    val sessionStatusIsError = state.sessionExpired ||
+        state.tokenSyncStatus.contains("no pude", ignoreCase = true) ||
+        state.tokenSyncStatus.contains("no se pudo", ignoreCase = true)
+    val sessionStatusNeedsAttention = requiresManualPairing || state.pendingCredentialShare != null ||
+        state.tokenSyncStatus.contains("aprob", ignoreCase = true)
+    val sessionStatusContainerColor = when {
+        sessionStatusIsError -> MaterialTheme.colorScheme.errorContainer
+        sessionStatusNeedsAttention -> MaterialTheme.colorScheme.tertiaryContainer
+        state.sessionEnabled -> MaterialTheme.colorScheme.primaryContainer
+        else -> quietPanelColor
+    }
+    val sessionStatusContentColor = when {
+        sessionStatusIsError -> MaterialTheme.colorScheme.onErrorContainer
+        sessionStatusNeedsAttention -> MaterialTheme.colorScheme.onTertiaryContainer
+        state.sessionEnabled -> MaterialTheme.colorScheme.onPrimaryContainer
+        else -> MaterialTheme.colorScheme.onSurface
+    }
 
     LaunchedEffect(state.pendingCredentialShare?.id) {
         if (
@@ -826,7 +780,7 @@ fun P2pScreen(
         Box(
             modifier = modifier
                 .fillMaxSize()
-                .background(bgBrush)
+                .background(MaterialTheme.colorScheme.background)
         ) {
             QetaraBackdrop(
                 modifier = Modifier.fillMaxSize()
@@ -900,13 +854,14 @@ fun P2pScreen(
             ElevatedCard(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.elevatedCardColors(
-                    containerColor = liveStateColor
+                    containerColor = headerSurfaceColor,
+                    contentColor = MaterialTheme.colorScheme.onSurface
                 )
             ) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(headerAuraBrush)
+                        .background(headerSurfaceColor)
                 ) {
                 Column(
                     Modifier
@@ -964,30 +919,26 @@ fun P2pScreen(
                                 if (sessionNeedsAttention) {
                                     StatusChip(
                                         label = sessionLabel,
-                                        containerColor = if (state.sessionExpired) {
-                                            MaterialTheme.colorScheme.errorContainer
-                                        } else {
-                                            MaterialTheme.colorScheme.tertiaryContainer
-                                        },
-                                        contentColor = if (state.sessionExpired) {
-                                            MaterialTheme.colorScheme.onErrorContainer
-                                        } else {
-                                            MaterialTheme.colorScheme.onTertiaryContainer
-                                        }
+                                        containerColor = sessionStatusContainerColor,
+                                        contentColor = sessionStatusContentColor
                                     )
                                 }
                                 if (!headerActivityLabel.isNullOrBlank()) {
                                     StatusChip(
                                         label = headerActivityLabel,
-                                        containerColor = if (state.receiving || isSyncingNow || isDirectBusyNow) {
+                                        containerColor = if (state.paused) {
                                             MaterialTheme.colorScheme.tertiaryContainer
+                                        } else if (state.receiving || isSyncingNow || isDirectBusyNow) {
+                                            MaterialTheme.colorScheme.primaryContainer
                                         } else if (state.sending || queueRunningCount > 0) {
                                             MaterialTheme.colorScheme.primaryContainer
                                         } else {
                                             MaterialTheme.colorScheme.surfaceVariant
                                         },
-                                        contentColor = if (state.receiving || isSyncingNow || isDirectBusyNow) {
+                                        contentColor = if (state.paused) {
                                             MaterialTheme.colorScheme.onTertiaryContainer
+                                        } else if (state.receiving || isSyncingNow || isDirectBusyNow) {
+                                            MaterialTheme.colorScheme.onPrimaryContainer
                                         } else if (state.sending || queueRunningCount > 0) {
                                             MaterialTheme.colorScheme.onPrimaryContainer
                                         } else {
@@ -1102,30 +1053,26 @@ fun P2pScreen(
                             if (sessionNeedsAttention) {
                                 StatusChip(
                                     label = sessionLabel,
-                                    containerColor = if (state.sessionExpired) {
-                                        MaterialTheme.colorScheme.errorContainer
-                                    } else {
-                                        MaterialTheme.colorScheme.tertiaryContainer
-                                    },
-                                    contentColor = if (state.sessionExpired) {
-                                        MaterialTheme.colorScheme.onErrorContainer
-                                    } else {
-                                        MaterialTheme.colorScheme.onTertiaryContainer
-                                    }
+                                    containerColor = sessionStatusContainerColor,
+                                    contentColor = sessionStatusContentColor
                                 )
                             }
                             if (!headerActivityLabel.isNullOrBlank()) {
                                 StatusChip(
                                     label = headerActivityLabel,
-                                    containerColor = if (state.receiving || isSyncingNow || isDirectBusyNow) {
+                                    containerColor = if (state.paused) {
                                         MaterialTheme.colorScheme.tertiaryContainer
+                                    } else if (state.receiving || isSyncingNow || isDirectBusyNow) {
+                                        MaterialTheme.colorScheme.primaryContainer
                                     } else if (state.sending || queueRunningCount > 0) {
                                         MaterialTheme.colorScheme.primaryContainer
                                     } else {
                                         MaterialTheme.colorScheme.surfaceVariant
                                     },
-                                    contentColor = if (state.receiving || isSyncingNow || isDirectBusyNow) {
+                                    contentColor = if (state.paused) {
                                         MaterialTheme.colorScheme.onTertiaryContainer
+                                    } else if (state.receiving || isSyncingNow || isDirectBusyNow) {
+                                        MaterialTheme.colorScheme.onPrimaryContainer
                                     } else if (state.sending || queueRunningCount > 0) {
                                         MaterialTheme.colorScheme.onPrimaryContainer
                                     } else {
@@ -1311,13 +1258,14 @@ fun P2pScreen(
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant
+                    color = quietPanelColor,
+                    contentColor = MaterialTheme.colorScheme.onSurface
                 ) {
                     Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalArrangement = Arrangement.spacedBy(4.dp)) {
                             Text(
-                                if (state.sessionEnabled) "Compartir en este equipo" else "Sesión cerrada",
-                                modifier = Modifier.weight(1f),
+                                if (state.sessionEnabled) "Sesión activa" else "Sesión cerrada",
+                                modifier = Modifier.align(Alignment.CenterVertically),
                                 style = MaterialTheme.typography.labelLarge,
                                 fontWeight = FontWeight.SemiBold
                             )
@@ -1326,7 +1274,7 @@ fun P2pScreen(
                             }
                         }
                         Text(
-                            if (state.sessionEnabled) "Cerrar detiene la recepción y las operaciones en curso."
+                            if (state.sessionEnabled) "Al cerrar se detienen las transferencias."
                             else "Actívala para conectar o enviar. Tus archivos y borradores se conservan.",
                             style = MaterialTheme.typography.bodySmall
                         )
@@ -1348,13 +1296,13 @@ fun P2pScreen(
                         shape = RoundedCornerShape(16.dp),
                         color = when (summary.kind) {
                             P2pSendSummaryKind.SUCCESS -> MaterialTheme.colorScheme.primaryContainer
-                            P2pSendSummaryKind.ATTENTION -> MaterialTheme.colorScheme.errorContainer
-                            P2pSendSummaryKind.ACTIVE -> MaterialTheme.colorScheme.surfaceVariant
+                            P2pSendSummaryKind.ATTENTION -> if (state.sendBatchFailed > 0) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.tertiaryContainer
+                            P2pSendSummaryKind.ACTIVE -> if (state.paused) MaterialTheme.colorScheme.tertiaryContainer else MaterialTheme.colorScheme.primaryContainer
                         },
                         contentColor = when (summary.kind) {
                             P2pSendSummaryKind.SUCCESS -> MaterialTheme.colorScheme.onPrimaryContainer
-                            P2pSendSummaryKind.ATTENTION -> MaterialTheme.colorScheme.onErrorContainer
-                            P2pSendSummaryKind.ACTIVE -> MaterialTheme.colorScheme.onSurfaceVariant
+                            P2pSendSummaryKind.ATTENTION -> if (state.sendBatchFailed > 0) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onTertiaryContainer
+                            P2pSendSummaryKind.ACTIVE -> if (state.paused) MaterialTheme.colorScheme.onTertiaryContainer else MaterialTheme.colorScheme.onPrimaryContainer
                         }
                     ) {
                         Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -1367,7 +1315,7 @@ fun P2pScreen(
                                     downloadsInitialSection = DownloadLibrarySection.ACTIVITY
                                     selectedTabIndex = allTabs.indexOf(P2pMainTab.HISTORY)
                                     applyFocusStage(FocusStage.OFF)
-                                }) { Text("Actividad") }
+                                }, colors = ButtonDefaults.textButtonColors(contentColor = LocalContentColor.current)) { Text("Actividad") }
                             }
                             if (summary.kind == P2pSendSummaryKind.ACTIVE) {
                                 LinearProgressIndicator(progress = { state.sendProgress.coerceIn(0f, 1f) }, modifier = Modifier.fillMaxWidth())
@@ -1385,14 +1333,11 @@ fun P2pScreen(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
                     color = if (activeSupportCard.isError) {
-                        lerp(
-                            MaterialTheme.colorScheme.surface,
-                            MaterialTheme.colorScheme.errorContainer,
-                            0.42f
-                        )
+                        MaterialTheme.colorScheme.errorContainer
                     } else {
                         quietPanelColor
-                    }
+                    },
+                    contentColor = if (activeSupportCard.isError) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onSurface
                 ) {
                     FlowRow(
                         modifier = Modifier
@@ -1419,10 +1364,10 @@ fun P2pScreen(
                                 overflow = TextOverflow.Ellipsis
                             )
                         }
-                        TextButton(onClick = { runExperienceAction(activeSupportCard.action) }) {
+                        TextButton(onClick = { runExperienceAction(activeSupportCard.action) }, colors = ButtonDefaults.textButtonColors(contentColor = LocalContentColor.current)) {
                             Text(activeSupportCard.action.label, maxLines = 1)
                         }
-                        TextButton(onClick = { dismissedSupportCardKey = currentSupportCardKey }) {
+                        TextButton(onClick = { dismissedSupportCardKey = currentSupportCardKey }, colors = ButtonDefaults.textButtonColors(contentColor = LocalContentColor.current)) {
                             Text("X")
                         }
                     }
@@ -1598,6 +1543,7 @@ fun P2pScreen(
                                     Surface(
                                         shape = RoundedCornerShape(14.dp),
                                         color = quietPanelColor,
+                                        contentColor = MaterialTheme.colorScheme.onSurface,
                                         modifier = Modifier.fillMaxWidth()
                                     ) {
                                         Column(
@@ -1744,7 +1690,8 @@ fun P2pScreen(
                     ElevatedCard(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.elevatedCardColors(
-                            containerColor = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.15f)
+                            containerColor = quietPanelColor,
+                            contentColor = MaterialTheme.colorScheme.onSurface
                         )
                     ) {
                         val peerId = state.favoriteSuggestionPeerId.orEmpty()
@@ -1844,12 +1791,12 @@ fun P2pScreen(
                                             "LAN desactivada"
                                         },
                                         containerColor = if (state.lanModeEnabled && state.lanConnected) {
-                                            MaterialTheme.colorScheme.secondaryContainer
+                                            MaterialTheme.colorScheme.primaryContainer
                                         } else {
                                             MaterialTheme.colorScheme.surfaceVariant
                                         },
                                         contentColor = if (state.lanModeEnabled && state.lanConnected) {
-                                            MaterialTheme.colorScheme.onSecondaryContainer
+                                            MaterialTheme.colorScheme.onPrimaryContainer
                                         } else {
                                             MaterialTheme.colorScheme.onSurfaceVariant
                                         }
@@ -1857,8 +1804,8 @@ fun P2pScreen(
                                     if (!isCompactScreen) {
                                         StatusChip(
                                             label = connectionLabel,
-                                            containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                                            contentColor = MaterialTheme.colorScheme.onTertiaryContainer
+                                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                     }
                                 }
@@ -1867,6 +1814,7 @@ fun P2pScreen(
                                 Surface(
                                     shape = RoundedCornerShape(14.dp),
                                     color = quietPanelColor,
+                                    contentColor = MaterialTheme.colorScheme.onSurface,
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
                                     Text(
@@ -1879,11 +1827,8 @@ fun P2pScreen(
                             if (!state.resolvedTargetIp.isNullOrBlank()) {
                                 Surface(
                                     shape = RoundedCornerShape(14.dp),
-                                    color = when (state.resolvedTargetMode) {
-                                        ConnectionMode.WIFI_DIRECT -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.34f)
-                                        ConnectionMode.LAN -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.28f)
-                                        else -> quietPanelColor
-                                    },
+                                    color = quietPanelColor,
+                                    contentColor = MaterialTheme.colorScheme.onSurface,
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
                                     Column(
@@ -2009,7 +1954,8 @@ fun P2pScreen(
                     Surface(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(16.dp),
-                        color = quietPanelColor
+                        color = quietPanelColor,
+                    contentColor = MaterialTheme.colorScheme.onSurface
                     ) {
                         Row(
                             modifier = Modifier
@@ -2036,8 +1982,8 @@ fun P2pScreen(
                             if (compactSyncLabel != null) {
                                 StatusChip(
                                     label = compactSyncLabel,
-                                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                    containerColor = sessionStatusContainerColor,
+                                    contentColor = sessionStatusContentColor
                                 )
                             }
                         }
@@ -2074,30 +2020,14 @@ fun P2pScreen(
                                 ) {
                                     StatusChip(
                                         label = sessionLabel,
-                                        containerColor = if (state.sessionExpired) {
-                                            MaterialTheme.colorScheme.errorContainer
-                                        } else {
-                                            MaterialTheme.colorScheme.tertiaryContainer
-                                        },
-                                        contentColor = if (state.sessionExpired) {
-                                            MaterialTheme.colorScheme.onErrorContainer
-                                        } else {
-                                            MaterialTheme.colorScheme.onTertiaryContainer
-                                        }
+                                        containerColor = sessionStatusContainerColor,
+                                        contentColor = sessionStatusContentColor
                                     )
                                     if (compactSyncLabel != null) {
                                         StatusChip(
                                             label = compactSyncLabel,
-                                            containerColor = if (state.sessionExpired) {
-                                                MaterialTheme.colorScheme.errorContainer
-                                            } else {
-                                                MaterialTheme.colorScheme.primaryContainer
-                                            },
-                                            contentColor = if (state.sessionExpired) {
-                                                MaterialTheme.colorScheme.onErrorContainer
-                                            } else {
-                                                MaterialTheme.colorScheme.onPrimaryContainer
-                                            }
+                                            containerColor = sessionStatusContainerColor,
+                                            contentColor = sessionStatusContentColor
                                         )
                                     }
                                 }
@@ -2109,30 +2039,14 @@ fun P2pScreen(
                                 ) {
                                     StatusChip(
                                         label = sessionLabel,
-                                        containerColor = if (state.sessionExpired) {
-                                            MaterialTheme.colorScheme.errorContainer
-                                        } else {
-                                            MaterialTheme.colorScheme.tertiaryContainer
-                                        },
-                                        contentColor = if (state.sessionExpired) {
-                                            MaterialTheme.colorScheme.onErrorContainer
-                                        } else {
-                                            MaterialTheme.colorScheme.onTertiaryContainer
-                                        }
+                                        containerColor = sessionStatusContainerColor,
+                                        contentColor = sessionStatusContentColor
                                     )
                                     if (compactSyncLabel != null) {
                                         StatusChip(
                                             label = compactSyncLabel,
-                                            containerColor = if (state.sessionExpired) {
-                                                MaterialTheme.colorScheme.errorContainer
-                                            } else {
-                                                MaterialTheme.colorScheme.primaryContainer
-                                            },
-                                            contentColor = if (state.sessionExpired) {
-                                                MaterialTheme.colorScheme.onErrorContainer
-                                            } else {
-                                                MaterialTheme.colorScheme.onPrimaryContainer
-                                            }
+                                            containerColor = sessionStatusContainerColor,
+                                            contentColor = sessionStatusContentColor
                                         )
                                     }
                                 }
@@ -2140,24 +2054,13 @@ fun P2pScreen(
                                 sessionStatusText?.let { statusText ->
                                     Surface(
                                         shape = RoundedCornerShape(14.dp),
-                                        color = if (state.sessionExpired) {
-                                            lerp(
-                                                MaterialTheme.colorScheme.surface,
-                                                MaterialTheme.colorScheme.errorContainer,
-                                                0.42f
-                                            )
-                                        } else {
-                                            quietPanelColor
-                                        },
+                                        color = sessionStatusContainerColor,
+                                        contentColor = sessionStatusContentColor,
                                         modifier = Modifier.fillMaxWidth()
                                     ) {
                                         Text(
                                             statusText,
-                                            color = if (state.sessionExpired) {
-                                                MaterialTheme.colorScheme.onErrorContainer
-                                            } else {
-                                                MaterialTheme.colorScheme.onSurfaceVariant
-                                            },
+                                            color = sessionStatusContentColor,
                                             style = MaterialTheme.typography.bodySmall,
                                             modifier = Modifier.padding(horizontal = UiSpaceM, vertical = 10.dp)
                                         )
@@ -2445,6 +2348,7 @@ fun P2pScreen(
                                     Surface(
                                         shape = RoundedCornerShape(14.dp),
                                         color = quietPanelColor,
+                                        contentColor = MaterialTheme.colorScheme.onSurface,
                                         modifier = Modifier.fillMaxWidth()
                                     ) {
                                         Column(
@@ -2461,8 +2365,18 @@ fun P2pScreen(
                                                 ) {
                                                     StatusChip(
                                                         label = peerStatusLabel(peer.status),
-                                                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                                                        containerColor = when (peer.status) {
+                                                            WifiP2pDevice.CONNECTED -> MaterialTheme.colorScheme.primaryContainer
+                                                            WifiP2pDevice.INVITED -> MaterialTheme.colorScheme.tertiaryContainer
+                                                            WifiP2pDevice.FAILED -> MaterialTheme.colorScheme.errorContainer
+                                                            else -> MaterialTheme.colorScheme.surfaceVariant
+                                                        },
+                                                        contentColor = when (peer.status) {
+                                                            WifiP2pDevice.CONNECTED -> MaterialTheme.colorScheme.onPrimaryContainer
+                                                            WifiP2pDevice.INVITED -> MaterialTheme.colorScheme.onTertiaryContainer
+                                                            WifiP2pDevice.FAILED -> MaterialTheme.colorScheme.onErrorContainer
+                                                            else -> MaterialTheme.colorScheme.onSurfaceVariant
+                                                        }
                                                     )
                                                     StatusChip(
                                                         label = if (trusted) "Confiable" else "No confiable",
@@ -2472,8 +2386,8 @@ fun P2pScreen(
                                                     if (favorite) {
                                                         StatusChip(
                                                             label = "Favorito",
-                                                            containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                                                            contentColor = MaterialTheme.colorScheme.onTertiaryContainer
+                                                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
                                                         )
                                                     }
                                                 }
@@ -2558,6 +2472,7 @@ fun P2pScreen(
                                     Surface(
                                         shape = RoundedCornerShape(12.dp),
                                         color = quietPanelColor,
+                                        contentColor = MaterialTheme.colorScheme.onSurface,
                                         modifier = Modifier.fillMaxWidth()
                                     ) {
                                         Column(
@@ -2576,12 +2491,12 @@ fun P2pScreen(
                                                     containerColor = if (peer.trusted) {
                                                         MaterialTheme.colorScheme.primaryContainer
                                                     } else {
-                                                        MaterialTheme.colorScheme.secondaryContainer
+                                                        MaterialTheme.colorScheme.tertiaryContainer
                                                     },
                                                     contentColor = if (peer.trusted) {
                                                         MaterialTheme.colorScheme.onPrimaryContainer
                                                     } else {
-                                                        MaterialTheme.colorScheme.onSecondaryContainer
+                                                        MaterialTheme.colorScheme.onTertiaryContainer
                                                     }
                                                 )
                                                 StatusChip(
@@ -2629,7 +2544,7 @@ fun P2pScreen(
                             .padding(UiSpaceM),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Text("Elige qué compartir", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.headlineSmall)
+                        Text("Comparte archivos", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.headlineSmall)
                         Text(
                             "Fotos, documentos y más. Puedes elegir varios archivos a la vez.",
                             style = MaterialTheme.typography.bodyMedium,
@@ -2645,10 +2560,25 @@ fun P2pScreen(
                         }
 
                         if (state.selectedFilesCount == 0) {
-                            Button(onClick = pickFilesForContext, modifier = Modifier.fillMaxWidth()) {
-                                Icon(imageVector = Icons.Rounded.AttachFile, contentDescription = null)
-                                Spacer(Modifier.width(8.dp))
-                                Text("Elegir archivos")
+                            Surface(
+                                color = MaterialTheme.colorScheme.surfaceContainerLow,
+                                shape = RoundedCornerShape(16.dp),
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+                            ) {
+                                Column(
+                                    Modifier.fillMaxWidth().padding(24.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(20.dp)
+                                ) {
+                                    Icon(Icons.Rounded.Description, contentDescription = null,
+                                        modifier = Modifier.size(40.dp), tint = MaterialTheme.colorScheme.primary)
+                                    Button(onClick = pickFilesForContext,
+                                        modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
+                                        Icon(imageVector = Icons.Rounded.AttachFile, contentDescription = null)
+                                        Spacer(Modifier.width(8.dp))
+                                        Text("Elegir archivos")
+                                    }
+                                }
                             }
                         }
 
@@ -2762,6 +2692,7 @@ fun P2pScreen(
                         Surface(
                             shape = RoundedCornerShape(14.dp),
                             color = quietPanelColor,
+                            contentColor = MaterialTheme.colorScheme.onSurface,
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Column(
@@ -2776,12 +2707,12 @@ fun P2pScreen(
                                         label = routeTitle,
                                         containerColor = when (state.resolvedTargetMode) {
                                             ConnectionMode.WIFI_DIRECT -> MaterialTheme.colorScheme.primaryContainer
-                                            ConnectionMode.LAN -> MaterialTheme.colorScheme.secondaryContainer
+                                            ConnectionMode.LAN -> MaterialTheme.colorScheme.primaryContainer
                                             else -> MaterialTheme.colorScheme.surfaceVariant
                                         },
                                         contentColor = when (state.resolvedTargetMode) {
                                             ConnectionMode.WIFI_DIRECT -> MaterialTheme.colorScheme.onPrimaryContainer
-                                            ConnectionMode.LAN -> MaterialTheme.colorScheme.onSecondaryContainer
+                                            ConnectionMode.LAN -> MaterialTheme.colorScheme.onPrimaryContainer
                                             else -> MaterialTheme.colorScheme.onSurfaceVariant
                                         }
                                     )
@@ -2881,6 +2812,7 @@ fun P2pScreen(
                             Surface(
                                 shape = RoundedCornerShape(14.dp),
                                 color = quietPanelColor,
+                                contentColor = MaterialTheme.colorScheme.onSurface,
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 Column(
@@ -2919,7 +2851,7 @@ fun P2pScreen(
                                 Button(
                                     onClick = onSendFile,
                                     enabled = sendDisabledReason == null,
-                                    modifier = Modifier.fillMaxWidth()
+                                    modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)
                                 ) {
                                     Icon(
                                         imageVector = Icons.AutoMirrored.Rounded.Send,
@@ -2978,6 +2910,7 @@ fun P2pScreen(
                             Surface(
                                 shape = RoundedCornerShape(14.dp),
                                 color = quietPanelColor,
+                                contentColor = MaterialTheme.colorScheme.onSurface,
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 Column(

@@ -1,5 +1,6 @@
 package com.example.wifidrop
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -9,6 +10,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -40,6 +42,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -83,8 +86,8 @@ internal fun P2pDownloadsTab(
     onOpenHistoryItem: (TransferHistoryEntry) -> Unit,
     onOpenConnect: () -> Unit,
     onOpenSend: () -> Unit,
-    initialSection: DownloadLibrarySection = DownloadLibrarySection.FILES,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    initialSection: DownloadLibrarySection = DownloadLibrarySection.FILES
 ) {
     val context = LocalContext.current
     val snackbar = remember { SnackbarHostState() }
@@ -120,22 +123,21 @@ internal fun P2pDownloadsTab(
     Box(modifier = modifier.fillMaxSize()) {
         Surface(
             modifier = Modifier.fillMaxSize(),
-            shape = RoundedCornerShape(24.dp),
-            color = MaterialTheme.colorScheme.surface
+            color = MaterialTheme.colorScheme.background,
+            contentColor = MaterialTheme.colorScheme.onBackground
         ) {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 state = listState,
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 20.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 item("library-header") {
-                    Row(
+                    Column(
                         modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Text(
                                 "Tus archivos",
                                 style = MaterialTheme.typography.headlineSmall,
@@ -143,17 +145,24 @@ internal fun P2pDownloadsTab(
                                 modifier = Modifier.semantics { heading() }
                             )
                             Text(
-                                if (files.isEmpty()) "Lo que compartes, siempre a mano."
+                                if (files.isEmpty()) "Los archivos recibidos se guardan aquí."
                                 else "${files.size} ${if (files.size == 1) "archivo recibido" else "archivos recibidos"} · ${formatBytes(files.sumOf { it.bytes })}",
-                                style = MaterialTheme.typography.bodySmall,
+                                style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
-                        IconButton(onClick = onRefresh) {
-                            Icon(Icons.Rounded.Refresh, contentDescription = "Actualizar archivos y actividad")
-                        }
-                        IconButton(onClick = onOpenDownloads) {
-                            Icon(Icons.Rounded.FolderOpen, contentDescription = "Abrir la carpeta de descargas")
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            OutlinedButton(onClick = onOpenDownloads, modifier = Modifier.heightIn(min = 48.dp)) {
+                                Icon(Icons.Rounded.FolderOpen, contentDescription = null, modifier = Modifier.size(20.dp))
+                                Text("Abrir carpeta", Modifier.padding(start = 8.dp))
+                            }
+                            TextButton(onClick = onRefresh, modifier = Modifier.heightIn(min = 48.dp)) {
+                                Icon(Icons.Rounded.Refresh, contentDescription = null, modifier = Modifier.size(20.dp))
+                                Text("Actualizar", Modifier.padding(start = 8.dp))
+                            }
                         }
                     }
                 }
@@ -163,6 +172,7 @@ internal fun P2pDownloadsTab(
                     item("receive-error") {
                         Surface(
                             color = MaterialTheme.colorScheme.errorContainer,
+                            contentColor = MaterialTheme.colorScheme.onErrorContainer,
                             shape = RoundedCornerShape(16.dp)
                         ) {
                             Column(
@@ -175,17 +185,19 @@ internal fun P2pDownloadsTab(
                                         ?: "Pide al otro equipo que vuelva a enviar el archivo.",
                                     style = MaterialTheme.typography.bodySmall
                                 )
-                                TextButton(onClick = onOpenConnect) { Text("Revisar conexión") }
+                                TextButton(onClick = onOpenConnect, modifier = Modifier.heightIn(min = 48.dp)) { Text("Revisar conexión") }
                             }
                         }
                     }
                 }
                 item("library-sections") {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         DownloadLibrarySection.entries.forEach { option ->
                             FilterChip(
                                 selected = section == option,
                                 onClick = { section = option },
+                                modifier = Modifier.heightIn(min = 48.dp),
+                                colors = qetaraFilterChipColors(),
                                 label = { Text(option.title) }
                             )
                         }
@@ -213,18 +225,19 @@ internal fun P2pDownloadsTab(
                 }
                 item("library-filters") {
                     if (section == DownloadLibrarySection.FILES && files.isNotEmpty()) {
-                        Row(
+                        FlowRow(
                             Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
                             Text(
                                 if (hasQuery) "$resultCount ${if (resultCount == 1) "resultado" else "resultados"}" else "Disponibles en este equipo",
                                 style = MaterialTheme.typography.labelLarge,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.align(Alignment.CenterVertically)
                             )
                             Box {
-                                TextButton(onClick = { showSortMenu = true }) {
+                                TextButton(onClick = { showSortMenu = true }, modifier = Modifier.heightIn(min = 48.dp)) {
                                     Icon(Icons.AutoMirrored.Rounded.Sort, contentDescription = null, modifier = Modifier.size(18.dp))
                                     Text(sort.title, Modifier.padding(start = 6.dp))
                                 }
@@ -247,6 +260,8 @@ internal fun P2pDownloadsTab(
                                 FilterChip(
                                     selected = historyFilter == option,
                                     onClick = { historyFilter = option },
+                                    modifier = Modifier.heightIn(min = 48.dp),
+                                    colors = qetaraFilterChipColors(),
                                     label = { Text(option.title) }
                                 )
                             }
@@ -256,8 +271,9 @@ internal fun P2pDownloadsTab(
                 if (section == DownloadLibrarySection.FILES) {
                     if (visibleFiles.isEmpty()) {
                         item("files-empty") {
-                            EmptyStateBlock(
-                                title = if (hasQuery) "No encontramos ese archivo" else "Tu próxima descarga empieza cerca",
+                            DownloadEmptyState(
+                                icon = if (hasQuery) Icons.Rounded.Search else Icons.Rounded.FolderOpen,
+                                title = if (hasQuery) "No encontramos ese archivo" else "Aún no has recibido archivos",
                                 body = if (hasQuery) "Prueba con otra parte del nombre o borra la búsqueda."
                                     else "Conecta Qetara con otro equipo y recibe tu primer archivo. Después podrás abrirlo y compartirlo desde aquí, incluso sin conexión.",
                                 actionLabel = if (hasQuery) "Borrar búsqueda" else "Conectar un equipo",
@@ -272,8 +288,9 @@ internal fun P2pDownloadsTab(
                     if (visibleHistory.isEmpty()) {
                         item("activity-empty") {
                             val filtered = hasQuery || historyFilter != DownloadHistoryFilter.ALL
-                            EmptyStateBlock(
-                                title = if (filtered) "No hay actividad con estos filtros" else "Cada envío deja una historia",
+                            DownloadEmptyState(
+                                icon = if (filtered) Icons.Rounded.Search else Icons.Rounded.CheckCircleOutline,
+                                title = if (filtered) "No hay actividad con estos filtros" else "Aún no hay transferencias",
                                 body = if (filtered) "Prueba con otro nombre o muestra toda la actividad."
                                     else "Aquí verás qué enviaste, qué recibiste y si cada transferencia se completó.",
                                 actionLabel = if (filtered) "Ver toda la actividad" else "Enviar archivos",
@@ -292,20 +309,57 @@ internal fun P2pDownloadsTab(
 }
 
 @Composable
+private fun DownloadEmptyState(
+    icon: ImageVector,
+    title: String,
+    body: String,
+    actionLabel: String,
+    onAction: () -> Unit
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surface,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+    ) {
+        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.primaryContainer,
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer) {
+                Icon(
+                    icon,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.padding(14.dp).size(28.dp)
+                )
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+                Text(body, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Button(onClick = onAction, modifier = Modifier.heightIn(min = 48.dp)) { Text(actionLabel) }
+        }
+    }
+}
+
+@Composable
 private fun ReceivedFileRow(item: DownloadFileSnapshot, onOpen: () -> Unit, onShare: () -> Unit) {
     var moreExpanded by rememberSaveable(item.file.absolutePath) { mutableStateOf(false) }
     Surface(
         onClick = onOpen,
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.42f)
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surface,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
         Row(
-            Modifier.padding(start = 14.dp, top = 14.dp, end = 6.dp, bottom = 14.dp),
+            Modifier.padding(start = 16.dp, top = 16.dp, end = 8.dp, bottom = 16.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Surface(color = MaterialTheme.colorScheme.primaryContainer, shape = RoundedCornerShape(12.dp)) {
+            Surface(color = MaterialTheme.colorScheme.primaryContainer,
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer, shape = RoundedCornerShape(12.dp)) {
                 Icon(
                     downloadFileIcon(item.file.extension),
                     contentDescription = null,
@@ -314,7 +368,8 @@ private fun ReceivedFileRow(item: DownloadFileSnapshot, onOpen: () -> Unit, onSh
                 )
             }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(item.file.name, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(item.file.name, style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 Text(
                     "${formatBytes(item.bytes)} · ${formatHistoryTime(item.modifiedAtMs)}",
                     style = MaterialTheme.typography.bodySmall,
@@ -322,7 +377,7 @@ private fun ReceivedFileRow(item: DownloadFileSnapshot, onOpen: () -> Unit, onSh
                 )
             }
             Box {
-                IconButton(onClick = { moreExpanded = true }) {
+                IconButton(onClick = { moreExpanded = true }, modifier = Modifier.size(48.dp)) {
                     Icon(Icons.Rounded.MoreVert, contentDescription = "Acciones para ${item.file.name}")
                 }
                 DropdownMenu(expanded = moreExpanded, onDismissRequest = { moreExpanded = false }) {
@@ -345,20 +400,31 @@ private fun ReceivedFileRow(item: DownloadFileSnapshot, onOpen: () -> Unit, onSh
 @Composable
 private fun TransferActivityRow(item: TransferHistoryEntry, onOpen: () -> Unit) {
     val successful = item.outcome == TransferOutcome.SUCCESS
+    val contentColor = if (item.outcome == TransferOutcome.FAILED) MaterialTheme.colorScheme.onErrorContainer
+        else MaterialTheme.colorScheme.onSurface
+    val detailColor = if (item.outcome == TransferOutcome.FAILED) MaterialTheme.colorScheme.onErrorContainer
+        else MaterialTheme.colorScheme.onSurfaceVariant
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
-        color = if (item.outcome == TransferOutcome.FAILED) MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.42f)
-        else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.42f)
+        shape = RoundedCornerShape(16.dp),
+        color = if (item.outcome == TransferOutcome.FAILED) MaterialTheme.colorScheme.errorContainer
+        else MaterialTheme.colorScheme.surface,
+        contentColor = contentColor,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
                 Icon(
-                    if (!successful) Icons.Rounded.ErrorOutline
+                    if (item.outcome == TransferOutcome.FAILED) Icons.Rounded.ErrorOutline
+                    else if (item.outcome == TransferOutcome.CANCELED) Icons.Rounded.Close
                     else if (item.direction == TransferDirection.RECEIVED) Icons.Rounded.ArrowDownward
                     else Icons.AutoMirrored.Rounded.Send,
                     contentDescription = null,
-                    tint = if (item.outcome == TransferOutcome.FAILED) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+                    tint = when (item.outcome) {
+                        TransferOutcome.FAILED -> MaterialTheme.colorScheme.onErrorContainer
+                        TransferOutcome.CANCELED -> MaterialTheme.colorScheme.onSurfaceVariant
+                        TransferOutcome.SUCCESS -> MaterialTheme.colorScheme.primary
+                    }
                 )
                 Text(
                     "${historyDirectionLabel(item.direction)} · ${historyOutcomeLabel(item.outcome)}",
@@ -366,7 +432,8 @@ private fun TransferActivityRow(item: TransferHistoryEntry, onOpen: () -> Unit) 
                     fontWeight = FontWeight.SemiBold
                 )
             }
-            Text(item.fileName, fontWeight = FontWeight.Medium, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(item.fileName, style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
             Text(
                 listOfNotNull(
                     item.peerLabel?.takeIf { it.isNotBlank() } ?: item.peerIp?.takeIf { it.isNotBlank() },
@@ -374,7 +441,7 @@ private fun TransferActivityRow(item: TransferHistoryEntry, onOpen: () -> Unit) 
                     formatHistoryTime(item.timestampMs)
                 ).joinToString(" · "),
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = detailColor
             )
             if (!successful) {
                 Text(
@@ -382,10 +449,10 @@ private fun TransferActivityRow(item: TransferHistoryEntry, onOpen: () -> Unit) 
                     else friendlyTransferIssue(item.errorCause, "No se completó. Comprueba la conexión y vuelve a enviar el archivo.")
                         ?: "No se completó. Comprueba la conexión y vuelve a enviar el archivo.",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = detailColor
                 )
             } else if (!item.route.isNullOrBlank()) {
-                TextButton(onClick = onOpen, modifier = Modifier.align(Alignment.End)) { Text("Abrir archivo") }
+                TextButton(onClick = onOpen, modifier = Modifier.align(Alignment.End).heightIn(min = 48.dp)) { Text("Abrir archivo") }
             }
         }
     }
@@ -395,8 +462,9 @@ private fun TransferActivityRow(item: TransferHistoryEntry, onOpen: () -> Unit) 
 private fun ReceivingFilePanel(state: P2pScreenState) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
-        color = MaterialTheme.colorScheme.primaryContainer
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.primaryContainer,
+        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {

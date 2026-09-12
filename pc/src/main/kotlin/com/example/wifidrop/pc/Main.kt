@@ -61,10 +61,8 @@ import androidx.compose.ui.zIndex
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.withTransform
-import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.PathParser
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.semantics.Role
@@ -191,32 +189,23 @@ import kotlin.random.Random
 import kotlin.system.exitProcess
 
 private val uiLogTimeFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss")
-private val qetaraPanelShape = RoundedCornerShape(8.dp)
+private val qetaraPanelShape = RoundedCornerShape(12.dp)
 internal val qetaraInk = Color(0xFF102A43)
 private val qetaraInkDeep = Color(0xFF071827)
-internal val qetaraCanvas = Color(0xFFFFF7ED)
-internal val qetaraCanvasElevated = Color(0xFFFFFBF6)
+internal val qetaraCanvas = Color(0xFFF4F6F5)
+internal val qetaraCanvasElevated = Color.White
 internal val qetaraTeal = Color(0xFF0A6B77)
-private val qetaraCoral = Color(0xFFEE6C4D)
-internal val qetaraMist = Color(0xFFF4F9FB)
-internal val qetaraLine = Color(0xFFE7D8C9)
-private const val qetaraLogoViewportSize = 108f
-private const val qetaraHeaderLogoFillRatio = 0.90f
-private const val qetaraWindowIconFillRatio = 0.78f
-private const val qetaraHeaderLogoCenterOffsetX = -0.13f
-private const val qetaraHeaderLogoCenterOffsetY = -0.07f
-private const val qetaraWindowLogoCenterOffsetX = -0.18f
-private const val qetaraWindowLogoCenterOffsetY = -0.17f
+internal val qetaraMist = Color(0xFFEAF4F3)
+internal val qetaraLine = Color(0xFFDDE5E5)
+internal val qetaraMuted = Color(0xFF536672)
 private const val DEVELOPER_GITHUB_URL = "https://github.com/IntelogNatanael"
 private const val githubLogoViewportSize = 98f
 private const val githubLogoPathData =
     "M41.4395 69.3848C28.8066 67.8535 19.9062 58.7617 19.9062 46.9902C19.9062 42.2051 21.6289 37.0371 24.5 33.5918C23.2559 30.4336 23.4473 23.7344 24.8828 20.959C28.7109 20.4805 33.8789 22.4902 36.9414 25.2656C40.5781 24.1172 44.4062 23.543 49.0957 23.543C53.7852 23.543 57.6133 24.1172 61.0586 25.1699C64.0254 22.4902 69.2891 20.4805 73.1172 20.959C74.457 23.543 74.6484 30.2422 73.4043 33.4961C76.4668 37.1328 78.0937 42.0137 78.0937 46.9902C78.0937 58.7617 69.1934 67.6621 56.3691 69.2891C59.623 71.3945 61.8242 75.9883 61.8242 81.252L61.8242 91.2051C61.8242 94.0762 64.2168 95.7031 67.0879 94.5547C84.4102 87.9512 98 70.6289 98 49.1914C98 22.1074 75.9883 0 48.9043 0C21.8203 0 0 22.1074 0 49.1914C0 70.4375 13.4941 88.0469 31.6777 94.6504C34.2617 95.6074 36.75 93.8848 36.75 91.3008L36.75 83.6445C35.4102 84.2188 33.6875 84.6016 32.1562 84.6016C25.8398 84.6016 22.1074 81.1563 19.4277 74.7441C18.375 72.1602 17.2266 70.6289 15.0254 70.3418C13.877 70.2461 13.4941 69.7676 13.4941 69.1934C13.4941 68.0449 15.4082 67.1836 17.3223 67.1836C20.0977 67.1836 22.4902 68.9063 24.9785 72.4473C26.8926 75.2227 28.9023 76.4668 31.2949 76.4668C33.6875 76.4668 35.2187 75.6055 37.4199 73.4043C39.0469 71.7773 40.291 70.3418 41.4395 69.3848Z"
-private const val qetaraLogoPathData =
-    "M78.8495,21.6103Q76.4784,21.8948 73.0165,23.2227Q69.5546,24.5505 64.7175,27.5856Q59.8804,30.6206 53.1464,36.0268Q45.6536,42.1918 40.8165,45.4639Q35.9794,48.7361 32.6598,50.0165Q29.3402,51.2969 26.2103,51.2969H24.6928Q25.2619,49.3052 26.0206,45.8907Q26.7794,42.4763 27.5856,38.4454Q28.3918,34.4144 29.1031,30.5258Q29.8144,26.6371 30.1938,23.6969H14.2598Q13.3113,29.8619 11.9361,36.7381Q10.5608,43.6144 9.0433,50.1588Q8.3794,53.3835 8.1897,55.6124Q8,57.8412 8,58.5052Q8,66.0928 12.7423,68.3691Q19.3814,67.4206 24.5505,67.1835Q29.7196,66.9464 31.8062,66.9464Q49.068,66.9464 63.532,71.6887Q77.9959,76.4309 90.0412,86.3897L100,75.3876Q94.5938,69.6021 86.7216,65.0495Q78.8495,60.4969 70.0763,57.699Q61.3031,54.901 52.9567,54.2371V53.8577Q57.0351,52.0557 59.9753,50.301Q62.9155,48.5464 66.4247,46.2701Q69.2701,44.468 71.9258,42.8557Q74.5814,41.2433 76.9526,39.8206Q79.4186,38.3031 81.8845,37.3072Q84.3505,36.3113 86.7216,35.6474Z"
-private val qetaraDesktopColors: Colors = lightColors(
-    primary = qetaraInk,
+internal val qetaraDesktopColors: Colors = lightColors(
+    primary = qetaraTeal,
     primaryVariant = qetaraInkDeep,
-    secondary = qetaraCoral,
+    secondary = qetaraTeal,
     background = qetaraCanvas,
     surface = qetaraCanvasElevated,
     error = Color(0xFFB3261E),
@@ -2836,7 +2825,7 @@ private fun runDesktopGui(cli: CliArgs) {
                     }
                 }
             }
-            MaterialTheme(colors = qetaraDesktopColors) {
+            MaterialTheme(colors = qetaraDesktopColors, typography = qetaraTypography, shapes = qetaraShapes) {
                 val actions = DesktopWorkspaceActions(
                     onOpenFlash = {
                         if (!showFlash) {
@@ -3054,7 +3043,7 @@ private fun DesktopBrandFooter(
     onOpenGithub: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val footerColor = MaterialTheme.colors.onSurface.copy(alpha = 0.58f)
+    val footerColor = qetaraMuted
     val githubIcon = remember {
         val resource = Thread.currentThread().contextClassLoader
             .getResourceAsStream("ic_github_invertocat_white.png")
@@ -3292,7 +3281,7 @@ private fun DesktopChatScopeContent(
                 },
                 modifier = Modifier.weight(1f),
                 style = MaterialTheme.typography.caption,
-                color = MaterialTheme.colors.onSurface.copy(alpha = 0.64f),
+                color = qetaraMuted,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -3393,7 +3382,7 @@ private fun DesktopChatScopeContent(
                         Text(
                             "Descargar automáticamente archivos del canal",
                             style = MaterialTheme.typography.caption,
-                            color = MaterialTheme.colors.onSurface.copy(alpha = 0.64f),
+                            color = qetaraMuted,
                             modifier = Modifier.weight(1f)
                         )
                     }
@@ -3421,7 +3410,7 @@ private fun DesktopChatScopeContent(
                         "Sin mensajes todavía.",
                         style = MaterialTheme.typography.body2,
                         fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.68f)
+                        color = qetaraMuted
                     )
                     Text(
                         if (scope == DesktopChatScope.GLOBAL_LAN) {
@@ -3430,7 +3419,7 @@ private fun DesktopChatScopeContent(
                             "Envía y recibe texto cifrado con un equipo de red."
                         },
                         style = MaterialTheme.typography.caption,
-                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.58f)
+                        color = qetaraMuted
                     )
                 } else {
                     scopedMessages.forEach { entry ->
@@ -3487,7 +3476,7 @@ private fun DesktopChatScopeContent(
                 color = if (attachmentFile != null && validAttachment == null) {
                     MaterialTheme.colors.error
                 } else {
-                    MaterialTheme.colors.onSurface.copy(alpha = 0.58f)
+                    qetaraMuted
                 },
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -3547,7 +3536,7 @@ private fun DesktopChatEmptyTarget(
         Text(
             detail,
             style = MaterialTheme.typography.caption,
-            color = MaterialTheme.colors.onSurface.copy(alpha = 0.58f),
+            color = qetaraMuted,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis
         )
@@ -3563,15 +3552,15 @@ internal fun DesktopLanPeerRow(
     unreadCount: Int = 0
 ) {
     val foreground = if (selected) qetaraTeal else qetaraInk
-    val background = if (selected) Color(0xFFE8F7F8) else qetaraCanvasElevated
+    val background = if (selected) qetaraMist else qetaraCanvasElevated
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .height(if (compact) 40.dp else 52.dp)
+            .height(if (compact) 44.dp else 60.dp)
             .then(if (onClick != null) Modifier.pointerHoverIcon(PointerIcon.Hand).selectable(selected = selected, role = Role.RadioButton, onClick = onClick) else Modifier),
         shape = qetaraPanelShape,
         color = background,
-        border = BorderStroke(1.dp, if (selected) Color(0xFFB9E3E6) else Color(0xFFE8EEF2)),
+        border = BorderStroke(1.dp, if (selected) qetaraTeal.copy(alpha = .5f) else qetaraLine),
         elevation = 0.dp
     ) {
         Row(
@@ -3600,7 +3589,7 @@ internal fun DesktopLanPeerRow(
                     Text(
                         peer.ip + if (!peer.sessionActive) " · sin conexión" else "",
                         style = MaterialTheme.typography.caption,
-                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.54f),
+                        color = qetaraMuted,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -3730,85 +3719,99 @@ private fun DesktopChatMessageRow(
     entry: DesktopChatEntry,
     onDownloadChannelFileOffer: () -> Unit
 ) {
-    val directionLabel = if (entry.direction == DesktopChatDirection.OUTGOING) "Tu" else entry.peerLabel
+    val directionLabel = if (entry.direction == DesktopChatDirection.OUTGOING) "Tú" else entry.peerLabel
     val fileOffer = decodeDesktopChannelFileOffer(entry.message)
     val color = when {
         entry.isError -> MaterialTheme.colors.error
         entry.direction == DesktopChatDirection.OUTGOING -> qetaraTeal
         else -> qetaraInk
     }
-    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        Text(
-            "$directionLabel · ${entry.timestamp}",
-            style = MaterialTheme.typography.caption,
-            fontWeight = FontWeight.SemiBold,
-            color = color.copy(alpha = 0.8f),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
-        if (fileOffer != null) {
-            Text(
-                if (entry.direction == DesktopChatDirection.OUTGOING) {
-                    "Tú compartiste:"
-                } else {
-                    "${entry.peerLabel} compartió:"
-                },
-                style = MaterialTheme.typography.body2,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colors.onSurface.copy(alpha = 0.78f)
-            )
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(8.dp),
-                color = qetaraCanvasElevated,
-                border = BorderStroke(1.dp, qetaraPanelBorder.copy(alpha = 0.6f)),
-                elevation = 0.dp
-            ) {
-                Row(
-                    modifier = Modifier.padding(8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(Modifier.weight(1f)) {
-                        Text(
-                            fileOffer.fileName,
-                            style = MaterialTheme.typography.body2,
-                            fontWeight = FontWeight.SemiBold,
-                            color = qetaraInk,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Text(
-                            if (fileOffer.fileSizeBytes >= 0L) {
-                                formatBytes(fileOffer.fileSizeBytes)
-                            } else {
-                                "Tamaño no disponible"
-                            },
-                            style = MaterialTheme.typography.caption,
-                            color = MaterialTheme.colors.onSurface.copy(alpha = 0.58f)
-                        )
-                    }
-                    if (entry.direction == DesktopChatDirection.INCOMING) {
-                        Button(
-                            onClick = onDownloadChannelFileOffer,
-                            colors = ButtonDefaults.buttonColors(
-                                backgroundColor = qetaraTeal,
-                                contentColor = Color.White
-                            )
+    Row(
+        Modifier.fillMaxWidth(),
+        horizontalArrangement = if (entry.direction == DesktopChatDirection.OUTGOING) Arrangement.End else Arrangement.Start
+    ) {
+        Surface(
+            modifier = Modifier.widthIn(max = 680.dp).fillMaxWidth(.88f),
+            shape = RoundedCornerShape(12.dp),
+            color = when {
+                entry.isError -> Color(0xFFFFF2F2)
+                entry.direction == DesktopChatDirection.OUTGOING -> qetaraMist
+                else -> qetaraCanvasElevated
+            },
+            border = BorderStroke(1.dp, if (entry.isError) MaterialTheme.colors.error.copy(alpha = .25f) else qetaraLine)
+        ) {
+            Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    "$directionLabel · ${entry.timestamp}",
+                    style = MaterialTheme.typography.caption,
+                    fontWeight = FontWeight.SemiBold,
+                    color = color,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                if (fileOffer != null) {
+                    Text(
+                        if (entry.direction == DesktopChatDirection.OUTGOING) {
+                            "Tú compartiste:"
+                        } else {
+                            "${entry.peerLabel} compartió:"
+                        },
+                        style = MaterialTheme.typography.body2,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.78f)
+                    )
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(8.dp),
+                        color = qetaraCanvasElevated,
+                        border = BorderStroke(1.dp, qetaraPanelBorder.copy(alpha = 0.6f)),
+                        elevation = 0.dp
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text("Descargar")
+                            Column(Modifier.weight(1f)) {
+                                Text(
+                                    fileOffer.fileName,
+                                    style = MaterialTheme.typography.body2,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = qetaraInk,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                Text(
+                                    if (fileOffer.fileSizeBytes >= 0L) {
+                                        formatBytes(fileOffer.fileSizeBytes)
+                                    } else {
+                                        "Tamaño no disponible"
+                                    },
+                                    style = MaterialTheme.typography.caption,
+                                    color = qetaraMuted
+                                )
+                            }
+                            if (entry.direction == DesktopChatDirection.INCOMING) {
+                                Button(
+                                    onClick = onDownloadChannelFileOffer,
+                                    colors = ButtonDefaults.buttonColors(
+                                        backgroundColor = qetaraTeal,
+                                        contentColor = Color.White
+                                    )
+                                ) {
+                                    Text("Descargar")
+                                }
+                            }
                         }
                     }
+                } else {
+                    Text(
+                        entry.message,
+                        style = MaterialTheme.typography.body2,
+                        color = qetaraInk
+                    )
                 }
             }
-        } else {
-            Text(
-                entry.message,
-                style = MaterialTheme.typography.body2,
-                color = MaterialTheme.colors.onSurface.copy(alpha = 0.78f),
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
         }
     }
 }
@@ -3842,9 +3845,7 @@ private fun QetaraDesktopHeader(
             QetaraLogoMark(
                 modifier = Modifier.size(88.dp),
                 color = qetaraInk,
-                fillRatio = 1.10f,
-                centerOffsetX = -0.05f,
-                centerOffsetY = 0.08f
+                fillRatio = 0.78f
             )
         }
         Column(
@@ -3990,25 +3991,25 @@ internal fun DesktopFileDropZone(
         else -> qetaraPanelBorder.copy(alpha = 0.9f)
     }
     val backgroundColor = when {
-        isDragActive -> Color(0xFFFFEFE7)
+        isDragActive -> Color(0xFFDDEFEA)
         hasFile -> qetaraMist
-        else -> qetaraCanvasElevated
+        else -> Color(0xFFF7FAF9)
     }
     val headline = when {
-        isDragActive -> "Suelta el archivo aquí"
-        hasFile -> selectedFile?.name.orEmpty()
-        else -> "Arrastra y suelta un archivo aquí"
+        isDragActive -> "Suelta tus archivos aquí"
+        hasFile -> "Archivos seleccionados"
+        else -> "Arrastra tus archivos aquí"
     }
     val detail = when {
-        hasFile -> selectedFile?.absolutePath.orEmpty()
-        else -> "O pulsa aquí para elegirlo · un archivo por envío"
+        hasFile -> "Haz clic para añadir archivos"
+        else -> "O haz clic para elegir varios archivos"
     }
 
     Surface(
         modifier = modifier
             .fillMaxWidth()
-            .height(126.dp)
-            .clickable(enabled = enabled, onClickLabel = "Elegir archivo para compartir", role = Role.Button, onClick = onChooseFile)
+            .height(if (hasFile) 80.dp else 126.dp)
+            .clickable(enabled = enabled, onClickLabel = "Elegir archivos para compartir", role = Role.Button, onClick = onChooseFile)
             .pointerHoverIcon(PointerIcon.Hand)
             .qetaraDashedBorder(borderColor),
         shape = qetaraPanelShape,
@@ -4023,7 +4024,7 @@ internal fun DesktopFileDropZone(
             verticalArrangement = Arrangement.Center
         ) {
             FileUploadGlyph(
-                modifier = Modifier.size(30.dp),
+                modifier = Modifier.size(if (hasFile) 22.dp else 30.dp),
                 color = if (isDragActive) qetaraTeal else qetaraInk
             )
             Text(
@@ -4038,7 +4039,7 @@ internal fun DesktopFileDropZone(
             Text(
                 detail,
                 style = MaterialTheme.typography.caption,
-                color = MaterialTheme.colors.onSurface.copy(alpha = 0.62f),
+                color = qetaraMuted,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -4056,7 +4057,7 @@ private fun Modifier.qetaraDashedBorder(color: Color): Modifier = drawWithConten
         color = color,
         topLeft = Offset(strokeWidth / 2f, strokeWidth / 2f),
         size = Size(canvasSize.width - strokeWidth, canvasSize.height - strokeWidth),
-        cornerRadius = CornerRadius(8.dp.toPx(), 8.dp.toPx()),
+        cornerRadius = CornerRadius(12.dp.toPx(), 12.dp.toPx()),
         style = Stroke(
             width = strokeWidth,
             pathEffect = PathEffect.dashPathEffect(floatArrayOf(dash, gap), 0f)
@@ -4076,7 +4077,7 @@ private fun GithubMark(
         val top = (size.height - githubLogoViewportSize * scale) / 2f
         withTransform({
             translate(left, top)
-            scale(scale, scale)
+            scale(scale, scale, pivot = Offset.Zero)
         }) {
             drawPath(githubPath, color)
         }
@@ -4134,65 +4135,6 @@ private fun FileUploadGlyph(
             strokeWidth = strokeWidth,
             cap = StrokeCap.Round
         )
-    }
-}
-
-@Composable
-internal fun QetaraLogoMark(
-    modifier: Modifier = Modifier,
-    color: Color = qetaraInk,
-    fillRatio: Float = qetaraHeaderLogoFillRatio,
-    centerOffsetX: Float = qetaraHeaderLogoCenterOffsetX,
-    centerOffsetY: Float = qetaraHeaderLogoCenterOffsetY
-) {
-    val logoPath = remember { PathParser().parsePathString(qetaraLogoPathData).toPath() }
-    Canvas(modifier = modifier) {
-        drawCenteredQetaraLogo(
-            logoPath = logoPath,
-            color = color,
-            fillRatio = fillRatio,
-            centerOffsetX = centerOffsetX,
-            centerOffsetY = centerOffsetY
-        )
-    }
-}
-
-private class QetaraWindowIconPainter : Painter() {
-    private val logoPath = PathParser().parsePathString(qetaraLogoPathData).toPath()
-
-    override val intrinsicSize: Size = Size.Unspecified
-
-    override fun DrawScope.onDraw() {
-        drawRect(qetaraCanvas)
-        drawRect(
-            color = qetaraInk,
-            style = Stroke(width = size.minDimension * 0.08f)
-        )
-        drawCenteredQetaraLogo(
-            logoPath = logoPath,
-            color = qetaraInk,
-            fillRatio = qetaraWindowIconFillRatio,
-            centerOffsetX = qetaraWindowLogoCenterOffsetX,
-            centerOffsetY = qetaraWindowLogoCenterOffsetY
-        )
-    }
-}
-
-private fun DrawScope.drawCenteredQetaraLogo(
-    logoPath: androidx.compose.ui.graphics.Path,
-    color: Color,
-    fillRatio: Float,
-    centerOffsetX: Float,
-    centerOffsetY: Float
-) {
-    val scale = size.minDimension * fillRatio / qetaraLogoViewportSize
-    val left = (size.width - qetaraLogoViewportSize * scale) / 2f + size.width * centerOffsetX
-    val top = (size.height - qetaraLogoViewportSize * scale) / 2f + size.height * centerOffsetY
-    withTransform({
-        translate(left, top)
-        scale(scale, scale)
-    }) {
-        drawPath(logoPath, color)
     }
 }
 
@@ -4268,7 +4210,7 @@ private fun DesktopEventsPanel(
                         Text(
                             "${logs.size} registros",
                             style = MaterialTheme.typography.caption,
-                            color = MaterialTheme.colors.onSurface.copy(alpha = 0.64f)
+                            color = qetaraMuted
                         )
                     }
                     TextButton(
@@ -4310,7 +4252,7 @@ private fun DesktopEventsPanel(
                             Text(
                                 "Inicia el receptor o envía un archivo para ver la actividad.",
                                 style = MaterialTheme.typography.caption,
-                                color = MaterialTheme.colors.onSurface.copy(alpha = 0.56f),
+                                color = qetaraMuted,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
@@ -4346,7 +4288,7 @@ private fun DesktopEventsPanel(
                                         color = if (entry.isError) {
                                             MaterialTheme.colors.error
                                         } else {
-                                            MaterialTheme.colors.onSurface.copy(alpha = 0.68f)
+                                            qetaraMuted
                                         }
                                     )
                                     Text(
@@ -4423,7 +4365,7 @@ private fun DesktopSection(
                     Text(
                         subtitle,
                         style = MaterialTheme.typography.caption,
-                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.62f),
+                        color = qetaraMuted,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )

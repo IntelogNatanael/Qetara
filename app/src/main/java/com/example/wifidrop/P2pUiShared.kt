@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilledTonalButton
@@ -91,7 +92,8 @@ internal fun EmptyStateBlock(
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.52f)
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        contentColor = MaterialTheme.colorScheme.onSurface
     ) {
         Column(
             modifier = Modifier
@@ -110,11 +112,16 @@ internal fun EmptyStateBlock(
             Text(
                 text = body,
                 style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center
             )
             if (!actionLabel.isNullOrBlank() && onAction != null) {
                 FilledTonalButton(
-                    onClick = onAction
+                    onClick = onAction,
+                    colors = ButtonDefaults.filledTonalButtonColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 ) {
                     Text(actionLabel)
                 }
@@ -144,17 +151,17 @@ internal fun PrimaryActionBar(
             modifier = if (primaryHeight != null) {
                 Modifier
                     .weight(1f)
-                    .height(primaryHeight)
+                    .heightIn(min = primaryHeight.coerceAtLeast(48.dp))
             } else {
-                Modifier.weight(1f)
+                Modifier.weight(1f).heightIn(min = 48.dp)
             }
         ) {
-            Text(primaryLabel, maxLines = 1)
+            Text(primaryLabel, textAlign = TextAlign.Center)
         }
         Box {
             OutlinedButton(
                 onClick = { menuExpanded = true },
-                modifier = if (primaryHeight != null) Modifier.height(primaryHeight) else Modifier,
+                modifier = Modifier.heightIn(min = (primaryHeight ?: 48.dp).coerceAtLeast(48.dp)),
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp)
             ) {
                 Text("Más")
@@ -317,10 +324,15 @@ internal fun OnboardingStepRow(
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(14.dp),
-        color = if (done) {
-            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)
+        color = if (done || isActive) {
+            MaterialTheme.colorScheme.primaryContainer
         } else {
-            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.65f)
+            MaterialTheme.colorScheme.surfaceContainerLow
+        },
+        contentColor = if (done || isActive) {
+            MaterialTheme.colorScheme.onPrimaryContainer
+        } else {
+            MaterialTheme.colorScheme.onSurface
         }
     ) {
         Row(
@@ -332,8 +344,16 @@ internal fun OnboardingStepRow(
         ) {
             StatusChip(
                 label = if (done) "OK" else "Paso $step",
-                containerColor = if (done) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer,
-                contentColor = if (done) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSecondaryContainer
+                containerColor = when {
+                    done -> MaterialTheme.colorScheme.primary
+                    isActive -> MaterialTheme.colorScheme.primaryContainer
+                    else -> MaterialTheme.colorScheme.surfaceContainerHigh
+                },
+                contentColor = when {
+                    done -> MaterialTheme.colorScheme.onPrimary
+                    isActive -> MaterialTheme.colorScheme.onPrimaryContainer
+                    else -> MaterialTheme.colorScheme.onSurfaceVariant
+                }
             )
             Column(Modifier.weight(1f)) {
                 Text(
@@ -350,7 +370,7 @@ internal fun OnboardingStepRow(
                 Text(
                     text = "Ahora",
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.primary
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
                 )
             }
         }

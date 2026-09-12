@@ -36,6 +36,7 @@ internal fun DesktopLicensesDialog(onDismiss: () -> Unit) {
                     Text(
                         notices,
                         style = MaterialTheme.typography.body2,
+                        color = qetaraInk,
                         modifier = Modifier.verticalScroll(scroll).padding(end = 16.dp)
                     )
                 }

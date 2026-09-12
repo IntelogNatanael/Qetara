@@ -17,16 +17,22 @@ import java.io.File
 /** Real Android providers and Intents, without opening apps or touching existing downloads. */
 class ReceivedFileOpenInstrumentation : Instrumentation() {
     private var flashSockets = false
+    private var flashUdp = false
     private var flashPcHost = "127.0.0.1"
 
     override fun onCreate(arguments: Bundle?) {
         super.onCreate(arguments)
         flashSockets = arguments?.getString("scenario") == "flash-sockets"
+        flashUdp = arguments?.getString("scenario") == "flash-udp"
         flashPcHost = arguments?.getString("pc-host")?.trim()?.takeIf { it.isNotEmpty() } ?: "127.0.0.1"
         start()
     }
 
     override fun onStart() {
+        if (flashUdp) {
+            FlashUdpInstrumentationScenario(this).run()
+            return
+        }
         if (flashSockets) {
             FlashSocketInstrumentationScenario(this, flashPcHost).run()
             return

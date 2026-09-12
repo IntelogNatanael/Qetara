@@ -1,0 +1,70 @@
+{
+  "apkSha256": "4ff1235c6d22a0b7eccda4c8d8d90ba182766e4c900fcdf8f27529a00ba35ff2",
+  "apkBytes": 22982982,
+  "emulator": "Pixel 8 / Android 16 API 36 / SwiftShader / read-only",
+  "themeSha256": "1b5079bc9944a5755e9eb04d7094df5e1a4ea04f2e39c6e230c065553d59d0f9",
+  "symbol": {
+    "source": "app/src/main/res/drawable/ic_launcher_foreground.xml",
+    "unchangedFromHead": true,
+    "normalizedSha256": "3f6feaa3dac9e1ef82679cb206dc7d17602f884220528411d184192a0e97ee2e",
+    "ink": "#102A43",
+    "viewport": [
+      108,
+      108
+    ],
+    "scale": [
+      0.65625,
+      0.65625
+    ]
+  },
+  "symbolContrast": {
+    "light": 13.49,
+    "dark": 12.57
+  },
+  "images": [
+    {
+      "file": "light.png",
+      "sha256": "a55f4caa9350e075fc9835e872727be7a8199d862b5741daca3fcaaa080907b6",
+      "sourceCapture": "brand-final-light",
+      "fontScale": 1,
+      "viewportDp": [
+        360,
+        800
+      ],
+      "visuallyInspected": true
+    },
+    {
+      "file": "dark.png",
+      "sha256": "3df8bf6c2243540a7ebc413e2d1965ec65e84ab3b32b4f399b11bf47c6da13cc",
+      "sourceCapture": "brand-final-dark",
+      "fontScale": 1,
+      "viewportDp": [
+        360,
+        800
+      ],
+      "visuallyInspected": true
+    },
+    {
+      "file": "large-type-dark.png",
+      "sha256": "7b46a159199124c115f556e3f0e6d76cd91119d30e719b5b7a4701d2908d355d",
+      "sourceCapture": "brand-large-dark",
+      "fontScale": 2,
+      "viewportDp": [
+        320,
+        640
+      ],
+      "visuallyInspected": true
+    },
+    {
+      "file": "mode-menu.png",
+      "sha256": "e9d53ec9cc3f01c6e8100d463e800b083faa23329afccbfa91b3b8f3ff7bd30c",
+      "sourceCapture": "brand-mode-menu",
+      "fontScale": 1,
+      "viewportDp": [
+        360,
+        800
+      ],
+      "visuallyInspected": true
+    }
+  ]
+}

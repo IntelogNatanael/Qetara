@@ -25,6 +25,7 @@ El [inventario Android release del 11 de septiembre de 2026](licenses/android-re
 | Skia | revisión a00c390e98, paquete m132-a00c390e98-1 declarado por Skiko | Motor gráfico nativo | [Licencia BSD de Skia](licenses/skia-a00c390e98-LICENSE.txt); sus componentes conservan términos propios |
 | Noise Java, `kr.jclab:noise-java` | 0.0.1 | Transporte cifrado Android y Windows | POM: Apache 2.0; código de origen: avisos MIT y dominio público preservados [aquí](licenses/noise-java-0.0.1-NOTICES.txt) |
 | Noto Sans Syriac | archivos Regular y Black incluidos en design/brand/fonts | Recursos tipográficos de marca | [SIL Open Font License 1.1](design/brand/fonts/OFL.txt), Copyright 2022 The Noto Project Authors |
+| Inter | 4.1; Regular, Medium, SemiBold y Bold | Tipografía de la interfaz Android y de escritorio | [SIL Open Font License 1.1](licenses/Inter-OFL-1.1.txt); [origen de escritorio](pc/src/main/resources/fonts/PROVENANCE.md) y [correspondencia Android](licenses/inter-mobile-PROVENANCE.md) |
 | Circum Icons, Klarr Agency | doce SVG exportados en design/penpot/extracted-icons | Recursos de diseño conservados en el código fuente | [MPL 2.0](licenses/Circum-Icons-MPL-2.0.txt); [procedencia por archivo](design/penpot/extracted-icons/PROVENANCE.md) |
 | GitHub Invertocat | PNG idéntico en Android y PC | Botón de enlace al perfil del desarrollador | [Aviso y permiso contextual de uso](licenses/GitHub-Invertocat-NOTICE.txt); no es un recurso bajo MIT |
 
@@ -48,6 +49,8 @@ La revisión no identificó una biblioteca Skia redistribuida por este component
 La revisión del 11 de septiembre de 2026 identificó los doce SVG exportados de Penpot con recursos de Circum Icons y conservó su MPL 2.0. La [tabla de procedencia](design/penpot/extracted-icons/PROVENANCE.md) fija las revisiones comparadas y distingue la transformación del SVG de la autoría original. No se encontraron referencias a esta carpeta desde los módulos de aplicación; forma parte del código fuente distribuido. Esta revisión no acredita los paquetes `.penpot` de referencia excluidos de Git.
 
 Los TTF Noto Sans Syriac contienen metadatos de la versión 3.000 y su aviso OFL 1.1; su [procedencia e inventario](design/brand/fonts/PROVENANCE.md) conserva los hashes locales. La licencia completa acompaña las fuentes y también se incorpora a los avisos Android y PC.
+
+Inter 4.1 se incluye localmente en Android y escritorio. Los cuatro TTF Android conservan exactamente los bytes de escritorio; solo cambian los nombres externos a inter_*.ttf para res/font. La [procedencia móvil](licenses/inter-mobile-PROVENANCE.md) documenta pesos, tamaños y SHA-256. Se conserva Copyright (c) 2016 The Inter Project Authors y el texto OFL 1.1 completo, también dentro del NOTICES.txt que lee el diálogo Android.
 
 El Invertocat se utiliza para enlazar a `https://github.com/IntelogNatanael`. El [Brand Toolkit oficial de GitHub](https://brand.github.com/foundations/logo) contempla el uso como botón hacia un perfil o proyecto GitHub. Ese permiso no es una licencia libre general del logotipo ni permite presentarlo como marca propia o atribuir respaldo de GitHub. No se conservó una URL de descarga original de los PNG; el [aviso](licenses/GitHub-Invertocat-NOTICE.txt) registra ese límite. No se afirma aceptación por una tienda de aplicaciones.
 
@@ -78,6 +81,6 @@ Estas herramientas se usan para producir o comprobar la aplicación; no deben co
 
 ## Conservación y actualización
 
-Las distribuciones deben llevar este documento y los archivos de `licenses/`, además de los avisos originales presentes en sus bibliotecas y en `runtime/legal/` cuando incluyan Java. Los recursos Noto deben conservar su archivo OFL. Al cambiar dependencias o generar otra plataforma, se deben volver a inspeccionar los artefactos realmente resueltos y los avisos nativos de esa plataforma; esta instantánea no acredita binarios que todavía no se han construido.
+Las distribuciones deben llevar este documento y los archivos de `licenses/`, además de los avisos originales presentes en sus bibliotecas y en `runtime/legal/` cuando incluyan Java. Los recursos Noto e Inter deben conservar sus archivos OFL. Al cambiar dependencias o generar otra plataforma, se deben volver a inspeccionar los artefactos realmente resueltos y los avisos nativos de esa plataforma; esta instantánea no acredita binarios que todavía no se han construido.
 
 Fuentes adicionales de la revisión: [Skiko v0.9.4.2](https://github.com/JetBrains/skiko/tree/v0.9.4.2), [versión de Skia declarada por Skiko](https://github.com/JetBrains/skiko/blob/v0.9.4.2/skiko/gradle.properties), [fuentes publicadas de Noise Java 0.0.1](https://repo.maven.apache.org/maven2/kr/jclab/noise-java/0.0.1/noise-java-0.0.1-sources.jar).

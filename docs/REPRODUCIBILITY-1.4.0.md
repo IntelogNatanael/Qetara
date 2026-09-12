@@ -121,8 +121,12 @@ dependencia transitiva, compilador o biblioteca nativa. La procedencia y las
 licencias de AndroidX graphics-path se documentan por separado en
 [`licenses/androidx-graphics-path-1.0.1-PROVENANCE.md`](../licenses/androidx-graphics-path-1.0.1-PROVENANCE.md).
 
-No se ejecutó el servidor oficial de F-Droid, su escáner ni una receta fdroiddata
-completa. La receta, su validación y una eventual inclusión siguen pendientes.
-La igualdad local y la copia de firma son evidencia para ese trabajo, no una
-aprobación de F-Droid. Su procedimiento está descrito en la
+Después se completó la [validación local de la receta F-Droid](FDROID_VALIDATION-1.4.0.md)
+con fdroidserver 2.4.5: lectura, formato, lint, escáneres de fuentes y APK y
+build pasaron. El APK de esa build coincide con el unsigned indicado arriba y
+su copia estándar de firma reproduce la misma candidata. El ensayo usó un
+origen Git local del commit fijado y herramientas configuradas localmente.
+No se ejecutó el servidor o CI oficial de F-Droid; siguen pendientes el acceso
+público a las fuentes y al APK y la revisión de inclusión. La igualdad local y
+la copia de firma no acreditan aprobación de F-Droid. Su procedimiento está descrito en la
 [documentación oficial de reproducibilidad](https://f-droid.org/docs/Reproducible_Builds/).

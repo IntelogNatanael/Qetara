@@ -22,8 +22,10 @@ import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.wifidrop.protocol.flash.FlashApproval
 import kotlinx.coroutines.delay
 
@@ -60,125 +62,129 @@ internal fun DesktopFlashPanel(
     val minutes = ((state.session.expiresAtMs - now).coerceAtLeast(0) + 59_999) / 60_000
     val nextStep = when {
         state.starting -> "Preparando la recepción temporal…"
-        !state.session.active -> "Al activarlo, este equipo podrá enviar y recibir solicitudes de Flash durante 30 minutos."
+        !state.session.active -> ""
         transfer != null -> transfer.detail
         state.sendPending -> "Preparando el siguiente archivo…"
-        state.selectedFiles.isEmpty() -> "Elige uno o varios archivos para enviar, o espera una solicitud del otro equipo."
+        state.selectedFiles.isEmpty() -> "Elige archivos para enviar o espera una solicitud."
         selected == null -> "Elige un equipo que tenga Flash activo."
-        else -> "El otro equipo verá el nombre y tamaño. Ambos deberán comparar el código antes de transferir."
+        else -> "Ambos equipos deberán comparar el código antes de transferir."
     }
 
-    Column(modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text("Flash", style = MaterialTheme.typography.h5, fontWeight = FontWeight.Bold)
-                Text(if (state.session.active) "Activo · $minutes min restantes" else "Tus archivos, dos equipos, bajo tu control.", color = qetaraTeal, style = MaterialTheme.typography.body2)
+    val sessionContent: @Composable () -> Unit = {
+        FlashCard {
+            Text("Conexión temporal", style = MaterialTheme.typography.subtitle1, fontWeight = FontWeight.SemiBold)
+            Text(
+                if (state.session.active) "Envía y recibe archivos en tu red local."
+                else "Activa Flash en ambos equipos, conectados a la misma red local.",
+                style = MaterialTheme.typography.body2, color = qetaraMuted
+            )
+            Text("Cada archivo requiere comparar un código y aprobar en ambos equipos.", style = MaterialTheme.typography.body2, color = qetaraMuted)
+            Divider(color = qetaraLine)
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text("Guardar lo recibido en", Modifier.weight(1f), style = MaterialTheme.typography.subtitle2)
+                    TextButton(onChooseDirectory, enabled = !state.session.active && !state.starting) { Text("Cambiar") }
+                }
+                SelectionContainer { Text(state.directory.absolutePath, style = MaterialTheme.typography.body2, color = qetaraMuted) }
+                if (state.session.active) Text("La carpeta queda fija mientras Flash esté activo.", style = MaterialTheme.typography.caption, color = qetaraMuted)
             }
-            if (state.session.active || state.starting) {
-                OutlinedButton(onClick = { if (state.busy) confirmStop = true else controller.stop() }) { Text("Desactivar") }
-            }
-            TextButton(onClick = onBack) { Text("Volver") }
         }
-
-        Box(Modifier.weight(1f).fillMaxWidth()) {
-            Column(
-                Modifier.fillMaxSize().verticalScroll(pageScroll).padding(end = 14.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp)
-            ) {
-                if (!state.session.active) {
-                    FlashCard {
-                        Text("Activa Flash en ambos equipos", fontWeight = FontWeight.SemiBold)
-                        Text("Usa la misma red local. Cada archivo necesita la aprobación de las dos personas tras comparar un código de verificación.", style = MaterialTheme.typography.body2)
-                        Text("No cambia tu sesión ni la recepción habitual de Qetara.", style = MaterialTheme.typography.caption, color = qetaraTeal)
-                    }
+    }
+    val filesContent: @Composable () -> Unit = {
+        FlashCard {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text("Archivos para compartir", Modifier.weight(1f), style = MaterialTheme.typography.subtitle1, fontWeight = FontWeight.SemiBold)
+                if (state.selectedFiles.isNotEmpty()) FlashLabel(state.selectedFiles.size.toString())
+            }
+            DesktopFileDropZone(state.selectedFile?.absolutePath.orEmpty(), false, onChooseFile, enabled = !state.busy)
+            state.selectedFiles.take(3).forEach { file ->
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(file.name, Modifier.weight(1f), style = MaterialTheme.typography.body2, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(formatBytes(file.length()), style = MaterialTheme.typography.caption, color = qetaraMuted)
                 }
-                FlashCard {
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Text("Guardar lo recibido en", Modifier.weight(1f), style = MaterialTheme.typography.subtitle2)
-                        TextButton(onChooseDirectory, enabled = !state.session.active && !state.starting) { Text("Cambiar") }
-                    }
-                    SelectionContainer { Text(state.directory.absolutePath, style = MaterialTheme.typography.caption) }
-                    if (state.session.active) Text("La carpeta queda fija mientras Flash esté activo.", style = MaterialTheme.typography.caption, color = qetaraTeal)
+            }
+            if (state.selectedFiles.size > 3) Text("Y ${state.selectedFiles.size - 3} archivo(s) más", style = MaterialTheme.typography.caption, color = qetaraMuted)
+            if (state.selectedFiles.isNotEmpty()) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text("${state.selectedFiles.size} archivo(s) preparados", style = MaterialTheme.typography.caption, color = qetaraMuted)
+                    TextButton(controller::clearFiles, enabled = !state.busy) { Text("Quitar todos") }
                 }
-                FlashCard {
-                    Text("Archivos para compartir", fontWeight = FontWeight.SemiBold)
-                    DesktopFileDropZone(state.selectedFile?.absolutePath.orEmpty(), false, onChooseFile, enabled = !state.busy)
-                    state.selectedFiles.take(3).forEach { file ->
-                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                            Text(file.name, Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            Text(formatBytes(file.length()), style = MaterialTheme.typography.body2)
-                        }
-                    }
-                    if (state.selectedFiles.size > 3) Text("Y ${state.selectedFiles.size - 3} archivo(s) más.", style = MaterialTheme.typography.body2)
-                    if (state.selectedFiles.isNotEmpty()) {
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text("${state.selectedFiles.size} archivo(s) preparados", style = MaterialTheme.typography.caption, color = qetaraTeal)
-                            TextButton(controller::clearFiles, enabled = !state.busy) { Text("Quitar todos") }
-                        }
-                    }
+            }
+        }
+    }
+    val receiverContent: @Composable () -> Unit = {
+        if (state.session.active) {
+            FlashCard {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text("Equipo receptor", Modifier.weight(1f), style = MaterialTheme.typography.subtitle1, fontWeight = FontWeight.SemiBold)
+                    TextButton(controller::discover) { Text("Buscar equipos") }
                 }
-                if (state.session.active) {
-                    FlashCard {
-                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                            Text("Equipo receptor", Modifier.weight(1f), fontWeight = FontWeight.SemiBold)
-                            TextButton(controller::discover) { Text("Buscar equipos") }
-                        }
-                        if (peers.isEmpty()) {
-                            Text("Aún no hay equipos disponibles. Activa Flash en el otro equipo y pulsa Buscar equipos.", style = MaterialTheme.typography.body2)
-                        }
-                        Column(Modifier.selectableGroup(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            peers.forEach { peer ->
-                                Surface(
-                                    modifier = Modifier.fillMaxWidth().selectable(
-                                        selected = peer.id == state.selectedPeerId,
-                                        enabled = !state.busy,
-                                        role = Role.RadioButton,
-                                        onClick = { controller.choosePeer(peer) }
-                                    ),
-                                    color = if (peer.id == state.selectedPeerId) qetaraMist else qetaraCanvasElevated,
-                                    shape = RoundedCornerShape(10.dp), border = BorderStroke(1.dp, qetaraLine)
-                                ) {
-                                    Row(Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                                        RadioButton(selected = peer.id == state.selectedPeerId, onClick = null)
-                                        Column(Modifier.weight(1f)) {
-                                            Text(peer.label.ifBlank { "Equipo Flash" }, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                                            Text("${peer.address}:${peer.port} · identidad por verificar", style = MaterialTheme.typography.caption)
-                                        }
-                                    }
+                if (peers.isEmpty()) {
+                    Text("No hay equipos disponibles. Activa Flash en el otro equipo y vuelve a buscar.", style = MaterialTheme.typography.body2, color = qetaraMuted)
+                }
+                Column(Modifier.selectableGroup(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    peers.forEach { peer ->
+                        val isSelected = peer.id == state.selectedPeerId
+                        Surface(
+                            modifier = Modifier.fillMaxWidth().selectable(
+                                selected = isSelected,
+                                enabled = !state.busy,
+                                role = Role.RadioButton,
+                                onClick = { controller.choosePeer(peer) }
+                            ),
+                            color = if (isSelected) qetaraMist else qetaraCanvasElevated,
+                            shape = RoundedCornerShape(8.dp),
+                            border = BorderStroke(1.dp, if (isSelected) qetaraTeal else qetaraLine)
+                        ) {
+                            Row(Modifier.padding(12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                                RadioButton(selected = isSelected, onClick = null)
+                                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Text(peer.label.ifBlank { "Equipo Flash" }, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                                    Text("${peer.address}:${peer.port}", style = MaterialTheme.typography.caption, color = qetaraMuted)
+                                    Text("Identidad por verificar", style = MaterialTheme.typography.caption, color = qetaraMuted)
                                 }
                             }
                         }
-                        TextButton({ manual = !manual }) { Text(if (manual) "Ocultar conexión manual" else "No aparece mi equipo") }
-                        if (manual) {
-                            Text("Dirección de este equipo", fontWeight = FontWeight.SemiBold)
-                            if (localAddresses.isEmpty()) {
-                                Text("No hay una dirección local disponible. Comprueba tu conexión Wi-Fi o Ethernet.", style = MaterialTheme.typography.body2)
-                            } else {
-                                localAddresses.distinct().forEach { address ->
-                                    SelectionContainer {
-                                        Text("$address:${state.session.port}", fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.body2)
-                                    }
-                                }
-                                Text("La otra persona puede usar esta dirección para buscar tu PC por Flash.", style = MaterialTheme.typography.caption)
-                            }
-                            Divider(color = qetaraLine)
-                            Text("Escribe su dirección local y puerto de Flash. Esto solo busca ese equipo; no envía el archivo.", style = MaterialTheme.typography.body2)
-                            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                                OutlinedTextField(manualAddress, { manualAddress = it.trim().take(15) }, label = { Text("IP local") }, placeholder = { Text("192.168.1.25") }, singleLine = true, modifier = Modifier.weight(1f))
-                                OutlinedTextField(manualPort, { manualPort = it.filter(Char::isDigit).take(5) }, label = { Text("Puerto Flash") }, singleLine = true, modifier = Modifier.width(132.dp))
-                            }
-                            OutlinedButton({ controller.discoverAt(manualAddress, manualPort) }, enabled = manualAddress.isNotBlank()) { Text("Buscar esta dirección") }
-                        }
                     }
                 }
-                state.transfers.asReversed().take(5).forEach { entry ->
-                    FlashCard {
+                TextButton({ manual = !manual }) { Text(if (manual) "Ocultar conexión manual" else "No aparece mi equipo") }
+                if (manual) {
+                    Divider(color = qetaraLine)
+                    Text("Dirección de este equipo", style = MaterialTheme.typography.subtitle2)
+                    if (localAddresses.isEmpty()) {
+                        Text("No hay una dirección local disponible. Comprueba tu conexión Wi-Fi o Ethernet.", style = MaterialTheme.typography.body2, color = qetaraMuted)
+                    } else {
+                        localAddresses.distinct().forEach { address ->
+                            SelectionContainer {
+                                Text("$address:${state.session.port}", fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.body2)
+                            }
+                        }
+                        Text("La otra persona puede buscar tu PC con esta dirección.", style = MaterialTheme.typography.caption, color = qetaraMuted)
+                    }
+                    Text("Buscar por dirección", style = MaterialTheme.typography.subtitle2)
+                    Text("Escribe la IP local y el puerto del otro equipo. La búsqueda no envía archivos.", style = MaterialTheme.typography.body2, color = qetaraMuted)
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        OutlinedTextField(manualAddress, { manualAddress = it.trim().take(15) }, label = { Text("IP local") }, placeholder = { Text("192.168.1.25") }, singleLine = true, modifier = Modifier.weight(1f), shape = RoundedCornerShape(8.dp))
+                        OutlinedTextField(manualPort, { manualPort = it.filter(Char::isDigit).take(5) }, label = { Text("Puerto Flash") }, singleLine = true, modifier = Modifier.width(120.dp), shape = RoundedCornerShape(8.dp))
+                    }
+                    OutlinedButton({ controller.discoverAt(manualAddress, manualPort) }, enabled = manualAddress.isNotBlank(), shape = RoundedCornerShape(8.dp), modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp)) { Text("Buscar esta dirección") }
+                }
+            }
+        }
+    }
+    val activityContent: @Composable () -> Unit = {
+        if (state.transfers.isNotEmpty()) {
+            FlashCard {
+                Text("Actividad reciente", style = MaterialTheme.typography.subtitle1, fontWeight = FontWeight.SemiBold)
+                state.transfers.asReversed().take(5).forEachIndexed { index, entry ->
+                    if (index > 0) Divider(color = qetaraLine)
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(entry.fileName, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                        Text((if (entry.outgoing) "Para " else "De ") + entry.peerLabel + " · " + formatBytes(entry.totalBytes), style = MaterialTheme.typography.caption)
+                        Text((if (entry.outgoing) "Para " else "De ") + entry.peerLabel + " · " + formatBytes(entry.totalBytes), style = MaterialTheme.typography.caption, color = qetaraMuted)
                         if (entry.phase == DesktopFlashPhase.TRANSFERRING) {
                             val progress = if (entry.totalBytes > 0) (entry.transferredBytes.toDouble() / entry.totalBytes).coerceIn(0.0, 1.0).toFloat() else 0f
-                            LinearProgressIndicator(progress, Modifier.fillMaxWidth(), color = qetaraTeal)
-                            Text("${formatBytes(entry.transferredBytes)} de ${formatBytes(entry.totalBytes)}", style = MaterialTheme.typography.caption)
+                            LinearProgressIndicator(progress, Modifier.fillMaxWidth(), color = qetaraTeal, backgroundColor = qetaraLine)
+                            Text("${formatBytes(entry.transferredBytes)} de ${formatBytes(entry.totalBytes)}", style = MaterialTheme.typography.caption, color = qetaraMuted)
                         }
                         Text(entry.detail, style = MaterialTheme.typography.body2, color = if (entry.phase == DesktopFlashPhase.FAILED) MaterialTheme.colors.error else qetaraInk)
                         if (entry.phase == DesktopFlashPhase.COMPLETE && entry.file != null) {
@@ -187,43 +193,109 @@ internal fun DesktopFlashPanel(
                     }
                 }
             }
-            if (pageScroll.maxValue > 0) VerticalScrollbar(rememberScrollbarAdapter(pageScroll), Modifier.align(Alignment.CenterEnd).fillMaxHeight())
         }
-        Divider(color = qetaraLine)
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(state.status, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }, color = if (state.error) MaterialTheme.colors.error else qetaraInk, style = MaterialTheme.typography.body2)
-            if (nextStep != state.status) Text(nextStep, style = MaterialTheme.typography.caption, color = qetaraInk.copy(alpha = .75f))
-            when {
-                !state.session.active -> Button(
-                    { controller.start(deviceName) }, enabled = !state.starting,
-                    colors = ButtonDefaults.buttonColors(backgroundColor = qetaraTeal, contentColor = Color.White),
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
-                ) { Text(if (state.starting) "Activando Flash…" else "Activar Flash durante 30 minutos") }
-                transfer != null -> OutlinedButton(
-                    { controller.cancel(transfer.id) }, enabled = !transfer.cancelling,
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
-                ) { Text(if (transfer.cancelling) "Cancelando…" else "Cancelar transferencia") }
-                else -> Button(
-                    controller::send, enabled = !state.busy && state.selectedFiles.isNotEmpty() && selected != null,
-                    colors = ButtonDefaults.buttonColors(backgroundColor = qetaraTeal, contentColor = Color.White),
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
-                ) { Text(if (state.sendPending) "Preparando…" else if (state.selectedFiles.size == 1) "Solicitar envío" else "Enviar ${state.selectedFiles.size} archivos") }
+    }
+
+    BoxWithConstraints(modifier.fillMaxSize()) {
+        val wide = maxWidth >= 760.dp
+        Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text("Flash", style = MaterialTheme.typography.h5, fontWeight = FontWeight.SemiBold)
+                    FlashLabel(when { state.starting -> "Activando…"; state.session.active -> "Activo · $minutes min restantes"; else -> "Desactivado" }, state.session.active)
+                }
+                if (state.session.active || state.starting) {
+                    OutlinedButton(onClick = { if (state.busy) confirmStop = true else controller.stop() }, shape = RoundedCornerShape(8.dp)) { Text("Desactivar") }
+                    Spacer(Modifier.width(8.dp))
+                }
+                TextButton(onClick = onBack) { Text("Volver a Qetara") }
+            }
+
+            Box(Modifier.weight(1f).fillMaxWidth()) {
+                Column(
+                    Modifier.fillMaxSize().verticalScroll(pageScroll).padding(end = 14.dp, bottom = 4.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    if (wide) {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.Top) {
+                            Column(Modifier.weight(1.1f), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                                filesContent()
+                                activityContent()
+                            }
+                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                                sessionContent()
+                                receiverContent()
+                            }
+                        }
+                    } else {
+                        sessionContent()
+                        filesContent()
+                        receiverContent()
+                        activityContent()
+                    }
+                }
+                if (pageScroll.maxValue > 0) VerticalScrollbar(rememberScrollbarAdapter(pageScroll), Modifier.align(Alignment.CenterEnd).fillMaxHeight())
+            }
+            val statusContent: @Composable () -> Unit = {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(state.status, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }, color = if (state.error) MaterialTheme.colors.error else qetaraInk, style = MaterialTheme.typography.body2)
+                    if (nextStep.isNotBlank() && nextStep != state.status) Text(nextStep, style = MaterialTheme.typography.caption, color = qetaraMuted)
+                }
+            }
+            val actionContent: @Composable () -> Unit = {
+                when {
+                    !state.session.active -> Button(
+                        { controller.start(deviceName) }, enabled = !state.starting,
+                        colors = ButtonDefaults.buttonColors(backgroundColor = qetaraTeal, contentColor = Color.White),
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp), shape = RoundedCornerShape(8.dp), elevation = ButtonDefaults.elevation(0.dp)
+                    ) { Text(if (state.starting) "Activando Flash…" else "Activar Flash · 30 min") }
+                    transfer != null -> OutlinedButton(
+                        { controller.cancel(transfer.id) }, enabled = !transfer.cancelling,
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp), shape = RoundedCornerShape(8.dp)
+                    ) { Text(if (transfer.cancelling) "Cancelando…" else "Cancelar transferencia") }
+                    else -> Button(
+                        controller::send, enabled = !state.busy && state.selectedFiles.isNotEmpty() && selected != null,
+                        colors = ButtonDefaults.buttonColors(backgroundColor = qetaraTeal, contentColor = Color.White),
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp), shape = RoundedCornerShape(8.dp), elevation = ButtonDefaults.elevation(0.dp)
+                    ) { Text(if (state.sendPending) "Preparando…" else if (state.selectedFiles.size <= 1) "Solicitar envío" else "Enviar ${state.selectedFiles.size} archivos") }
+                }
+            }
+            Surface(color = qetaraCanvasElevated, contentColor = qetaraInk, shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, qetaraLine)) {
+                if (wide) {
+                    Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.spacedBy(24.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier.weight(1f)) { statusContent() }
+                        Box(Modifier.width(240.dp)) { actionContent() }
+                    }
+                } else {
+                    Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        statusContent()
+                        actionContent()
+                    }
+                }
             }
         }
     }
     if (confirmStop) AlertDialog(
         onDismissRequest = { confirmStop = false },
+        shape = RoundedCornerShape(16.dp), backgroundColor = qetaraCanvasElevated, contentColor = qetaraInk,
         title = { Text("¿Desactivar Flash?") },
         text = { Text("Se detendrán la transferencia y las solicitudes pendientes de Flash. Los archivos ya guardados se conservan.") },
-        confirmButton = { TextButton({ confirmStop = false; controller.stop() }) { Text("Desactivar Flash") } },
+        confirmButton = { OutlinedButton({ confirmStop = false; controller.stop() }, shape = RoundedCornerShape(8.dp)) { Text("Desactivar Flash") } },
         dismissButton = { TextButton({ confirmStop = false }) { Text("Seguir en Flash") } }
     )
 }
 
 @Composable
 private fun FlashCard(content: @Composable ColumnScope.() -> Unit) {
-    Surface(color = qetaraCanvasElevated, shape = RoundedCornerShape(14.dp), border = BorderStroke(1.dp, qetaraLine)) {
-        Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp), content = content)
+    Surface(color = qetaraCanvasElevated, contentColor = qetaraInk, shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, qetaraLine)) {
+        Column(Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp), content = content)
+    }
+}
+
+@Composable
+private fun FlashLabel(label: String, active: Boolean = false) {
+    Surface(color = if (active) qetaraMist else qetaraCanvas, shape = RoundedCornerShape(8.dp)) {
+        Text(label, Modifier.padding(horizontal = 10.dp, vertical = 5.dp), style = MaterialTheme.typography.caption, color = if (active) qetaraTeal else qetaraMuted, fontWeight = FontWeight.Medium)
     }
 }
 
@@ -245,30 +317,51 @@ private fun DesktopFlashApprovalDialog(approval: FlashApproval, count: Int, now:
     AlertDialog(
         onDismissRequest = { decide(false) },
         modifier = Modifier.widthIn(max = 620.dp),
-        title = { Text(if (approval.outgoing) "Verifica antes de enviar" else "Solicitud de archivo por Flash") },
+        shape = RoundedCornerShape(16.dp), backgroundColor = qetaraCanvasElevated, contentColor = qetaraInk,
+        title = { Text(if (approval.outgoing) "Verifica antes de enviar" else "Solicitud de archivo por Flash", fontWeight = FontWeight.SemiBold) },
         text = {
             Box(Modifier.fillMaxWidth().heightIn(max = 340.dp)) {
-                Column(Modifier.verticalScroll(scroll).padding(end = 14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text((if (approval.outgoing) "Enviar a " else "Recibir de ") + approval.peer.label, fontWeight = FontWeight.SemiBold)
-                    Text("${approval.peer.address}:${approval.peer.port}", style = MaterialTheme.typography.caption)
-                    Text(approval.fileName, fontWeight = FontWeight.SemiBold)
-                    Text(formatBytes(approval.totalBytes), style = MaterialTheme.typography.body2)
-                    Text("Compara este código con el que muestra la otra persona. Debe coincidir completo en ambos equipos.")
-                    Text(approval.verificationCode, fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.h5, fontWeight = FontWeight.Bold, color = qetaraTeal)
-                    Row(
-                        Modifier.fillMaxWidth().toggleable(compared, role = Role.Checkbox, onValueChange = { compared = it }),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Checkbox(compared, onCheckedChange = null)
-                        Text("Comparé el código completo y coincide.", Modifier.weight(1f))
+                Column(Modifier.verticalScroll(scroll).padding(end = 14.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text((if (approval.outgoing) "Enviar a " else "Recibir de ") + approval.peer.label, fontWeight = FontWeight.SemiBold)
+                        Text("${approval.peer.address}:${approval.peer.port}", style = MaterialTheme.typography.caption, color = qetaraMuted)
                     }
-                    Text("Esta aprobación corresponde solo a este archivo. Caduca en $remaining s." + if (count > 1) " Hay $count solicitudes pendientes." else "", style = MaterialTheme.typography.caption)
+                    Surface(color = qetaraCanvas, shape = RoundedCornerShape(8.dp), border = BorderStroke(1.dp, qetaraLine)) {
+                        Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(approval.fileName, fontWeight = FontWeight.SemiBold)
+                            Text(formatBytes(approval.totalBytes), style = MaterialTheme.typography.body2, color = qetaraMuted)
+                        }
+                    }
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Text("Compara este código con la otra persona. Debe coincidir completo en ambos equipos.", style = MaterialTheme.typography.body2)
+                        Surface(color = qetaraMist, shape = RoundedCornerShape(8.dp), border = BorderStroke(1.dp, qetaraLine)) {
+                            Text(
+                                approval.verificationCode, Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 16.dp),
+                                fontFamily = FontFamily.Monospace, fontSize = 28.sp, lineHeight = 36.sp,
+                                fontWeight = FontWeight.Bold, color = qetaraTeal, textAlign = TextAlign.Center
+                            )
+                        }
+                    }
+                    Surface(color = if (compared) qetaraMist else qetaraCanvasElevated, shape = RoundedCornerShape(8.dp), border = BorderStroke(1.dp, if (compared) qetaraTeal else qetaraLine)) {
+                        Row(
+                            Modifier.fillMaxWidth().toggleable(compared, role = Role.Checkbox, onValueChange = { compared = it }).padding(12.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Checkbox(compared, onCheckedChange = null)
+                            Text("Comparé el código completo y coincide.", Modifier.weight(1f), style = MaterialTheme.typography.body2)
+                        }
+                    }
+                    Text("Solo se aprueba este archivo. Caduca en $remaining s." + if (count > 1) " Hay $count solicitudes pendientes." else "", style = MaterialTheme.typography.caption, color = qetaraMuted)
                 }
                 if (scroll.maxValue > 0) VerticalScrollbar(rememberScrollbarAdapter(scroll), Modifier.align(Alignment.CenterEnd).fillMaxHeight())
             }
         },
         confirmButton = {
-            Button({ decide(true) }, enabled = compared && remaining > 0) {
+            Button(
+                { decide(true) }, enabled = compared && remaining > 0,
+                shape = RoundedCornerShape(8.dp), modifier = Modifier.heightIn(min = 44.dp),
+                colors = ButtonDefaults.buttonColors(backgroundColor = qetaraTeal, contentColor = Color.White), elevation = ButtonDefaults.elevation(0.dp)
+            ) {
                 Text(if (approval.outgoing) "Coincide · enviar archivo" else "Coincide · aceptar archivo")
             }
         },

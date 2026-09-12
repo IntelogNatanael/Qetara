@@ -8,6 +8,8 @@ El código prepara **1.4.0, código Android 7**, con identificador `io.github.in
 
 La publicación pública y la solicitud a F-Droid son pasos separados de esta preparación. Consulta [Preparación de publicación](PUBLICATION_READINESS.md) para las comprobaciones y los límites pendientes.
 
+La candidata comprobada procede de `588a92f2617815b5744eeb91a1da463c5c685f90`. Ya se validaron el APK final en emulador y teléfono, lotes Flash por Wi-Fi, la instalación MSI y la receta F-Droid con herramientas locales. UDP físico aprobó la repetición sin cambios del arnés; se conserva el timeout del primer intento. El [informe 1.4.0](VALIDATION-1.4.0.md) enlaza hashes y resultados completos. Después se revisaron la [interfaz de escritorio](DESKTOP_DESIGN_REVIEW-2026-09-11.md), la [interfaz móvil](MOBILE_DESIGN_REVIEW-2026-09-11.md), sus [colores](MOBILE_COLOR_REVIEW-2026-09-11.md) y la [marca adaptable](../design/figma/mobile-brand-adaptive/README.md). Estos cambios de diseño son posteriores a los binarios de la candidata. Siguen pendientes el recorrido visual completo de envío y cancelación y el nuevo paquete de entrega; no se ha publicado ni obtenido aceptación oficial de F-Droid.
+
 ## Entrega anterior de referencia
 
 - **Android 1.3.1, código 6**, identificador `com.example.wifidrop`, Android 7/API 24 como mínimo y SDK objetivo 36.
@@ -16,7 +18,7 @@ La publicación pública y la solicitud a F-Droid son pasos separados de esta pr
 - El repositorio [IntelogNatanael/Qetara](https://github.com/IntelogNatanael/Qetara) es privado: el compañero necesita permiso de acceso. El código conserva su [licencia MIT](../LICENSE).
 - Los instaladores anteriores mantienen sus versiones originales; no contienen el desarrollo posterior descrito a continuación.
 
-Lee primero [CONTRIBUTING](../CONTRIBUTING.md), [arquitectura](../ARCHITECTURE.md), [principios de experiencia](EXPERIENCE.md) y [seguridad](../SECURITY.md). Trabaja en una rama propia y conserva los cambios del usuario. Antes de modificar interfaz, revisa [AGENTS.md](../AGENTS.md): exige Penpot MCP. No estuvo disponible durante la entrega documentada; las verificaciones de interfaz realizadas se describen en los informes de validación.
+Lee primero [CONTRIBUTING](../CONTRIBUTING.md), [arquitectura](../ARCHITECTURE.md), [principios de experiencia](EXPERIENCE.md) y [seguridad](../SECURITY.md). Trabaja en una rama propia y conserva los cambios del usuario. Antes de modificar interfaz, revisa [AGENTS.md](../AGENTS.md): la referencia actual es Figma. Su cuota MCP impidió guardar las maquetas de esta iteración; las capturas y los tokens se conservan en [design/figma](../design/figma/README.md), con el alcance de las comprobaciones descrito en cada informe.
 
 ## Desarrollo posterior a la entrega
 
@@ -121,9 +123,10 @@ Sustituye esa ruta por el paquete real. También se admite `QETARA_RUNTIME_SOURC
 
 ## Qué está probado y qué queda por comprobar
 
+- [Candidata 1.4.0](VALIDATION-1.4.0.md): incluye comprobaciones del APK final en teléfono físico y emulador, transferencias Flash, instalación MSI, descubrimiento UDP físico y receta F-Droid local. El fallo UDP inicial y los límites de cada prueba se conservan en sus informes; el recorrido visual completo de envío y cancelación y el nuevo paquete siguen pendientes.
 - [Android 1.3.1](VALIDATION-1.3.1-ANDROID.md): 180 tests unitarios Android y nueve comprobaciones instrumentadas pasaron. PNG abrió en Fotos como `image/png`; PDF abrió en su visor como `application/pdf`. El selector no fija una aplicación. Puede abrir directamente si sólo hay un visor compatible.
 - [Android/Windows 1.3.0](VALIDATION.md): 262 tests integrados y transferencias Flash gráficas en ambas direcciones con hashes coincidentes. Las pruebas del motor cubren sockets, aprobaciones, rechazo y cancelación; no son una auditoría criptográfica independiente.
-- La QA móvil reciente usó un emulador Android 16/API 36. El teléfono físico quedó pausado; no se atribuye a 1.3.1 una prueba física nueva. El enlace emulador–Windows no demuestra descubrimiento multicast en un router real. Wi-Fi Direct físico, macOS y Linux requieren su propia validación.
+- La QA de 1.3.1 usó un emulador Android 16/API 36. El teléfono físico quedó pausado en esa validación; no se atribuyen a 1.3.1 las pruebas físicas posteriores de 1.4.0. El enlace emulador–Windows no demuestra descubrimiento multicast en un router real. Wi-Fi Direct físico y los recorridos de uso en macOS y Linux requieren su propia validación.
 - **Observación pendiente:** el historial de Android con sesión habitual cerrada mostró una lista vacía pese a conservar sus registros. No se alteró durante la corrección MIME; las URI de MediaStore se probaron directamente con instrumentación.
 - No hay detección del formato por bytes: sin extensión ni MIME concreto del proveedor, el tipo permanece desconocido. HEIC/HEIF/AVIF se comprobaron como metadatos, no como decodificación de imágenes.
 - Flash no reanuda automáticamente tras muerte del proceso. Un cierre abrupto puede dejar temporales privados; un envío completado con acuse perdido puede producir otra copia al repetirse. Lee [FLASH](FLASH.md) y [PRIVACY](PRIVACY.md) antes de cambiar recuperación o consentimiento.

@@ -1,5 +1,6 @@
 package com.example.wifidrop
 import android.content.Intent
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.text.KeyboardOptions
@@ -24,6 +25,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.ime
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
@@ -45,6 +47,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Send
 import androidx.compose.material.icons.rounded.AttachFile
+import androidx.compose.material.icons.rounded.ChatBubbleOutline
 import androidx.compose.material.icons.rounded.Clear
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.DeleteSweep
@@ -83,7 +86,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -365,17 +367,9 @@ internal fun P2pMessagesTab(
     }.joinToString(" · ")
     val featuredQueueItem = state.sendQueue.firstOrNull()
     val sectionCardColors = CardDefaults.elevatedCardColors(
-        containerColor = lerp(
-            MaterialTheme.colorScheme.surface,
-            MaterialTheme.colorScheme.surfaceVariant,
-            0.12f
-        )
+        containerColor = MaterialTheme.colorScheme.background
     )
-    val quietPanelColor = lerp(
-        MaterialTheme.colorScheme.surface,
-        MaterialTheme.colorScheme.surfaceVariant,
-        0.22f
-    )
+    val quietPanelColor = MaterialTheme.colorScheme.surfaceContainerLow
 
     LaunchedEffect(filteredMessages.firstOrNull()?.id) {
         val newest = filteredMessages.firstOrNull()
@@ -397,7 +391,9 @@ internal fun P2pMessagesTab(
         modifier = modifier
             .fillMaxWidth()
             .fillMaxSize(),
-        colors = sectionCardColors
+        colors = sectionCardColors,
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 0.dp)
     ) {
         val sectionLabel = when {
             showChannelJoinPrompt -> null
@@ -413,27 +409,27 @@ internal fun P2pMessagesTab(
             else (maxHeight * 0.62f).coerceAtLeast(128.dp).coerceAtMost(maxHeight)
         val headerMaxHeight = maxHeight * 0.34f
         Column(
-            modifier = Modifier.fillMaxSize().padding(UiSpaceS),
-            verticalArrangement = Arrangement.spacedBy(UiSpaceS)
+            modifier = Modifier.fillMaxSize().padding(if (keyboardVisible) 8.dp else 16.dp),
+            verticalArrangement = Arrangement.spacedBy(if (keyboardVisible) 8.dp else 16.dp)
         ) {
             if (!keyboardVisible) {
             Column(
                 modifier = Modifier.fillMaxWidth().heightIn(max = headerMaxHeight).verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(UiSpaceS)
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-            Row(
+            FlowRow(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 Column(
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.widthIn(min = 160.dp).weight(1f),
                     verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
                     Text(
                         chatHeaderTitle,
                         fontWeight = FontWeight.Bold,
-                        style = MaterialTheme.typography.titleMedium,
+                        style = MaterialTheme.typography.titleLarge,
                         modifier = Modifier.semantics { heading() }
                     )
                     Text(
@@ -443,16 +439,17 @@ internal fun P2pMessagesTab(
                     )
                 }
                 Row(
+                    modifier = Modifier.align(Alignment.CenterVertically),
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     if (filteredMessages.isNotEmpty()) {
-                        IconButton(onClick = { searchVisible = !searchVisible; if (!searchVisible) messageQuery = "" }) {
+                        IconButton(onClick = { searchVisible = !searchVisible; if (!searchVisible) messageQuery = "" }, modifier = Modifier.size(48.dp)) {
                             Icon(Icons.Rounded.Search, contentDescription = "Buscar en mensajes guardados")
                         }
                     }
                     if (isGlobalChat && globalLanJoined) {
-                        TextButton(onClick = { onSetGlobalLanJoined(false) }) {
+                        TextButton(onClick = { onSetGlobalLanJoined(false) }, modifier = Modifier.heightIn(min = 48.dp)) {
                             Icon(
                                 imageVector = Icons.Rounded.Close,
                                 contentDescription = null,
@@ -462,7 +459,7 @@ internal fun P2pMessagesTab(
                         }
                     }
                     if (filteredMessages.isNotEmpty()) {
-                        IconButton(onClick = { confirmClearChat = true }) {
+                        IconButton(onClick = { confirmClearChat = true }, modifier = Modifier.size(48.dp)) {
                             Icon(Icons.Rounded.DeleteSweep, contentDescription = "Eliminar historial de este canal")
                         }
                     }
@@ -478,7 +475,7 @@ internal fun P2pMessagesTab(
                     label = { Text("Buscar texto o equipo") },
                     leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
                     trailingIcon = {
-                        IconButton(onClick = { messageQuery = ""; searchVisible = false }) {
+                        IconButton(onClick = { messageQuery = ""; searchVisible = false }, modifier = Modifier.size(48.dp)) {
                             Icon(Icons.Rounded.Close, contentDescription = "Cerrar búsqueda")
                         }
                     },
@@ -499,6 +496,8 @@ internal fun P2pMessagesTab(
                             FilterChip(
                                 selected = selected,
                                 onClick = { onSelectChatDirectPeer(peer.ip) },
+                                modifier = Modifier.heightIn(min = 48.dp),
+                                colors = qetaraFilterChipColors(),
                                 label = { Text(peer.label.ifBlank { peer.ip }, maxLines = 1) }
                             )
                         }
@@ -507,7 +506,7 @@ internal fun P2pMessagesTab(
             }
 
             if (!isGlobalChat && directChannelReady && !state.chatSessionReady) {
-                TextButton(onClick = onOpenConnectTab) { Text("Confirmar sesión en Conectar") }
+                TextButton(onClick = onOpenConnectTab, modifier = Modifier.heightIn(min = 48.dp)) { Text("Confirmar sesión en Conectar") }
             }
 
             if (showDirectSetupCard && hasMessages) {
@@ -517,7 +516,7 @@ internal fun P2pMessagesTab(
                 )
                 FilledTonalButton(
                     onClick = onOpenConnectTab,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
                 ) {
                     Text("Ir a Conectar")
                 }
@@ -587,13 +586,13 @@ internal fun P2pMessagesTab(
                     }
 
                     if (showSyncButton) {
-                        OutlinedButton(onClick = onSyncToken) {
+                        OutlinedButton(onClick = onSyncToken, modifier = Modifier.heightIn(min = 48.dp)) {
                             Text("Sincronizar sesión")
                         }
                     }
 
                     if (isGlobalChat) {
-                        TextButton(onClick = { channelOptionsExpanded = !channelOptionsExpanded }) {
+                        TextButton(onClick = { channelOptionsExpanded = !channelOptionsExpanded }, modifier = Modifier.heightIn(min = 48.dp)) {
                             Text(if (channelOptionsExpanded) "Ocultar opciones del canal" else "Opciones del canal")
                         }
                         if (channelOptionsExpanded) {
@@ -610,11 +609,16 @@ internal fun P2pMessagesTab(
             if (operationalNotice != null) {
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(14.dp),
+                    shape = RoundedCornerShape(16.dp),
                     color = if (operationalNoticeIsError) {
-                        MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.58f)
+                        MaterialTheme.colorScheme.errorContainer
                     } else {
                         quietPanelColor
+                    },
+                    contentColor = if (operationalNoticeIsError) {
+                        MaterialTheme.colorScheme.onErrorContainer
+                    } else {
+                        MaterialTheme.colorScheme.onSurface
                     }
                 ) {
                     Text(
@@ -634,7 +638,8 @@ internal fun P2pMessagesTab(
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
-                    color = quietPanelColor
+                    color = quietPanelColor,
+                    contentColor = MaterialTheme.colorScheme.onSurface
                 ) {
                     Column(
                         modifier = Modifier
@@ -747,7 +752,8 @@ internal fun P2pMessagesTab(
                         .fillMaxSize(),
                     state = listState,
                     reverseLayout = true,
-                    verticalArrangement = Arrangement.spacedBy(UiSpaceS)
+                    contentPadding = PaddingValues(vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(recentMessages, key = { it.id }) { item ->
                         ChatMessageCard(
@@ -766,7 +772,7 @@ internal fun P2pMessagesTab(
                             newMessagesCount = 0
                             chatCoroutineScope.launch { listState.animateScrollToItem(0) }
                         },
-                        modifier = Modifier.align(Alignment.BottomCenter).padding(8.dp)
+                        modifier = Modifier.align(Alignment.BottomCenter).padding(8.dp).heightIn(min = 48.dp)
                     ) {
                         Icon(Icons.Rounded.ArrowDownward, contentDescription = null, modifier = Modifier.size(18.dp))
                         Text(if (newMessagesCount > 0) "${newMessagesCount} nuevos" else "Ir al último mensaje")
@@ -796,7 +802,7 @@ internal fun P2pMessagesTab(
                     )
                     FilledTonalButton(
                         onClick = onOpenConnectTab,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
                     ) {
                         Text("Ir a Conectar")
                     }
@@ -945,6 +951,9 @@ internal fun P2pMessagesTab(
         val pendingMessage = state.chatMessages.firstOrNull { it.id == pendingDeleteMessageId }
         AlertDialog(
             onDismissRequest = { pendingDeleteMessageId = null },
+            containerColor = MaterialTheme.colorScheme.surface,
+            titleContentColor = MaterialTheme.colorScheme.onSurface,
+            textContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
             title = { Text("Eliminar mensaje") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(UiSpaceS)) {
@@ -958,6 +967,8 @@ internal fun P2pMessagesTab(
             },
             confirmButton = {
                 TextButton(
+                    modifier = Modifier.heightIn(min = 48.dp),
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
                     onClick = {
                         val id = pendingDeleteMessageId
                         pendingDeleteMessageId = null
@@ -968,7 +979,7 @@ internal fun P2pMessagesTab(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { pendingDeleteMessageId = null }) {
+                TextButton(onClick = { pendingDeleteMessageId = null }, modifier = Modifier.heightIn(min = 48.dp)) {
                     Text("Cancelar")
                 }
             }
@@ -978,6 +989,9 @@ internal fun P2pMessagesTab(
     if (confirmClearChat) {
         AlertDialog(
             onDismissRequest = { confirmClearChat = false },
+            containerColor = MaterialTheme.colorScheme.surface,
+            titleContentColor = MaterialTheme.colorScheme.onSurface,
+            textContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
             title = { Text("Limpiar chat") },
             text = {
                 Text(
@@ -986,6 +1000,8 @@ internal fun P2pMessagesTab(
             },
             confirmButton = {
                 TextButton(
+                    modifier = Modifier.heightIn(min = 48.dp),
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
                     onClick = {
                         confirmClearChat = false
                         onClearMessages(activeChannel)
@@ -995,7 +1011,7 @@ internal fun P2pMessagesTab(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { confirmClearChat = false }) {
+                TextButton(onClick = { confirmClearChat = false }, modifier = Modifier.heightIn(min = 48.dp)) {
                     Text("Cancelar")
                 }
             }
@@ -1010,23 +1026,26 @@ private fun DirectChatSetupCard(
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surface,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(UiSpaceM),
-            verticalArrangement = Arrangement.spacedBy(UiSpaceS)
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            ChatEmptyIcon(Icons.Rounded.ChatBubbleOutline)
             Text(
                 title,
-                style = MaterialTheme.typography.titleSmall,
+                style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.SemiBold
             )
             Text(
                 body,
-                style = MaterialTheme.typography.bodySmall,
+                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
@@ -1042,14 +1061,16 @@ private fun WifiChannelJoinCard(
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(22.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.32f)
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surface,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(UiSpaceM),
-            verticalArrangement = Arrangement.spacedBy(UiSpaceM)
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Surface(
                 shape = RoundedCornerShape(999.dp),
@@ -1085,7 +1106,7 @@ private fun WifiChannelJoinCard(
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(
                     "Canal de esta Wi‑Fi",
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
@@ -1106,26 +1127,26 @@ private fun WifiChannelJoinCard(
             if (connectedToWifi) {
                 Button(
                     onClick = onJoin,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Rounded.Wifi,
                         contentDescription = null,
                         modifier = Modifier.size(18.dp)
                     )
-                    Text("Entrar al canal Wi‑Fi")
+                    Text("Entrar al canal Wi‑Fi", Modifier.padding(start = 8.dp))
                 }
             } else {
                 OutlinedButton(
                     onClick = onOpenConnectTab,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Rounded.Link,
                         contentDescription = null,
                         modifier = Modifier.size(18.dp)
                     )
-                    Text("Ir a Conectar")
+                    Text("Ir a Conectar", Modifier.padding(start = 8.dp))
                 }
             }
         }
@@ -1136,26 +1157,42 @@ private fun WifiChannelJoinCard(
 private fun WifiChannelEmptyCard() {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.28f)
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surface,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(UiSpaceM),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            ChatEmptyIcon(Icons.Rounded.ChatBubbleOutline)
             Text(
                 "Sin mensajes todavía",
-                style = MaterialTheme.typography.titleSmall,
+                style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.SemiBold
             )
             Text(
                 "Lo que escribas aparecerá aquí para los equipos de esta Wi‑Fi.",
-                style = MaterialTheme.typography.bodySmall,
+                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
+    }
+}
+
+@Composable
+private fun ChatEmptyIcon(icon: androidx.compose.ui.graphics.vector.ImageVector) {
+    Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.primaryContainer,
+        contentColor = MaterialTheme.colorScheme.onPrimaryContainer) {
+        Icon(
+            icon,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+            modifier = Modifier.padding(14.dp).size(28.dp)
+        )
     }
 }
 
@@ -1186,14 +1223,16 @@ private fun ChatComposerPanel(
     }
     Surface(
         modifier = Modifier.fillMaxWidth().heightIn(max = maxHeight),
-        shape = RoundedCornerShape(24.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.36f)
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surface,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = UiSpaceS, vertical = 10.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+                .padding(horizontal = 12.dp, vertical = if (keyboardVisible) 8.dp else 12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             if ((selectedFilesCount > 0 || recoveryIncomplete) && !keyboardVisible) {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1209,9 +1248,9 @@ private fun ChatComposerPanel(
                         overflow = TextOverflow.Ellipsis
                     )
                     if (recoveryIncomplete) {
-                        TextButton(onClick = onPickFile) { Text("Elegir") }
+                        TextButton(onClick = onPickFile, modifier = Modifier.heightIn(min = 48.dp)) { Text("Elegir") }
                     } else {
-                        TextButton(onClick = onClearSelectedFiles) { Text("Quitar") }
+                        TextButton(onClick = onClearSelectedFiles, modifier = Modifier.heightIn(min = 48.dp)) { Text("Quitar") }
                     }
                 }
             }
@@ -1231,12 +1270,13 @@ private fun ChatComposerPanel(
                 keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
                 supportingText = if (draft.length >= 1_800) { { Text("${draft.length}/2000 caracteres") } } else null,
                 maxLines = 4,
-                shape = RoundedCornerShape(20.dp),
+                textStyle = MaterialTheme.typography.bodyLarge,
+                shape = RoundedCornerShape(12.dp),
                 colors = TextFieldDefaults.colors(
-                    focusedContainerColor = MaterialTheme.colorScheme.surface,
-                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                    disabledContainerColor = MaterialTheme.colorScheme.surface,
-                    errorContainerColor = MaterialTheme.colorScheme.surface,
+                    focusedContainerColor = MaterialTheme.colorScheme.background,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.background,
+                    disabledContainerColor = MaterialTheme.colorScheme.background,
+                    errorContainerColor = MaterialTheme.colorScheme.background,
                     focusedIndicatorColor = Color.Transparent,
                     unfocusedIndicatorColor = Color.Transparent,
                     disabledIndicatorColor = Color.Transparent,
@@ -1252,7 +1292,8 @@ private fun ChatComposerPanel(
                 if (attachEnabled || selectedFilesCount > 0) {
                     IconButton(
                         onClick = onPickFile,
-                        enabled = attachEnabled && composerEnabled
+                        enabled = attachEnabled && composerEnabled,
+                        modifier = Modifier.size(48.dp)
                     ) {
                         Icon(Icons.Rounded.AttachFile, contentDescription = "Adjuntar archivos")
                     }
@@ -1260,7 +1301,9 @@ private fun ChatComposerPanel(
                 Button(
                     onClick = onSend,
                     enabled = sendEnabled,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f).heightIn(min = 48.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp)
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Rounded.Send,
@@ -1269,11 +1312,10 @@ private fun ChatComposerPanel(
                     )
                     Text(
                         if (keyboardVisible && selectedFilesCount > 0) "Enviar ($selectedFilesCount)" else sendButtonLabel,
-                        maxLines = 1,
-                        softWrap = false
+                        modifier = Modifier.padding(start = 8.dp)
                     )
                 }
-                IconButton(onClick = onOpenMore) {
+                IconButton(onClick = onOpenMore, modifier = Modifier.size(48.dp)) {
                     Icon(
                         imageVector = Icons.Rounded.MoreHoriz,
                         contentDescription = "Más acciones"
@@ -1295,15 +1337,18 @@ private fun ChatStarterCard(
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surface,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(UiSpaceM),
-            verticalArrangement = Arrangement.spacedBy(UiSpaceS)
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            ChatEmptyIcon(Icons.Rounded.ChatBubbleOutline)
             FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(UiSpaceS),
                 verticalArrangement = Arrangement.spacedBy(UiSpaceS)
@@ -1321,12 +1366,12 @@ private fun ChatStarterCard(
                         "Sin equipo"
                     },
                     containerColor = if (isReady) {
-                        MaterialTheme.colorScheme.tertiaryContainer
+                        MaterialTheme.colorScheme.primaryContainer
                     } else {
                         MaterialTheme.colorScheme.surface
                     },
                     contentColor = if (isReady) {
-                        MaterialTheme.colorScheme.onTertiaryContainer
+                        MaterialTheme.colorScheme.onPrimaryContainer
                     } else {
                         MaterialTheme.colorScheme.onSurfaceVariant
                     }
@@ -1334,12 +1379,12 @@ private fun ChatStarterCard(
             }
             Text(
                 title,
-                style = MaterialTheme.typography.titleSmall,
+                style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.SemiBold
             )
             Text(
                 body,
-                style = MaterialTheme.typography.bodySmall,
+                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
@@ -1355,7 +1400,8 @@ private fun ChannelDownloadSettingsCard(
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        color = panelColor
+        color = panelColor,
+        contentColor = MaterialTheme.colorScheme.onSurface
     ) {
         Column(
             modifier = Modifier.padding(horizontal = UiSpaceM, vertical = 12.dp),
@@ -1367,7 +1413,7 @@ private fun ChannelDownloadSettingsCard(
                 fontWeight = FontWeight.SemiBold
             )
             Row(
-                modifier = Modifier.fillMaxWidth().toggleable(
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).toggleable(
                     value = autoDownload, role = Role.Checkbox, onValueChange = onAutoDownloadChange
                 ),
                 verticalAlignment = Alignment.CenterVertically,
@@ -1414,20 +1460,21 @@ private fun ChatMessageCard(
     ) {
         Surface(
             shape = RoundedCornerShape(
-                topStart = 18.dp,
-                topEnd = 18.dp,
-                bottomStart = if (outgoing) 18.dp else 5.dp,
-                bottomEnd = if (outgoing) 5.dp else 18.dp
+                topStart = 16.dp,
+                topEnd = 16.dp,
+                bottomStart = if (outgoing) 16.dp else 4.dp,
+                bottomEnd = if (outgoing) 4.dp else 16.dp
             ),
             color = if (failed) MaterialTheme.colorScheme.errorContainer
                 else if (outgoing) MaterialTheme.colorScheme.primaryContainer
-                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
+                else MaterialTheme.colorScheme.surface,
             contentColor = contentColor,
+            border = if (outgoing || failed) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
             modifier = Modifier.widthIn(max = 560.dp).fillMaxWidth(0.92f)
         ) {
             Column(
-                modifier = Modifier.padding(start = 14.dp, top = 4.dp, end = 8.dp, bottom = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+                modifier = Modifier.padding(start = 16.dp, top = 4.dp, end = 12.dp, bottom = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -1443,7 +1490,7 @@ private fun ChatMessageCard(
                         overflow = TextOverflow.Ellipsis
                     )
                     Box {
-                        IconButton(onClick = { itemMoreExpanded = true }) {
+                        IconButton(onClick = { itemMoreExpanded = true }, modifier = Modifier.size(48.dp)) {
                             Icon(Icons.Rounded.MoreHoriz, contentDescription = "Acciones del mensaje", modifier = Modifier.size(20.dp))
                         }
                         DropdownMenu(expanded = itemMoreExpanded, onDismissRequest = { itemMoreExpanded = false }) {
@@ -1487,7 +1534,8 @@ private fun ChatMessageCard(
                 if (channelFileOffer != null) {
                     Surface(
                         shape = RoundedCornerShape(12.dp),
-                        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)
+                        color = MaterialTheme.colorScheme.surface,
+                        contentColor = MaterialTheme.colorScheme.onSurface
                     ) {
                         Row(
                             modifier = Modifier.padding(12.dp),
@@ -1505,7 +1553,7 @@ private fun ChatMessageCard(
                         }
                     }
                     if (!outgoing) {
-                        FilledTonalButton(onClick = onDownloadChannelFileOffer) { Text("Descargar archivo") }
+                        FilledTonalButton(onClick = onDownloadChannelFileOffer, modifier = Modifier.heightIn(min = 48.dp)) { Text("Descargar archivo") }
                     }
                 } else {
                     SelectionContainer { Text(item.text, style = MaterialTheme.typography.bodyLarge) }
@@ -1513,7 +1561,7 @@ private fun ChatMessageCard(
                 Text(
                     formatHistoryTime(item.timestampMs) + " · " + chatStatusLabel(item.status),
                     style = MaterialTheme.typography.labelSmall,
-                    color = contentColor.copy(alpha = 0.82f),
+                    color = contentColor,
                     modifier = Modifier.padding(top = 6.dp)
                 )
                 val friendlyIssue = friendlyMessageIssue(item.errorCause)
@@ -1521,7 +1569,7 @@ private fun ChatMessageCard(
                     Text(friendlyIssue, style = MaterialTheme.typography.bodySmall, color = contentColor)
                 }
                 if (outgoing && failed) {
-                    TextButton(onClick = { onRetryMessage(item.id) }) { Text("Reintentar envío") }
+                    TextButton(onClick = { onRetryMessage(item.id) }, modifier = Modifier.heightIn(min = 48.dp)) { Text("Reintentar envío") }
                 }
             }
         }
@@ -1599,12 +1647,12 @@ private fun friendlyMessageIssue(cause: String?): String? {
 private fun queueStatusColor(status: SendQueueStatus): Color {
     return when (status) {
         SendQueueStatus.RUNNING -> MaterialTheme.colorScheme.primaryContainer
-        SendQueueStatus.QUEUED,
         SendQueueStatus.PAUSED,
-        SendQueueStatus.RETRY_WAIT -> MaterialTheme.colorScheme.secondaryContainer
+        SendQueueStatus.RETRY_WAIT -> MaterialTheme.colorScheme.tertiaryContainer
         SendQueueStatus.SUCCESS -> MaterialTheme.colorScheme.primaryContainer
         SendQueueStatus.FAILED -> MaterialTheme.colorScheme.errorContainer
-        SendQueueStatus.CANCELED -> MaterialTheme.colorScheme.surfaceVariant
+        SendQueueStatus.QUEUED,
+        SendQueueStatus.CANCELED -> MaterialTheme.colorScheme.surfaceContainerHigh
     }
 }
 
@@ -1612,11 +1660,11 @@ private fun queueStatusColor(status: SendQueueStatus): Color {
 private fun queueStatusContentColor(status: SendQueueStatus): Color {
     return when (status) {
         SendQueueStatus.RUNNING -> MaterialTheme.colorScheme.onPrimaryContainer
-        SendQueueStatus.QUEUED,
         SendQueueStatus.PAUSED,
-        SendQueueStatus.RETRY_WAIT -> MaterialTheme.colorScheme.onSecondaryContainer
+        SendQueueStatus.RETRY_WAIT -> MaterialTheme.colorScheme.onTertiaryContainer
         SendQueueStatus.SUCCESS -> MaterialTheme.colorScheme.onPrimaryContainer
         SendQueueStatus.FAILED -> MaterialTheme.colorScheme.onErrorContainer
+        SendQueueStatus.QUEUED,
         SendQueueStatus.CANCELED -> MaterialTheme.colorScheme.onSurfaceVariant
     }
 }

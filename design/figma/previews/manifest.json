@@ -1,0 +1,65 @@
+{
+  "renderer": "ImageComposeScene 1.8.2 / Skia",
+  "density": 1,
+  "source": "current working tree",
+  "data": "synthetic",
+  "network": "none",
+  "artifacts": [
+    {
+      "scenario": "empty",
+      "width": 1160,
+      "height": 800,
+      "png": "desktop-empty-1160x800.png",
+      "png_sha256": "4b6c9a6fec2387057c3ba50b9f501d06ba5cdc04adea6ef83e21b17c4fb6faf2"
+    },
+    {
+      "scenario": "empty",
+      "width": 800,
+      "height": 620,
+      "png": "desktop-empty-800x620.png",
+      "png_sha256": "59c935df590ced6cb7d31f7164b54cfeee91bb2ae33aea31f93a01b0d757906e"
+    },
+    {
+      "scenario": "selected",
+      "width": 1160,
+      "height": 800,
+      "png": "desktop-selected-1160x800.png",
+      "png_sha256": "84e3ed02f144b26c03ab0c355788d5941b51673a62ed8f1029aa66e56e1bffd6"
+    },
+    {
+      "scenario": "selected",
+      "width": 800,
+      "height": 620,
+      "png": "desktop-selected-800x620.png",
+      "png_sha256": "fc35da2997ede27699fd3016d379946efd7264890f79052212945596c47c34ae"
+    },
+    {
+      "scenario": "flash-off",
+      "width": 1160,
+      "height": 800,
+      "png": "desktop-flash-off-1160x800.png",
+      "png_sha256": "4d4fa38d34fc8ed9e62bd5dc93c1296de34f7ccbcb4ec32a52a03be61c2e2c31"
+    },
+    {
+      "scenario": "flash-off",
+      "width": 800,
+      "height": 620,
+      "png": "desktop-flash-off-800x620.png",
+      "png_sha256": "5129a67c4f2062673d543920db19bd5781eba485e2bee6ff7da0b6752dd19f2d"
+    },
+    {
+      "scenario": "flash-ready",
+      "width": 1160,
+      "height": 800,
+      "png": "desktop-flash-ready-1160x800.png",
+      "png_sha256": "55c9b6cf4094e906460ef6bb30d7717b6469dc1b4bfb080df4b4983f124538d8"
+    },
+    {
+      "scenario": "flash-ready",
+      "width": 800,
+      "height": 620,
+      "png": "desktop-flash-ready-800x620.png",
+      "png_sha256": "11d5c113932a21833ac384032f4f4fa360360363cb86168567556935a363a97e"
+    }
+  ]
+}

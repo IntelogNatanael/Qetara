@@ -66,3 +66,18 @@ tasks.withType<org.jetbrains.compose.desktop.application.tasks.AbstractJvmToolOp
         .withPropertyName("qetaraPackagingJavaRelease")
         .withPathSensitivity(PathSensitivity.NONE)
 }
+
+// Manual, offline rendering of production composables with synthetic state. No JUnit/network run.
+tasks.register<JavaExec>("designPreview") {
+    group = "verification"
+    description = "Render desktop design previews with ImageComposeScene, without windows or network."
+    dependsOn(tasks.named("testClasses"))
+    classpath = sourceSets["test"].runtimeClasspath
+    mainClass.set("com.example.wifidrop.pc.DesktopDesignPreview")
+    workingDir(rootProject.projectDir)
+    args(
+        rootProject.layout.projectDirectory.dir(".local/design-review").asFile.absolutePath,
+        providers.gradleProperty("previewScenario").getOrElse("all")
+    )
+    systemProperty("java.awt.headless", "true")
+}

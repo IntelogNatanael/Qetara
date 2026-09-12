@@ -1,0 +1,294 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-09-11",
+  "status": "Adaptive borderless header brand implemented and inspected in light/dark emulator views",
+  "source": {
+    "file": "app/src/main/java/com/example/wifidrop/P2pRouteTheme.kt",
+    "sha256": "463b7a3ab27b64a671d63088b18ac663a5bb8652ec5d7d0480cfb44086b92690",
+    "revision": "working tree",
+    "note": "Explicit Material 3 overrides only; unspecified color roles retain Material 3 defaults."
+  },
+  "reference": {
+    "local": "design/figma/MOBILE.md",
+    "brandReview": "design/figma/mobile-brand-adaptive/README.md",
+    "previousBrandReview": "design/figma/mobile-brand-review/README.md",
+    "figmaFileKey": "FZhnKBdDPJWpPrbxn3AGQQ",
+    "figmaStatus": "Starter MCP limit; remote file has no frames; no Figma review completed"
+  },
+  "color": {
+    "light": {
+      "primary": "#0A6B77",
+      "onPrimary": "#FFFFFF",
+      "primaryContainer": "#DDF1F0",
+      "onPrimaryContainer": "#075460",
+      "secondary": "#536672",
+      "onSecondary": "#FFFFFF",
+      "secondaryContainer": "#EAF0EF",
+      "onSecondaryContainer": "#536672",
+      "tertiary": "#765722",
+      "onTertiary": "#FFFFFF",
+      "tertiaryContainer": "#F7EBCD",
+      "onTertiaryContainer": "#574016",
+      "background": "#F4F6F5",
+      "onBackground": "#102A43",
+      "surface": "#FFFFFF",
+      "onSurface": "#102A43",
+      "surfaceVariant": "#EAF0F0",
+      "onSurfaceVariant": "#536672",
+      "surfaceDim": "#DDE5E5",
+      "surfaceBright": "#FFFFFF",
+      "surfaceContainerLowest": "#FFFFFF",
+      "surfaceContainerLow": "#F7F9F8",
+      "surfaceContainer": "#F0F4F3",
+      "surfaceContainerHigh": "#EAF0EF",
+      "surfaceContainerHighest": "#E2EAE9",
+      "outline": "#788D94",
+      "outlineVariant": "#DDE5E5",
+      "inverseSurface": "#22373E",
+      "inverseOnSurface": "#EAF0F0",
+      "inversePrimary": "#88D3D7",
+      "surfaceTint": "#0A6B77",
+      "error": "#B3261E",
+      "onError": "#FFFFFF",
+      "errorContainer": "#FCE4E2",
+      "onErrorContainer": "#7A1D1D"
+    },
+    "dark": {
+      "primary": "#88D3D7",
+      "onPrimary": "#00363E",
+      "primaryContainer": "#104D55",
+      "onPrimaryContainer": "#BCEFF0",
+      "secondary": "#AFC2CA",
+      "onSecondary": "#22373E",
+      "secondaryContainer": "#22343D",
+      "onSecondaryContainer": "#AFC2CA",
+      "tertiary": "#E4C78F",
+      "onTertiary": "#422E09",
+      "tertiaryContainer": "#584320",
+      "onTertiaryContainer": "#F7EBCD",
+      "background": "#101B22",
+      "onBackground": "#E7EFF2",
+      "surface": "#182831",
+      "onSurface": "#E7EFF2",
+      "surfaceVariant": "#2A3E47",
+      "onSurfaceVariant": "#AFC2CA",
+      "surfaceDim": "#101B22",
+      "surfaceBright": "#32434C",
+      "surfaceContainerLowest": "#0C171D",
+      "surfaceContainerLow": "#14232B",
+      "surfaceContainer": "#182831",
+      "surfaceContainerHigh": "#22343D",
+      "surfaceContainerHighest": "#2A3E47",
+      "outline": "#7D959F",
+      "outlineVariant": "#344A54",
+      "inverseSurface": "#E1E9EC",
+      "inverseOnSurface": "#22373E",
+      "inversePrimary": "#0A6B77",
+      "surfaceTint": "#88D3D7",
+      "error": "#FFB4AB",
+      "onError": "#690005",
+      "errorContainer": "#5A252A",
+      "onErrorContainer": "#FFD9DB"
+    }
+  },
+  "font": {
+    "family": "Inter",
+    "version": "4.1",
+    "weights": [
+      400,
+      500,
+      600,
+      700
+    ],
+    "unit": "sp",
+    "typography": {
+      "displayLarge": {
+        "size": 48,
+        "lineHeight": 56,
+        "weight": 600,
+        "letterSpacing": 0
+      },
+      "displayMedium": {
+        "size": 40,
+        "lineHeight": 48,
+        "weight": 600,
+        "letterSpacing": 0
+      },
+      "displaySmall": {
+        "size": 36,
+        "lineHeight": 44,
+        "weight": 600,
+        "letterSpacing": 0
+      },
+      "headlineLarge": {
+        "size": 30,
+        "lineHeight": 38,
+        "weight": 600,
+        "letterSpacing": 0
+      },
+      "headlineMedium": {
+        "size": 26,
+        "lineHeight": 34,
+        "weight": 600,
+        "letterSpacing": 0
+      },
+      "headlineSmall": {
+        "size": 24,
+        "lineHeight": 32,
+        "weight": 600,
+        "letterSpacing": 0
+      },
+      "titleLarge": {
+        "size": 22,
+        "lineHeight": 28,
+        "weight": 600,
+        "letterSpacing": 0
+      },
+      "titleMedium": {
+        "size": 16,
+        "lineHeight": 24,
+        "weight": 600,
+        "letterSpacing": 0
+      },
+      "titleSmall": {
+        "size": 14,
+        "lineHeight": 20,
+        "weight": 600,
+        "letterSpacing": 0
+      },
+      "bodyLarge": {
+        "size": 16,
+        "lineHeight": 24,
+        "weight": 400,
+        "letterSpacing": 0
+      },
+      "bodyMedium": {
+        "size": 14,
+        "lineHeight": 22,
+        "weight": 400,
+        "letterSpacing": 0
+      },
+      "bodySmall": {
+        "size": 12,
+        "lineHeight": 18,
+        "weight": 400,
+        "letterSpacing": 0
+      },
+      "labelLarge": {
+        "size": 14,
+        "lineHeight": 20,
+        "weight": 600,
+        "letterSpacing": 0
+      },
+      "labelMedium": {
+        "size": 12,
+        "lineHeight": 18,
+        "weight": 500,
+        "letterSpacing": 0
+      },
+      "labelSmall": {
+        "size": 11,
+        "lineHeight": 16,
+        "weight": 500,
+        "letterSpacing": 0
+      }
+    },
+    "resources": {
+      "400": "app/src/main/res/font/inter_regular.ttf",
+      "500": "app/src/main/res/font/inter_medium.ttf",
+      "600": "app/src/main/res/font/inter_semibold.ttf",
+      "700": "app/src/main/res/font/inter_bold.ttf"
+    }
+  },
+  "shape": {
+    "unit": "dp",
+    "material3": {
+      "extraSmall": 6,
+      "small": 10,
+      "medium": 16,
+      "large": 20,
+      "extraLarge": 24
+    }
+  },
+  "connectionTab": {
+    "source": "app/src/main/java/com/example/wifidrop/P2pConnectTab.kt",
+    "unit": "dp",
+    "cardRadius": 16,
+    "peerCardPadding": 16,
+    "stepCardPadding": 20,
+    "cardGap": 16,
+    "stepContentGap": 12,
+    "buttonMinimumHeight": 48,
+    "buttonRadius": 12,
+    "modeControlMinimumHeight": 48,
+    "wrapping": "Mode selectors and secondary action groups use FlowRow; height is not fixed for text growth."
+  },
+  "validation": {
+    "sourceInspection": "complete",
+    "fontByteIdentityWithDesktop": "verified for all four TTFs",
+    "runtimeVisual": "Current brand: light/dark at 360 x 800 dp, font 100%; launcher geometry unchanged",
+    "note": "Current APK and images: design/figma/mobile-brand-adaptive/README.md. Earlier checks remain attached to their own APK hashes. Figma unavailable; no complete accessibility audit claimed."
+  },
+  "brand": {
+    "symbol": "app/src/main/res/drawable/ic_launcher_foreground.xml",
+    "preserve": [
+      "path",
+      "viewport",
+      "scale",
+      "aspectRatio"
+    ],
+    "sourceInk": "#102A43",
+    "sourceSha256": "3f6feaa3dac9e1ef82679cb206dc7d17602f884220528411d184192a0e97ee2e",
+    "sourceUnchangedAgainstHead": true,
+    "headerInk": {
+      "role": "onBackground",
+      "light": "#102A43",
+      "dark": "#E7EFF2",
+      "application": "GUI only: Image with ColorFilter.tint(MaterialTheme.colorScheme.onBackground)"
+    },
+    "headerBackdrop": {
+      "light": "transparent",
+      "dark": "transparent"
+    },
+    "layout": {
+      "symbolViewportDp": [
+        40,
+        40
+      ],
+      "extraGapDp": 0,
+      "modeIndentDp": 40,
+      "alignment": "Symbol and wordmark share a vertically centered row; mode below."
+    },
+    "note": "The header has no backing in either theme and matches the wordmark through adaptive tint. The original launcher resource, path, viewport, scale and aspect ratio are unchanged; only GUI ink adapts. Light and dark runtime views inspected."
+  },
+  "componentColorRules": {
+    "selection": [
+      "primaryContainer",
+      "onPrimaryContainer"
+    ],
+    "activity": [
+      "primaryContainer",
+      "onPrimaryContainer"
+    ],
+    "pendingAttention": [
+      "tertiaryContainer",
+      "onTertiaryContainer"
+    ],
+    "error": [
+      "errorContainer",
+      "onErrorContainer"
+    ],
+    "outerCard": [
+      "surface",
+      "onSurface"
+    ],
+    "quietPanel": [
+      "surfaceContainerLow",
+      "onSurface"
+    ],
+    "secondaryAction": [
+      "surfaceContainerHigh",
+      "onSurfaceVariant"
+    ]
+  }
+}

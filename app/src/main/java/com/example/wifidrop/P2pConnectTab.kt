@@ -1,14 +1,18 @@
 package com.example.wifidrop
 
 import android.net.wifi.p2p.WifiP2pDevice
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -20,23 +24,28 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Send
 import androidx.compose.material.icons.rounded.ChatBubbleOutline
 import androidx.compose.material.icons.rounded.CheckCircleOutline
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Devices
+import androidx.compose.material.icons.rounded.ExpandLess
+import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.Link
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Wifi
-import androidx.compose.material3.Button
+import androidx.compose.material3.Button as MaterialButton
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilledTonalButton as MaterialFilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedButton as MaterialOutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextButton as MaterialTextButton
+import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -132,88 +141,91 @@ internal fun P2pConnectTab(
     LazyColumn(
         state = listState,
         modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(bottom = 12.dp),
+        contentPadding = PaddingValues(top = 4.dp, bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item("connect-intro") {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
-                    if (manualPairing) "Un paso para conectar." else if (exchangeReady && !sessionProblem && !sessionSyncing) "Ya están cerca." else "Comparte cerca.",
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold,
+                    "Conectar equipos",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.semantics { heading() }
                 )
                 Text(
-                    if (manualPairing) "Usa el código de sesión y el PIN que muestra el receptor."
-                    else if (exchangeReady && !sessionProblem && !sessionSyncing) "Elige un archivo o empieza una conversación."
-                    else "Sin cuentas. Sin subir tus archivos a la nube.",
+                    if (manualPairing) "Introduce el código y PIN del equipo receptor."
+                    else if (exchangeReady && !sessionProblem && !sessionSyncing) "Todo listo para enviar archivos y mensajes."
+                    else if (direct) "Entre Android cercanos, sin necesitar un router."
+                    else "Android y PC en la misma red Wi-Fi.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     FilterChip(
                         selected = !direct,
                         onClick = { onModeChange(ConnectionMode.LAN) },
+                        modifier = Modifier.heightIn(min = 48.dp),
+                        colors = qetaraFilterChipColors(),
                         leadingIcon = { Icon(Icons.Rounded.Wifi, contentDescription = null, modifier = Modifier.size(18.dp)) },
                         label = { Text("Misma Wi-Fi") }
                     )
                     FilterChip(
                         selected = direct,
                         onClick = { onModeChange(ConnectionMode.WIFI_DIRECT) },
+                        modifier = Modifier.heightIn(min = 48.dp),
+                        colors = qetaraFilterChipColors(),
                         leadingIcon = { Icon(Icons.Rounded.Link, contentDescription = null, modifier = Modifier.size(18.dp)) },
                         label = { Text("Wi-Fi Direct") }
                     )
                 }
-                Text(
-                    if (direct) "Entre equipos Android cercanos, sin necesitar un router."
-                    else "Para Android y PC conectados a la misma red Wi-Fi.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
             }
         }
         item("this-device") {
-            Surface(shape = RoundedCornerShape(18.dp), color = MaterialTheme.colorScheme.surface) {
+            Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surface, contentColor = MaterialTheme.colorScheme.onSurface, border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
                 Row(
                     Modifier.fillMaxWidth().padding(16.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(Icons.Rounded.Devices, contentDescription = null)
+                    Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.surfaceContainerHigh, contentColor = MaterialTheme.colorScheme.onSurfaceVariant) {
+                        Box(Modifier.size(40.dp), contentAlignment = Alignment.Center) {
+                            Icon(Icons.Rounded.Devices, contentDescription = null, modifier = Modifier.size(22.dp))
+                        }
+                    }
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                         Text("Este equipo", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text(state.thisDeviceName.ifBlank { "Mi Android" }, fontWeight = FontWeight.SemiBold)
+                        Text(state.thisDeviceName.ifBlank { "Mi Android" }, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
                         if (!direct && state.lanConnected) {
-                            Text(state.lanLocalIp ?: "Conectado a la red", style = MaterialTheme.typography.bodySmall)
+                            Text(state.lanLocalIp ?: "Conectado a la red", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }
             }
         }
         item("connection-action") {
-            ConnectionStepSurface {
+            ConnectionStepSurface(active = state.sessionEnabled) {
                 when {
                     !state.sessionEnabled -> {
-                        Text("Vuelve cuando quieras compartir", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
-                        Text("La sesión permanece cerrada hasta que toques Activar sesión. Puedes preparar archivos, leer mensajes y consultar Descargas.")
+                        Text("Sesión desactivada", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, modifier = Modifier.semantics { heading() })
+                        Text("Toca Activar sesión para conectar. Mientras tanto, puedes preparar archivos y consultar mensajes y Descargas.")
                     }
                     direct && !state.permissionGranted -> {
-                        Text("Primero, permite encontrar equipos", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+                        Text("Permite encontrar equipos", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, modifier = Modifier.semantics { heading() })
                         Text("Android necesita tu permiso para detectar dispositivos cercanos y crear un enlace Wi-Fi Direct.")
                         Button(onClick = onRequestPermission, modifier = Modifier.fillMaxWidth()) { Text("Permitir conexión cercana") }
-                        Text("También puedes elegir Misma Wi-Fi para compartir con un PC.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("También puedes elegir Misma Wi-Fi para compartir con un PC.", style = MaterialTheme.typography.bodySmall)
                     }
                     direct && !state.p2pEnabled -> {
-                        Text("Activa Wi-Fi para empezar", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+                        Text("Activa Wi-Fi", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, modifier = Modifier.semantics { heading() })
                         Text("Abre los ajustes de Android, activa Wi-Fi y vuelve a Qetara. No hace falta tener internet.")
                         Button(onClick = onOpenWifiSettings, modifier = Modifier.fillMaxWidth()) { Text("Abrir ajustes Wi-Fi") }
                     }
                     ready -> {
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Rounded.CheckCircleOutline, contentDescription = null)
+                            Icon(Icons.Rounded.CheckCircleOutline, contentDescription = null, modifier = Modifier.size(20.dp))
                             Text("Equipo seleccionado", style = MaterialTheme.typography.labelLarge)
                         }
-                        Text(selectedLabel ?: "Tu otro equipo", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+                        Text(selectedLabel ?: "Tu otro equipo", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, modifier = Modifier.semantics { heading() })
                         when {
                             sessionSyncing -> {
                                 LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
@@ -229,7 +241,7 @@ internal fun P2pConnectTab(
                                 TextButton(onClick = { showCredentials = true; scope.launch { listState.animateScrollToItem(3) } }) { Text("Introducir código y PIN") }
                             }
                             else -> {
-                                Text("Los archivos viajan entre tus equipos por la red local.", style = MaterialTheme.typography.bodyMedium)
+                                Text("Sesión confirmada. Ya puedes compartir.", style = MaterialTheme.typography.bodyMedium)
                                 Button(onClick = onOpenSend, modifier = Modifier.fillMaxWidth()) {
                                     Icon(Icons.AutoMirrored.Rounded.Send, contentDescription = null, modifier = Modifier.size(18.dp))
                                     Text("Enviar archivos", Modifier.padding(start = 8.dp))
@@ -245,7 +257,7 @@ internal fun P2pConnectTab(
                         }
                     }
                     direct && (state.directCreatingGroup || (linked && host)) -> {
-                        Text(if (linked) "Tu enlace está abierto" else "Creando tu enlace…", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+                        Text(if (linked) "Enlace disponible" else "Creando enlace…", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, modifier = Modifier.semantics { heading() })
                         if (!linked) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                         if (linked && state.chatDirectAvailablePeers.isNotEmpty()) {
                             Text("Elige el equipo que recibirá tus archivos y mensajes. La selección anterior no cambia sola.")
@@ -253,43 +265,43 @@ internal fun P2pConnectTab(
                         } else {
                             Text("En el otro Android, abre Qetara, elige Wi-Fi Direct y toca Buscar un equipo. Después elige este dispositivo.")
                         }
-                        Text(state.thisDeviceName.ifBlank { "Este equipo" }, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Text(state.thisDeviceName.ifBlank { "Este equipo" }, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                         OutlinedButton(onClick = if (linked) onDisconnect else onCancelConnect) { Text("Cerrar enlace") }
                     }
                     direct && state.directConnecting -> {
-                        Text("Conectando los equipos…", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+                        Text("Conectando los equipos…", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, modifier = Modifier.semantics { heading() })
                         LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                         Text("Acepta la solicitud de Android si aparece. Mantén Qetara abierto en ambos equipos.")
                         TextButton(onClick = onCancelConnect) { Text("Cancelar conexión") }
                     }
                     direct && linked -> {
-                        Text("Preparando la sesión…", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+                        Text("Preparando la sesión…", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, modifier = Modifier.semantics { heading() })
                         LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                         Text("El enlace ya existe. Aprueba la conexión en el equipo que abrió el enlace para empezar a compartir.")
                         OutlinedButton(onClick = onSyncSession) { Text("Sincronizar sesión") }
                         TextButton(onClick = onDisconnect) { Text("Desconectar") }
                     }
                     direct && state.directDiscovering -> {
-                        Text("Buscando un equipo cercano…", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+                        Text("Buscando un equipo cercano…", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, modifier = Modifier.semantics { heading() })
                         LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                         Text(if (state.peers.isEmpty()) "En el otro Android, toca Crear un enlace. Los equipos aparecerán aquí."
                             else "Elige abajo el equipo que creó el enlace.")
                         TextButton(onClick = onCancelConnect) { Text("Detener búsqueda") }
                     }
                     direct -> {
-                        Text("¿Quién empieza?", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+                        Text("Conectar por Wi-Fi Direct", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, modifier = Modifier.semantics { heading() })
                         Text("Crea un enlace en uno de los equipos y búscalo desde el otro.")
                         Button(onClick = onStartHost, modifier = Modifier.fillMaxWidth()) { Text("Crear un enlace") }
                         OutlinedButton(onClick = onStartClient, modifier = Modifier.fillMaxWidth()) { Text("Buscar un equipo") }
                     }
                     !state.lanConnected -> {
-                        Text("Conecta ambos a la misma Wi-Fi", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+                        Text("Conecta a la misma Wi-Fi", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, modifier = Modifier.semantics { heading() })
                         Text("Abre Qetara también en el otro equipo. Puede ser un Android o un PC; la red no necesita internet.")
                         Button(onClick = onOpenWifiSettings, modifier = Modifier.fillMaxWidth()) { Text("Abrir ajustes Wi-Fi") }
                     }
                     else -> {
-                        Text(if (state.lanScanning) "Buscando en tu red…" else "Encuentra tu otro equipo", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
-                        Text("Mantén Qetara abierto en el otro equipo para que aparezca aquí.")
+                        Text(if (state.lanScanning) "Buscando en tu red…" else "Busca tu otro equipo", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, modifier = Modifier.semantics { heading() })
+                        Text("Abre Qetara en el otro equipo. En PC, activa Recibir.")
                         if (state.lanScanning) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                         Button(onClick = if (state.lanScanning) onCancelScan else onScan, modifier = Modifier.fillMaxWidth()) {
                             Text(if (state.lanScanning) "Detener búsqueda" else "Buscar equipos")
@@ -297,7 +309,7 @@ internal fun P2pConnectTab(
                     }
                 }
                 if (!direct && state.lanConnected) {
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         if (ready) {
                             TextButton(onClick = { scope.launch { listState.animateScrollToItem(lanPeersSectionIndex) } }) { Text("Cambiar equipo") }
                         }
@@ -327,12 +339,16 @@ internal fun P2pConnectTab(
                     if (ready && !state.sessionExpired && !manualPairing && !sessionSyncing) {
                         OutlinedButton(onClick = onSyncSession) { Text("Sincronizar sesión") }
                     }
-                    TextButton(onClick = { showCredentials = !showCredentials }) { Text(if (showCredentials) "Ocultar credenciales" else "Ver o introducir credenciales") }
+                    TextButton(onClick = { showCredentials = !showCredentials }, modifier = Modifier.fillMaxWidth()) {
+                        Text(if (showCredentials) "Ocultar código y PIN" else "Mostrar código y PIN", Modifier.weight(1f))
+                        Icon(if (showCredentials) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore, contentDescription = null, modifier = Modifier.size(20.dp))
+                    }
                     if (showCredentials) {
-                        Text("Con un PC o una versión anterior, copia aquí el código de sesión y el PIN que muestra el otro equipo. Ambos deben usar los mismos valores.", style = MaterialTheme.typography.bodySmall)
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                        Text("Copia los datos que muestra Qetara en el receptor. El código y el PIN deben coincidir en ambos equipos.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         OutlinedTextField(value = state.authToken, onValueChange = onTokenChange, enabled = !sessionSyncing, label = { Text("Código de sesión") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
                         P2pSessionPinField(state = state, onValueChange = onPinChange, modifier = Modifier.fillMaxWidth())
-                        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                             TextButton(onClick = onCopyToken) { Text("Copiar código") }
                             TextButton(onClick = onPasteToken) { Text("Pegar código") }
                         }
@@ -346,7 +362,7 @@ internal fun P2pConnectTab(
         if (state.sessionEnabled && direct && state.permissionGranted && state.p2pEnabled && !linked && state.peers.isNotEmpty()) {
             item("direct-peers-title") { ConnectionSectionTitle("Equipos cercanos") }
             items(state.peers, key = { "direct:" + it.address }) { peer ->
-                Surface(shape = RoundedCornerShape(18.dp), color = MaterialTheme.colorScheme.surface) {
+                Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surface, contentColor = MaterialTheme.colorScheme.onSurface, border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
                     Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(peer.name.ifBlank { "Android cercano" }, fontWeight = FontWeight.SemiBold)
                         Text(peerStatusLabel(peer.status), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -361,27 +377,36 @@ internal fun P2pConnectTab(
         }
         if (!direct && state.lanConnected) {
             item("lan-peers-title") {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     ConnectionSectionTitle("Equipos en esta red")
-                    TextButton(onClick = if (state.lanScanning) onCancelScan else onScan) { Text(if (state.lanScanning) "Detener" else "Actualizar") }
+                    TextButton(onClick = if (state.lanScanning) onCancelScan else onScan) {
+                        Icon(if (state.lanScanning) Icons.Rounded.Close else Icons.Rounded.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Text(if (state.lanScanning) "Detener" else "Actualizar", Modifier.padding(start = 6.dp))
+                    }
                 }
             }
             if (peers.isEmpty() && !state.lanScanning) {
                 item("no-lan-peers") {
                     EmptyStateBlock(
-                        title = "Todavía no vemos otro equipo",
-                        body = "Abre Qetara en ambos y comprueba que usan la misma Wi-Fi. Si conoces su dirección IP, puedes escribirla abajo."
+                        title = "Aún no hay equipos",
+                        body = "Comprueba que Qetara está abierto en la misma Wi-Fi. También puedes conectar por dirección IP."
                     )
                 }
             }
             items(peers, key = { "lan:" + it.ip }) { peer ->
-                Surface(shape = RoundedCornerShape(18.dp), color = MaterialTheme.colorScheme.surface) {
+                val selected = state.resolvedTargetIp == peer.ip
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
+                    contentColor = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+                ) {
                     Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Icon(Icons.Rounded.Devices, contentDescription = null, modifier = Modifier.size(20.dp))
+                            Icon(Icons.Rounded.Devices, contentDescription = null, modifier = Modifier.size(20.dp), tint = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant)
                             Text(peer.label.ifBlank { peer.ip }, modifier = Modifier.weight(1f), fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
                         }
-                        Text(peer.ip + if (peer.trusted) " · Equipo recordado" else "", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(peer.ip + if (peer.trusted) " · Equipo recordado" else "", style = MaterialTheme.typography.bodySmall, color = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant)
                         FilledTonalButton(onClick = { selectPeer(peer.ip) }, modifier = Modifier.fillMaxWidth()) {
                             Text(if (state.resolvedTargetIp == peer.ip) "Sincronizar con este equipo" else "Conectar con este equipo")
                         }
@@ -390,8 +415,9 @@ internal fun P2pConnectTab(
             }
             item("manual-address") {
                 ConnectionStepSurface {
-                    TextButton(onClick = { showManualAddress = !showManualAddress }) {
-                        Text(if (showManualAddress) "Ocultar dirección manual" else "Conectar con una dirección IP")
+                    TextButton(onClick = { showManualAddress = !showManualAddress }, modifier = Modifier.fillMaxWidth()) {
+                        Text(if (showManualAddress) "Ocultar dirección IP" else "Conectar por dirección IP", Modifier.weight(1f))
+                        Icon(if (showManualAddress) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore, contentDescription = null, modifier = Modifier.size(20.dp))
                     }
                     if (showManualAddress) {
                         OutlinedTextField(
@@ -414,7 +440,10 @@ internal fun P2pConnectTab(
         state.pendingTrust?.let { request ->
             item("pending-trust") {
                 ConnectionStepSurface {
-                    Text("¿Reconoces este equipo?", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Rounded.Lock, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                        Text("¿Reconoces este equipo?", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                    }
                     Text(request.label + " · " + request.ip)
                     Text("Comprueba que el envío lo has iniciado tú desde ese equipo antes de recordarlo.", style = MaterialTheme.typography.bodySmall)
                     Button(onClick = { onTrustPeer(request) }) { Text("Confiar en este equipo") }
@@ -424,7 +453,7 @@ internal fun P2pConnectTab(
         if (!direct && state.lanConnected && state.favoritePeers.any { !it.lastKnownIp.isNullOrBlank() }) {
             item("favorites-title") { ConnectionSectionTitle("Tus favoritos") }
             items(state.favoritePeers.filter { !it.lastKnownIp.isNullOrBlank() }, key = { "favorite:" + it.id }) { peer ->
-                Surface(shape = RoundedCornerShape(18.dp), color = MaterialTheme.colorScheme.surface) {
+                Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surface, contentColor = MaterialTheme.colorScheme.onSurface, border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
                     Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text(TrustedPeerStore.displayName(peer), fontWeight = FontWeight.SemiBold)
                         Text("Última IP: " + peer.lastKnownIp, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -439,7 +468,7 @@ internal fun P2pConnectTab(
                 ConnectionStepSurface {
                     Text("Encuéntralo más rápido la próxima vez", fontWeight = FontWeight.SemiBold)
                     Text("Guarda a " + (state.favoriteSuggestionLabel ?: "este equipo") + " como favorito.", style = MaterialTheme.typography.bodySmall)
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         FilledTonalButton(onClick = { onSaveFavorite(suggestionId) }) { Text("Guardar favorito") }
                         TextButton(onClick = { onSkipFavorite(suggestionId) }) { Text("Ahora no") }
                     }
@@ -454,7 +483,7 @@ internal fun P2pConnectTab(
             }
             if (showRememberedPeers) {
                 items(state.trustedPeers, key = { "remembered:" + it.id }) { peer ->
-                    Surface(shape = RoundedCornerShape(18.dp), color = MaterialTheme.colorScheme.surface) {
+                    Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surface, contentColor = MaterialTheme.colorScheme.onSurface, border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
                         Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Text(TrustedPeerStore.displayName(peer), fontWeight = FontWeight.SemiBold)
                             peer.lastKnownIp?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
@@ -470,7 +499,7 @@ internal fun P2pConnectTab(
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 TextButton(onClick = { showConnectionHelp = !showConnectionHelp }) { Text(if (showConnectionHelp) "Cerrar ayuda" else "¿No aparece el otro equipo?") }
                 if (showConnectionHelp) {
-                    Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)) {
+                    Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surfaceContainerLow, contentColor = MaterialTheme.colorScheme.onSurfaceVariant) {
                         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                             Text(if (direct) """1. Mantén ambos Android cerca y con Wi-Fi activo.
 2. Crea un enlace en uno y búscalo desde el otro.
@@ -489,15 +518,52 @@ internal fun P2pConnectTab(
 }
 
 @Composable
-private fun ConnectionStepSurface(content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit) {
-    Surface(shape = RoundedCornerShape(22.dp), color = MaterialTheme.colorScheme.surface) {
-        Column(Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp), content = content)
+private fun ConnectionStepSurface(active: Boolean = false, content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit) {
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = if (active) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
+        contentColor = if (active) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+    ) {
+        Column(Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            ProvideTextStyle(MaterialTheme.typography.bodyMedium) { content() }
+        }
     }
 }
 
 @Composable
 private fun ConnectionSectionTitle(title: String) {
-    Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, modifier = Modifier.semantics { heading() })
+    Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(vertical = 12.dp).semantics { heading() })
+}
+
+@Composable
+private fun Button(onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, content: @Composable RowScope.() -> Unit) {
+    MaterialButton(onClick = onClick, modifier = modifier.heightIn(min = 48.dp), enabled = enabled, shape = RoundedCornerShape(12.dp), content = content)
+}
+
+@Composable
+private fun FilledTonalButton(onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, content: @Composable RowScope.() -> Unit) {
+    MaterialFilledTonalButton(
+        onClick = onClick,
+        modifier = modifier.heightIn(min = 48.dp),
+        enabled = enabled,
+        shape = RoundedCornerShape(12.dp),
+        colors = ButtonDefaults.filledTonalButtonColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+        ),
+        content = content
+    )
+}
+
+@Composable
+private fun OutlinedButton(onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, content: @Composable RowScope.() -> Unit) {
+    MaterialOutlinedButton(onClick = onClick, modifier = modifier.heightIn(min = 48.dp), enabled = enabled, shape = RoundedCornerShape(12.dp), content = content)
+}
+
+@Composable
+private fun TextButton(onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, content: @Composable RowScope.() -> Unit) {
+    MaterialTextButton(onClick = onClick, modifier = modifier.heightIn(min = 48.dp), enabled = enabled, content = content)
 }
 
 internal fun isValidManualConnectionAddress(value: String): Boolean {

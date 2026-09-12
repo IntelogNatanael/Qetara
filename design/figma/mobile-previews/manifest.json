@@ -1,0 +1,46 @@
+{
+  "kind": "Actual Android emulator screenshots; synthetic fixtures, no real transfer",
+  "apkSha256": "62f8690289ee6e98a8b590e9f9f977fe954c9be7a5488559c738eaeb824287da",
+  "frames": [
+    {
+      "file": "connect-light.png",
+      "label": "Conectar · 360 × 800 dp · claro",
+      "widthPx": 720,
+      "heightPx": 1600,
+      "fontScale": 1.0,
+      "sha256": "975e4f31fbc842742ebbe32b0e96e2d97fa3fa2a508c3db07c189d90eee0df75"
+    },
+    {
+      "file": "send-selection-light.png",
+      "label": "Dos archivos seleccionados · 360 × 800 dp · claro",
+      "widthPx": 720,
+      "heightPx": 1600,
+      "fontScale": 1.0,
+      "sha256": "4c1635f176cc377d15d4dffbad0c09a22251409d2bd8267271c52978eb1ddcc2"
+    },
+    {
+      "file": "library-light.png",
+      "label": "Biblioteca con archivo sintético · 360 × 800 dp · claro",
+      "widthPx": 720,
+      "heightPx": 1600,
+      "fontScale": 1.0,
+      "sha256": "05a3d0b8d693d828f6bdf652b2f540467efe61df78d7a61f9f0447427a5b90e4"
+    },
+    {
+      "file": "flash-light.png",
+      "label": "Flash desactivado · 360 × 800 dp · claro",
+      "widthPx": 720,
+      "heightPx": 1600,
+      "fontScale": 1.0,
+      "sha256": "97967bbd23e5595a323136af5f2aa2e173537be30241599e28e822108a9ef862"
+    },
+    {
+      "file": "library-large-type-dark.png",
+      "label": "Biblioteca · 320 × 640 dp · texto al 200 % · oscuro",
+      "widthPx": 640,
+      "heightPx": 1280,
+      "fontScale": 2.0,
+      "sha256": "4915714f7d762dec919d8809111e342a83523ee3ec9d5843f8b5a3709d36b026"
+    }
+  ]
+}

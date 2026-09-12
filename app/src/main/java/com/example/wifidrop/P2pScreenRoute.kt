@@ -25,6 +25,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.MoreVert
+import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -60,7 +62,9 @@ import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import com.example.wifidrop.presentation.FeedbackDeduplicator
 import com.example.wifidrop.presentation.P2pFeedbackMessage
 import com.example.wifidrop.presentation.P2pOutboundOrchestrationResult
@@ -538,7 +542,16 @@ fun P2pScreenRoute() {
         topBar = {
             if (!keyboardVisible) {
             var topModeMenuExpanded by rememberSaveable { mutableStateOf(false) }
+            var topOptionsExpanded by rememberSaveable { mutableStateOf(false) }
+            val toolbarDensity = LocalDensity.current
+            val toolbarWindowSize = LocalWindowInfo.current.containerSize
+            val compactToolbar = toolbarDensity.fontScale >= 1.5f ||
+                (with(toolbarDensity) { toolbarWindowSize.width.toDp() < 360.dp } && toolbarDensity.fontScale > 1.1f)
+            val brandStyle = if (compactToolbar) MaterialTheme.typography.titleMedium else MaterialTheme.typography.titleLarge
             TopAppBar(
+                expandedHeight = with(toolbarDensity) {
+                    (maxOf(40.dp, brandStyle.lineHeight.toDp()) + MaterialTheme.typography.labelSmall.lineHeight.toDp() + 16.dp).coerceAtLeast(64.dp)
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.background,
                     scrolledContainerColor = MaterialTheme.colorScheme.background
@@ -550,12 +563,18 @@ fun P2pScreenRoute() {
                             contentPadding = PaddingValues(horizontal = 0.dp, vertical = 4.dp)
                         ) {
                             Column {
-                                Text("Qetara", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge)
                                 Row(verticalAlignment = Alignment.CenterVertically) {
+                                    QetaraBrandIcon()
+                                    Text("Qetara", fontWeight = FontWeight.Bold, style = brandStyle,
+                                        color = MaterialTheme.colorScheme.onBackground, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                }
+                                Row(modifier = Modifier.padding(start = 40.dp), verticalAlignment = Alignment.CenterVertically) {
                                     Text(
                                         if (routeState.uiState.connectionViewMode == ConnectionViewMode.ADVANCED) "Conexión avanzada"
                                         else routeState.uiState.activeConnectionMode.title,
                                         style = MaterialTheme.typography.labelSmall,
+                                        maxLines = 1, overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.weight(1f, fill = false),
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                     Icon(Icons.Rounded.ExpandMore, contentDescription = "Cambiar conexión", modifier = Modifier.size(16.dp))
@@ -579,20 +598,55 @@ fun P2pScreenRoute() {
                     }
                 },
                 actions = {
+                    if (compactToolbar) {
+                        IconButton(onClick = { context.startActivity(Intent(context, FlashActivity::class.java)) }) {
+                            androidx.compose.material3.BadgedBox(badge = {
+                                if (flashState.active) androidx.compose.material3.Badge(
+                                    containerColor = if (flashState.engine?.approvals?.isNotEmpty() == true)
+                                        MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.primary,
+                                    contentColor = if (flashState.engine?.approvals?.isNotEmpty() == true)
+                                        MaterialTheme.colorScheme.onTertiary else MaterialTheme.colorScheme.onPrimary
+                                )
+                            }) {
+                                Icon(Icons.Rounded.Bolt, contentDescription = when {
+                                    flashState.engine?.approvals?.isNotEmpty() == true -> "Flash: solicitud pendiente"
+                                    flashState.active -> "Flash activo"
+                                    else -> "Abrir Flash"
+                                })
+                            }
+                        }
+                    } else {
                     TextButton(onClick = { context.startActivity(Intent(context, FlashActivity::class.java)) }) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("Flash")
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Rounded.Bolt, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Text("Flash")
+                            }
                             if (flashState.active) Text(
                                 if (flashState.engine?.approvals?.isNotEmpty() == true) "solicitud" else "activo",
-                                style = MaterialTheme.typography.labelSmall
+                                style = MaterialTheme.typography.labelSmall,
+                                color = if (flashState.engine?.approvals?.isNotEmpty() == true)
+                                    MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.primary
                             )
                         }
                     }
-                    IconButton(onClick = { showPreferences = true }) {
-                        Icon(Icons.Rounded.Settings, contentDescription = "Ajustes de lectura y avisos")
                     }
-                    IconButton(onClick = { showAbout = true }) {
-                        Icon(Icons.Rounded.Info, contentDescription = "Acerca de Qetara")
+                    Box {
+                        IconButton(onClick = { topOptionsExpanded = true }) {
+                            Icon(Icons.Rounded.MoreVert, contentDescription = "Opciones de Qetara")
+                        }
+                        DropdownMenu(expanded = topOptionsExpanded, onDismissRequest = { topOptionsExpanded = false }) {
+                            DropdownMenuItem(
+                                text = { Text("Ajustes de lectura y avisos") },
+                                leadingIcon = { Icon(Icons.Rounded.Settings, contentDescription = null) },
+                                onClick = { topOptionsExpanded = false; showPreferences = true }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Acerca de Qetara") },
+                                leadingIcon = { Icon(Icons.Rounded.Info, contentDescription = null) },
+                                onClick = { topOptionsExpanded = false; showAbout = true }
+                            )
+                        }
                     }
                 }
             )

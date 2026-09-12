@@ -1,0 +1,87 @@
+{
+  "apkSha256": "bb53b8c2cda51b62f9b947f90d278684e2d5b62b6f85198bef221576464a3889",
+  "apkBytes": 22982982,
+  "configuration": "Android 16/API 36 emulator, 360 x 800 dp, font 100%, 720 x 1600 px",
+  "images": [
+    {
+      "file": "connect-light.png",
+      "screen": "Conectar",
+      "mode": "light",
+      "sha256": "d1603aa357d3ba2e84786f5d936a98fcbf693c5a2254cbf11956e153882f3783",
+      "sourceCapture": "palette-connect-light-final",
+      "visuallyInspected": true
+    },
+    {
+      "file": "connect-dark.png",
+      "screen": "Conectar",
+      "mode": "dark",
+      "sha256": "f434ed8e41893bada422836ffc89ec3a557a6d60ddd01bbe84888b809a455ef9",
+      "sourceCapture": "palette-connect-dark",
+      "visuallyInspected": true
+    },
+    {
+      "file": "send-light.png",
+      "screen": "Enviar",
+      "mode": "light",
+      "sha256": "18b5e6d5d2d895ac5caeeafa4e986db719be2a7e70ae52faa2cc112e539c0455",
+      "sourceCapture": "palette-send-light-final",
+      "visuallyInspected": true
+    },
+    {
+      "file": "send-dark.png",
+      "screen": "Enviar",
+      "mode": "dark",
+      "sha256": "ea71389ee6d64069a4e8ecd7a03b1995c0acafe9aeb0a84d9b0badd0387cf4fe",
+      "sourceCapture": "palette-send-dark-resume",
+      "visuallyInspected": true
+    },
+    {
+      "file": "chat-light.png",
+      "screen": "Chat",
+      "mode": "light",
+      "sha256": "0e759a403c2a5c0f1158ff5e76e4081ec9e034f4a39aaa18fbd8101396ea3cef",
+      "sourceCapture": "palette-chat-light-final",
+      "visuallyInspected": true
+    },
+    {
+      "file": "chat-dark.png",
+      "screen": "Chat",
+      "mode": "dark",
+      "sha256": "e5f9f5b5b26da71d0b715c551d314c0d63cacc171ff7e2561576bfea7d225192",
+      "sourceCapture": "palette-chat-dark-final",
+      "visuallyInspected": true
+    },
+    {
+      "file": "library-light.png",
+      "screen": "Descargas",
+      "mode": "light",
+      "sha256": "9faafc6f7d671c4ede414bef7e6960ca7e357fe0a4206d5f835c8f6e351bd59a",
+      "sourceCapture": "palette-library-light-final",
+      "visuallyInspected": true
+    },
+    {
+      "file": "library-dark.png",
+      "screen": "Descargas",
+      "mode": "dark",
+      "sha256": "35c286147b0ac2da63f8da92b46e825f87b3b1eb28600e9f7b91ba227510ba33",
+      "sourceCapture": "palette-library-dark-final",
+      "visuallyInspected": true
+    },
+    {
+      "file": "flash-light.png",
+      "screen": "Flash",
+      "mode": "light",
+      "sha256": "5bfc6c568ac7471af1f9abc966210b2666aee245dfec5177fef43c0c3b2f3245",
+      "sourceCapture": "palette-flash-light",
+      "visuallyInspected": true
+    },
+    {
+      "file": "flash-dark.png",
+      "screen": "Flash",
+      "mode": "dark",
+      "sha256": "ae232e059c1b868918ef991609961c6f18e5b91893901a76f515db33c4907f6c",
+      "sourceCapture": "palette-flash-dark",
+      "visuallyInspected": true
+    }
+  ]
+}

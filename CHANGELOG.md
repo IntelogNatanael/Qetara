@@ -3,6 +3,8 @@
 ## 1.4.0 — candidata, pendiente de publicación
 
 - Android adopta el identificador `io.github.intelognatanael.qetara`. Se instala como una aplicación nueva junto a las versiones privadas anteriores; sus preferencias, emparejamientos e historial no se importan automáticamente. Conserva los archivos que necesites antes de desinstalar la anterior.
+- Android y escritorio renuevan la interfaz con tipografía Inter incluida localmente, colores coherentes, mayor claridad de las acciones y maquetación adaptable a ventanas pequeñas y texto ampliado.
+- El símbolo conserva la geometría del icono móvil. En la cabecera Android se integra con el nombre sin recuadro y comparte su color en los temas claro y oscuro.
 - Al activar Flash, PC inicia automáticamente la búsqueda de receptores, como Android. La búsqueda manual sigue disponible para actualizar la lista.
 - PC y Flash permiten acumular archivos y enviarlos en orden; Flash mantiene la verificación y aceptación independiente de cada archivo.
 - Las selecciones sucesivas de Android conservan su orden aunque el proveedor tarde en responder. Borrar o enviar una selección invalida las importaciones pendientes sin bloquear una selección nueva.

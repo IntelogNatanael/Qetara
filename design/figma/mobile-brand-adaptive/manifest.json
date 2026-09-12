@@ -1,0 +1,29 @@
+{
+  "apkSha256": "2a8817499f589ed0030ed4443a6e9fb8f359d3fabacf4a8f0fb0c0dda02fd1ef",
+  "apkBytes": 22982982,
+  "symbolSourceUnchanged": true,
+  "viewportDp": [
+    360,
+    800
+  ],
+  "fontScale": 1,
+  "images": [
+    {
+      "file": "light.png",
+      "sha256": "997f11a9626164e6b41b80faf0701636774a71fbe086b7837b9346d1e90f8c72",
+      "visuallyInspected": true,
+      "mode": "light"
+    },
+    {
+      "file": "dark.png",
+      "sha256": "e9d4018e0457170aced0c99bc6c3c7062f8cfef2578259774469026675f3f7df",
+      "visuallyInspected": true,
+      "mode": "dark"
+    }
+  ],
+  "contrast": {
+    "light": 13.49,
+    "dark": 15.0
+  },
+  "themeSha256": "463b7a3ab27b64a671d63088b18ac663a5bb8652ec5d7d0480cfb44086b92690"
+}
