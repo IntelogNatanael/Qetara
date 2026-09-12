@@ -1,5 +1,71 @@
 # Validación de Qetara
 
+## Flujo Flash móvil — 12 de septiembre de 2026
+
+La [revisión Flash](../design/figma/mobile-flash-review/README.md) y la
+[referencia móvil](../design/figma/MOBILE.md) documentan el nuevo recorrido:
+activación explícita por 30 minutos y, durante la sesión,
+**receptor → archivos → acción contextual**. El pie permite elegir receptor,
+elegir archivos o solicitar el envío según el estado, y se oculta con el
+teclado abierto. Los cambios de fase devuelven el contenido al inicio. Se
+conserva la elección de archivos sin receptor, la selección múltiple, la
+lista completa desplegable con nombres completos y el apagado con
+confirmación cuando hay trabajo preparado o en curso.
+
+Se añadieron mensajes específicos para seis códigos de error existentes
+(`approval_expired`, `peer_changed`, `invalid_address`, `storage_unavailable`,
+`incompatible`, `unconfirmed`). «Quitar todos» ahora actualiza el estado a
+«Selección vacía. Elige archivos para compartir.». No se cambia el protocolo,
+la resolución exacta del receptor ni la comparación y aprobación explícita
+por archivo.
+
+La compilación final 3 completó `assembleRelease`, `lintRelease` y
+`testDebugUnitTest` en modo offline en 2 min 8 s: **202 pruebas Android,
+0 fallos, 0 errores y 0 omitidas**, reconfirmadas en los informes XML. Lint
+mantiene **0 errores y 3 advertencias**, iguales al pase anterior: una
+`UsableSpace` y dos `UseKtx`. El APK final tiene SHA-256
+`16f5ab6d3ceffbf5ac14428075b94c61c9fa4ac7343d8f2b00437de5f4e0900a`.
+
+La revisión visual física corresponde a la candidata 2, SHA-256
+`3afb079424bfa388bad920ea73436b660af60bcf7064b0861996834cbc8d7b19`,
+en un CPH2743 con Android 16. Incluyó Flash apagado/activo, regreso al inicio
+al activar, acción contextual para elegir receptor, cuatro archivos sintéticos
+y lista expandida. Al 200 % se inspeccionaron la sesión, el diálogo completo
+de apagado y «Seguir en Flash». Los hashes de `FlashActivity.kt` y
+`FlashComponents.kt` son idénticos entre esa candidata y la final 3; sólo
+cambió después el mensaje de `clearFiles`. El APK final se instaló
+correctamente. Sobre él se seleccionó un archivo sintético de 66 B y se
+comprobó que «Quitar todos» vaciaba la selección y mostraba «Selección vacía.
+Elige archivos para compartir.». La [captura final](../design/figma/mobile-flash-review/final-cleared-top.png)
+registra ese resultado; no se atribuye una repetición completa del recorrido
+visual al APK final.
+
+Sobre la final 3 se inspeccionó además Flash apagado en Marfil y Oscuro,
+con capturas en la galería. No se declara comprobado el flujo de receptores
+o transferencias en las tres paletas. Se conservó la escala de lectura de
+Qetara al 105 %; el 200 % anterior corresponde al ajuste del sistema.
+
+Al terminar se dejó Flash apagado y Gris azulado seleccionado, con la escala
+de Qetara al 105 %, la del sistema al 100 % y el modo oscuro original de
+Android restaurado. Se retiraron del teléfono los cuatro archivos sintéticos
+creados para el pase y su carpeta de pruebas; las copias locales se conservan.
+
+Sin Wi-Fi durante este recorrido, no se añaden pruebas de UDP, envío ni
+verificación real entre equipos. El alcance del 200 % se limita a los estados
+Flash descritos; el selector de apariencia sigue pendiente. Figma permaneció
+bloqueado por la cuota Starter: se conserva la referencia local y no se
+declara revisión Figma, resolución de F-01/F-02 ni publicación de una release.
+
+## Tres temas y preferencia de apariencia — 12 de septiembre de 2026
+
+Qetara permite elegir **Marfil, Gris azulado y Oscuro**, además de **Seguir sistema**, desde **⋮ → Ajustes de lectura y avisos → Apariencia**. Seguir sistema usa Gris azulado en el modo claro de Android y Oscuro en el modo oscuro. La elección manual se guarda inmediatamente, es independiente de la sesión y se comparte con Flash. La [referencia móvil](../design/figma/MOBILE.md) describe el comportamiento y la [galería de tres temas](../design/figma/mobile-three-themes/README.md) reúne el alcance de esta iteración.
+
+`assembleRelease`, `lintRelease` y `testDebugUnitTest` terminaron correctamente en modo offline. Los 37 informes XML contienen **202 pruebas Android aprobadas**, 0 fallos, 0 errores y 0 omitidas. Lint release terminó con **0 errores y 3 advertencias**: las anteriores `UsableSpace` en `FileTransfer.kt` y `UseKtx` en `TransferForegroundService.kt`, más una nueva `UseKtx` en `P2pRouteTheme.kt`.
+
+Se firmó el APK release y se instaló mediante `adb install -r` en un teléfono CPH2743 con Android 16. Marfil persistió tras forzar el cierre y volver a abrir la aplicación. Oscuro, elegido manualmente, siguió activo después de cambiar el sistema a modo claro. El launcher conserva su fondo fijo y el splash nativo sigue el modo del sistema, sin aplicar la preferencia manual antes de cargar Compose. La geometría del símbolo permanece intacta.
+
+La revisión física de esta iteración con texto al **200 % está pendiente**. Este pase no añade pruebas de UDP, envío o cancelación de transferencias ni resuelve F-01/F-02. No se ha publicado una nueva release. Las comprobaciones de texto grande y de transporte que figuran debajo conservan el alcance de sus respectivas iteraciones.
+
 ## Superficies y marca móvil — 12 de septiembre de 2026
 
 La [revisión estética](../design/figma/mobile-surface-review/README.md) unifica el fondo claro y el icono Android en gris azulado, con tarjetas de la misma familia y splash adaptado al tema. Conserva el vector original del aleph. Incluye comparación visual, cinco pestañas claras, preferencias, Flash desactivado, Descargas en oscuro y comprobación del icono instalado en el teléfono.

@@ -1,0 +1,252 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-12",
+  "scope": "Revisión de presentación y mensajes de Flash móvil; no cambia el protocolo.",
+  "device": {
+    "model": "CPH2743",
+    "android_version": "16",
+    "qetara_reading_scale": 1.05,
+    "qetara_reading_scale_note": "Comprobada en preferencias y conservada sin cambios durante la revisión."
+  },
+  "artifacts": {
+    "baseline": {
+      "sha256": "786b3395c9f2ba9ac13f2c869971bdd01ed94b2eede4230a365a5d927856c115",
+      "bytes": 14856229,
+      "installation": "confirmed",
+      "public_binary_in_this_gallery": false
+    },
+    "candidate_2": {
+      "sha256": "3afb079424bfa388bad920ea73436b660af60bcf7064b0861996834cbc8d7b19",
+      "bytes": 14872613,
+      "installation": "confirmed",
+      "public_binary_in_this_gallery": false
+    },
+    "final_3": {
+      "sha256": "16f5ab6d3ceffbf5ac14428075b94c61c9fa4ac7343d8f2b00437de5f4e0900a",
+      "bytes": 14872613,
+      "installation": "confirmed",
+      "public_binary_in_this_gallery": false
+    }
+  },
+  "source_snapshots": [
+    {
+      "path": "app/src/main/java/com/example/wifidrop/FlashActivity.kt",
+      "candidate_2_sha256": "5914367ee2921e7acb9a1176891109db90bb6048fd4903c92de072e8ed86bb1e",
+      "final_3_sha256": "5914367ee2921e7acb9a1176891109db90bb6048fd4903c92de072e8ed86bb1e",
+      "identical": true
+    },
+    {
+      "path": "app/src/main/java/com/example/wifidrop/FlashComponents.kt",
+      "candidate_2_sha256": "f295805248c40a0c2f30cab415092a78b97b48e33821b6063c361ea22186dcae",
+      "final_3_sha256": "f295805248c40a0c2f30cab415092a78b97b48e33821b6063c361ea22186dcae",
+      "identical": true
+    },
+    {
+      "path": "app/src/main/java/com/example/wifidrop/FlashForegroundService.kt",
+      "candidate_2_sha256": "d45b92f77ab1881946d4ca0db4bae0872de371d90828c95b22f3e229ea578578",
+      "final_3_sha256": "399ae155d73addcc8d04bca80c147dda4ab98564f82c16b01e9c09251b098eed",
+      "identical": false
+    }
+  ],
+  "source_delta_note": "Las dos fuentes de GUI coinciden entre candidata 2 y final 3. Después de candidata 2 sólo cambió el mensaje de estado de clearFiles en FlashForegroundService.kt.",
+  "validation": {
+    "final_build": {
+      "status": "passed",
+      "offline": true,
+      "tasks": [
+        "assembleRelease",
+        "lintRelease",
+        "testDebugUnitTest"
+      ],
+      "duration_seconds": 128,
+      "tests": 202,
+      "failures": 0,
+      "errors": 0,
+      "lint_errors": 0,
+      "lint_warnings": 3,
+      "skipped": 0,
+      "lint_warning_counts": {
+        "UsableSpace": 1,
+        "UseKtx": 2
+      }
+    },
+    "candidate_2_physical_ui": [
+      "OFF/ACTIVE",
+      "Desplazamiento al inicio al cambiar de fase",
+      "Acción contextual Elegir receptor",
+      "Cuatro archivos sintéticos y lista expandida",
+      "Sesión y diálogo de apagado al 200 %, incluidos el texto completo y Seguir en Flash"
+    ],
+    "final_3_physical_ui": {
+      "status": "passed",
+      "scenario": "Seleccionar qetara-flash-qa-01.txt (66 B), pulsar Quitar todos y comprobar selección vacía y estado actualizado.",
+      "observed_status": "Selección vacía. Elige archivos para compartir.",
+      "screenshot": "final-cleared-top.png",
+      "additional_appearance_checks": {
+        "status": "passed",
+        "state": "OFF",
+        "appearances": [
+          "Marfil",
+          "Oscuro"
+        ],
+        "screenshots": [
+          "flash-final-ivory.png",
+          "flash-final-dark.png"
+        ],
+        "scope": "Inspección de Flash apagado; no acredita receptores ni transferencias en las tres paletas."
+      }
+    },
+    "figma": {
+      "status": "unavailable",
+      "reason": "Cuota Starter agotada",
+      "review_completed": false
+    },
+    "comparison_browser": {
+      "status": "passed",
+      "checks": [
+        "Imágenes de paletas cargadas",
+        "Controles cambian de vista",
+        "Símbolo móvil sin placa",
+        "Vista Inicio seleccionada al cerrar"
+      ]
+    }
+  },
+  "limitations": [
+    "La revisión visual principal corresponde a candidata 2; final-cleared-top.png, flash-final-ivory.png y flash-final-dark.png corresponden al APK final 3.",
+    "Las capturas before corresponden a la versión previa; no acreditan el nuevo diseño.",
+    "No hubo conexión Wi-Fi durante este recorrido: no revalida UDP, envíos ni códigos de verificación entre equipos.",
+    "La comprobación al 200 % se limita a los estados Flash descritos, no al selector de apariencias ni a todos los estados de la app.",
+    "No se resuelven F-01/F-02, no se declara una auditoría integral de accesibilidad ni publicación de una release.",
+    "Los hashes de fuentes listados identifican esas tres fuentes; no representan por sí solos todo el árbol de código."
+  ],
+  "screenshots": [
+    {
+      "file": "before-flash-off.png",
+      "sha256": "a7d95c2bea2e38e39b75c36b93917e860a02a3f51f40f04bfab94248ac7bb7f7",
+      "bytes": 179182,
+      "width_px": 1080,
+      "height_px": 2372,
+      "apk": "baseline",
+      "description": "Flash apagado antes del rediseño",
+      "kind": "real_android_screenshot"
+    },
+    {
+      "file": "before-flash-active.png",
+      "sha256": "b020d37de39762dddff165600bbd3f8c4cd0b684c5b5a1354602bb3dcd5ec022",
+      "bytes": 156720,
+      "width_px": 1080,
+      "height_px": 2372,
+      "apk": "baseline",
+      "description": "Flash activo antes del rediseño",
+      "kind": "real_android_screenshot"
+    },
+    {
+      "file": "after-flash-off.png",
+      "sha256": "cc2c59350081d24c9de7c350d7d62b1f531aa36d9f3f5366df5490fa99599ed3",
+      "bytes": 142142,
+      "width_px": 1080,
+      "height_px": 2372,
+      "apk": "candidate_2",
+      "description": "Inicio con activación explícita",
+      "kind": "real_android_screenshot"
+    },
+    {
+      "file": "after-flash-active.png",
+      "sha256": "3965bc211bd33722e8aa67c35e04ff8ba450dbcff372cee7fc1fc5616ec1c8f7",
+      "bytes": 171494,
+      "width_px": 1080,
+      "height_px": 2372,
+      "apk": "candidate_2",
+      "description": "Sesión y elección del receptor",
+      "kind": "real_android_screenshot"
+    },
+    {
+      "file": "after-flash-files.png",
+      "sha256": "8390e6ff10b1463964047ca04a99def5f3c08a09378be448603b5339ad060f5f",
+      "bytes": 147734,
+      "width_px": 1080,
+      "height_px": 2372,
+      "apk": "candidate_2",
+      "description": "Selección de cuatro archivos sintéticos resumida",
+      "kind": "real_android_screenshot"
+    },
+    {
+      "file": "after-flash-files-expanded.png",
+      "sha256": "372c744a149c2ca78509f53b248964b6ef8d0b0abf429a9ed18c9ee4688d3e19",
+      "bytes": 166324,
+      "width_px": 1080,
+      "height_px": 2372,
+      "apk": "candidate_2",
+      "description": "Selección completa con nombres completos",
+      "kind": "real_android_screenshot"
+    },
+    {
+      "file": "after-flash-large-keyboard-filled.png",
+      "sha256": "5a8839ce02329ddfcbf80242fec68c33673074ee52553e947c5868e320676b2f",
+      "bytes": 248860,
+      "width_px": 1080,
+      "height_px": 2372,
+      "apk": "candidate_2",
+      "description": "Dirección manual con teclado y texto grande",
+      "kind": "real_android_screenshot"
+    },
+    {
+      "file": "stop-confirm-large.png",
+      "sha256": "fc2d3cc1347ef3d59bc61f3b9870ae02e4fcfbb9eeee71c5a532b2d4ff2101a8",
+      "bytes": 175574,
+      "width_px": 1080,
+      "height_px": 2372,
+      "apk": "candidate_2",
+      "description": "Confirmación de apagado con texto al 200 %",
+      "kind": "real_android_screenshot"
+    },
+    {
+      "file": "final-cleared-top.png",
+      "sha256": "ffb925eefd9e81c3179c8462dc4abde1ec70aa704b067169fc2d51b3b6fddbab",
+      "bytes": 173656,
+      "width_px": 1080,
+      "height_px": 2372,
+      "apk": "final_3",
+      "description": "Estado actualizado después de Quitar todos",
+      "kind": "real_android_screenshot"
+    },
+    {
+      "file": "flash-final-ivory.png",
+      "sha256": "3990f5ca420f6e9aacff206b0ae32f22a0ea14d774c4cd23fd6671f27bf5e840",
+      "bytes": 158327,
+      "width_px": 1080,
+      "height_px": 2372,
+      "apk": "final_3",
+      "description": "Flash apagado con apariencia Marfil",
+      "appearance": "Marfil",
+      "kind": "real_android_screenshot"
+    },
+    {
+      "file": "flash-final-dark.png",
+      "sha256": "6c89d07f0f48f8136f5217b5f3c0b6355d212d96710ee625de9801a17714528b",
+      "bytes": 155807,
+      "width_px": 1080,
+      "height_px": 2372,
+      "apk": "final_3",
+      "description": "Flash apagado con apariencia Oscuro",
+      "appearance": "Oscuro",
+      "kind": "real_android_screenshot"
+    }
+  ],
+  "final_device_state": {
+    "flash": "OFF",
+    "appearance": "BLUE_GRAY",
+    "qetara_reading_scale": 1.05,
+    "system_font_scale": 1.0,
+    "android_ui_night_mode": 2,
+    "synthetic_fixture_cleanup": {
+      "files_removed": 4,
+      "test_directory_removed": true,
+      "local_copies_preserved": true
+    }
+  },
+  "remaining_validation": [
+    "Validación de red entre equipos",
+    "Selector de apariencias al 200 % del pase anterior"
+  ]
+}

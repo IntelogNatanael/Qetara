@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="es" data-theme="blue-gray">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Qetara · Marfil, gris azulado y oscuro</title>
+  <style>
+    @font-face { font-family: Inter; src: url('../../../app/src/main/res/font/inter_regular.ttf') format('truetype'); font-weight: 400; font-display: swap; }
+    @font-face { font-family: Inter; src: url('../../../app/src/main/res/font/inter_medium.ttf') format('truetype'); font-weight: 500; font-display: swap; }
+    @font-face { font-family: Inter; src: url('../../../app/src/main/res/font/inter_semibold.ttf') format('truetype'); font-weight: 600; font-display: swap; }
+    :root, [data-theme="blue-gray"] {
+      color-scheme: light;
+      --canvas: #e7eff2; --surface: #f1f5f7; --raised: #f7fafb;
+      --ink: #102a43; --muted: #536672; --line: #c3d2dc;
+      --primary: #0a6b77; --selected: #ddf1f0; --on-selected: #075460;
+      --tertiary: #765722; --attention: #f7ebcd; --on-attention: #574016;
+    }
+    [data-theme="ivory"] {
+      color-scheme: light;
+      --canvas: #fff7ed; --surface: #fffbf5; --raised: #fffdf8;
+      --ink: #102a43; --muted: #666158; --line: #ddcebc;
+      --primary: #0a6b77; --selected: #ddf1f0; --on-selected: #075460;
+      --tertiary: #765722; --attention: #f7ebcd; --on-attention: #574016;
+    }
+    [data-theme="dark"] {
+      color-scheme: dark;
+      --canvas: #101b22; --surface: #182831; --raised: #22343d;
+      --ink: #e7eff2; --muted: #afc2ca; --line: #344a54;
+      --primary: #88d3d7; --selected: #104d55; --on-selected: #bceff0;
+      --tertiary: #e4c78f; --attention: #584320; --on-attention: #f7ebcd;
+    }
+    * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+    body { margin: 0; background: var(--canvas); color: var(--ink); font: 400 14px/1.55 Inter, system-ui, sans-serif; }
+    h1, h2, h3, p, figure { margin: 0; }
+    h1 { margin-top: 12px; font-size: clamp(28px, 4.5vw, 40px); font-weight: 600; line-height: 1.17; letter-spacing: -.035em; }
+    h2 { font-size: 20px; font-weight: 600; letter-spacing: -.025em; }
+    h3 { font-size: 18px; font-weight: 600; letter-spacing: -.015em; }
+    button, input { font: inherit; }
+    button, summary, label { -webkit-tap-highlight-color: transparent; }
+    button { cursor: pointer; }
+    a { color: var(--primary); text-underline-offset: 3px; }
+    a:focus-visible, button:focus-visible, summary:focus-visible { outline: 3px solid var(--primary); outline-offset: 4px; }
+    .shell { width: min(1240px, calc(100% - 48px)); margin: auto; }
+    .masthead { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 88px; border-bottom: 1px solid var(--line); }
+    .brand { display: flex; align-items: center; font-size: 18px; font-weight: 600; }
+    .brand svg { display: block; width: 40px; height: 40px; fill: currentColor; }
+    .eyebrow { color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: .075em; text-transform: uppercase; }
+    .scope-link { display: inline-flex; align-items: center; min-height: 48px; font-size: 12px; font-weight: 500; }
+    .intro { padding: 36px 0 28px; }
+    .intro p { margin-top: 14px; max-width: 700px; color: var(--muted); font-size: 15px; }
+    .toolbar { display: flex; align-items: center; flex-wrap: wrap; justify-content: space-between; gap: 14px 24px; padding: 14px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); }
+    fieldset { display: flex; flex-wrap: wrap; gap: 4px; min-width: 0; margin: 0; padding: 3px; border: 1px solid var(--line); border-radius: 12px; }
+    .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; padding: 0; margin: -1px; border: 0; }
+    .option { display: flex; position: relative; }
+    .option input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+    .option > span { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 0 14px; border-radius: 8px; font-size: 13px; font-weight: 500; color: var(--muted); cursor: pointer; }
+    .option input:checked + span { color: var(--on-selected); background: var(--selected); }
+    .option input:focus-visible + span { outline: 3px solid var(--primary); outline-offset: 2px; }
+    .dot { width: 14px; height: 14px; flex: 0 0 14px; border: 1px solid var(--muted); border-radius: 50%; }
+    .reload { min-height: 48px; padding: 0 14px; border: 0; border-radius: 9px; color: var(--primary); background: transparent; font-size: 13px; font-weight: 500; }
+    .reload:hover { background: var(--raised); }
+    .view-note { min-height: 46px; padding: 10px 2px; color: var(--muted); font-size: 12px; }
+    .gallery { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; align-items: start; }
+    .gallery[data-view="single"] { grid-template-columns: minmax(0, 1fr); }
+    .theme-card { padding: 22px; border: 1px solid var(--line); border-radius: 18px; color: var(--ink); background: var(--canvas); }
+    .card-heading { display: flex; align-items: center; flex-wrap: wrap; justify-content: space-between; gap: 8px; margin-bottom: 18px; }
+    .card-heading p { margin-top: 4px; color: var(--muted); font-size: 12px; }
+    .tag { display: inline-flex; align-items: center; padding: 4px 7px; border: 1px solid var(--line); border-radius: 6px; color: var(--muted); background: var(--surface); font-size: 10px; font-weight: 500; letter-spacing: .035em; }
+    .image-frame { width: min(100%, 340px); margin: auto; padding: 7px; border: 1px solid var(--line); border-radius: 11px; background: var(--surface); }
+    .image-frame img { display: block; width: 100%; height: auto; border-radius: 5px; }
+    .placeholder { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 22px; min-height: 320px; aspect-ratio: 1080 / 2372; border: 1px dashed var(--line); border-radius: 5px; text-align: center; background: var(--raised); color: var(--muted); }
+    .placeholder strong { color: var(--ink); font-size: 14px; font-weight: 500; }
+    .placeholder p { max-width: 210px; font-size: 12px; }
+    .original { min-height: 40px; display: flex; align-items: center; justify-content: center; margin: 8px 0 12px; font-size: 11px; }
+    .palette { display: flex; align-items: center; flex-wrap: wrap; justify-content: center; gap: 14px; padding-top: 15px; border-top: 1px solid var(--line); font-size: 11px; color: var(--muted); }
+    .palette span { display: inline-flex; align-items: center; gap: 6px; }
+    .palette i { width: 14px; height: 14px; border: 1px solid var(--line); border-radius: 4px; }
+    .selector { margin-top: 24px; padding: 24px; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); }
+    .selector > p { margin-top: 8px; max-width: 660px; color: var(--muted); font-size: 13px; }
+    details { margin-top: 14px; border-top: 1px solid var(--line); }
+    summary { min-height: 48px; padding: 14px 0; color: var(--primary); font-size: 13px; font-weight: 500; cursor: pointer; }
+    .selector-capture { padding: 18px; border: 1px solid var(--line); border-radius: 12px; color: var(--ink); background: var(--canvas); }
+    .selector-capture .image-frame { max-width: 320px; }
+    .selector-capture figcaption { margin-bottom: 16px; text-align: center; color: var(--muted); font-size: 12px; }
+    footer { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px 24px; padding: 26px 0 34px; color: var(--muted); font-size: 11px; }
+    @media (max-width: 940px) { .gallery { gap: 12px; } .theme-card { padding: 14px; } .card-heading { min-height: 65px; } }
+    @media (max-width: 720px) {
+      .shell { width: calc(100% - 28px); }
+      .intro { padding-top: 28px; }
+      .toolbar { align-items: stretch; gap: 6px; padding: 10px; }
+      fieldset { width: 100%; }
+      .option { flex: 1 1 auto; }
+      .option > span { width: 100%; padding: 0 11px; }
+      .reload { margin-left: auto; }
+      .gallery { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+      .theme-card, .selector { padding: 18px; }
+      .card-heading { min-height: 0; }
+    }
+    @media (prefers-reduced-motion: no-preference) { body, .toolbar, .option > span { transition: background-color .15s ease, color .15s ease; } }
+  </style>
+</head>
+<body>
+  <svg xmlns="http://www.w3.org/2000/svg" width="0" height="0" aria-hidden="true" style="position:absolute;overflow:hidden">
+    <defs>
+      <g id="aleph" transform="translate(54 54) scale(0.65625) translate(-54 -54)">
+        <path d="M78.8495,21.6103Q76.4784,21.8948 73.0165,23.2227Q69.5546,24.5505 64.7175,27.5856Q59.8804,30.6206 53.1464,36.0268Q45.6536,42.1918 40.8165,45.4639Q35.9794,48.7361 32.6598,50.0165Q29.3402,51.2969 26.2103,51.2969H24.6928Q25.2619,49.3052 26.0206,45.8907Q26.7794,42.4763 27.5856,38.4454Q28.3918,34.4144 29.1031,30.5258Q29.8144,26.6371 30.1938,23.6969H14.2598Q13.3113,29.8619 11.9361,36.7381Q10.5608,43.6144 9.0433,50.1588Q8.3794,53.3835 8.1897,55.6124Q8,57.8412 8,58.5052Q8,66.0928 12.7423,68.3691Q19.3814,67.4206 24.5505,67.1835Q29.7196,66.9464 31.8062,66.9464Q49.068,66.9464 63.532,71.6887Q77.9959,76.4309 90.0412,86.3897L100,75.3876Q94.5938,69.6021 86.7216,65.0495Q78.8495,60.4969 70.0763,57.699Q61.3031,54.901 52.9567,54.2371V53.8577Q57.0351,52.0557 59.9753,50.301Q62.9155,48.5464 66.4247,46.2701Q69.2701,44.468 71.9258,42.8557Q74.5814,41.2433 76.9526,39.8206Q79.4186,38.3031 81.8845,37.3072Q84.3505,36.3113 86.7216,35.6474Z"/>
+      </g>
+    </defs>
+  </svg>
+
+  <div class="shell">
+    <header class="masthead">
+      <div class="brand"><svg viewBox="0 0 108 108" aria-hidden="true"><use href="#aleph"/></svg>Qetara</div>
+      <a class="scope-link" href="README.md">Alcance de la revisión</a>
+    </header>
+
+    <main>
+      <div class="intro">
+        <span class="eyebrow">Apariencia · Android</span>
+        <h1>Tres temas. El mismo Qetara.</h1>
+        <p>Marfil, gris azulado y oscuro, con la misma identidad. Mira las capturas juntas o elige un tema para verlo sobre su propio fondo.</p>
+      </div>
+
+      <section aria-label="Comparador de temas de la biblioteca">
+        <div class="toolbar">
+          <fieldset>
+            <legend class="sr-only">Tema que quieres ver</legend>
+            <label class="option"><input type="radio" name="view" value="all" checked><span>Todos</span></label>
+            <label class="option"><input type="radio" name="view" value="ivory"><span><i class="dot" style="background:#FFF7ED" aria-hidden="true"></i>Marfil</span></label>
+            <label class="option"><input type="radio" name="view" value="blue-gray"><span><i class="dot" style="background:#E7EFF2" aria-hidden="true"></i>Gris azulado</span></label>
+            <label class="option"><input type="radio" name="view" value="dark"><span><i class="dot" style="background:#101B22" aria-hidden="true"></i>Oscuro</span></label>
+          </fieldset>
+          <button class="reload" id="reload" type="button">Recargar capturas</button>
+        </div>
+        <p class="view-note" id="view-note" role="status">Tres capturas de la biblioteca. En pantallas pequeñas se muestran una debajo de otra.</p>
+
+        <div class="gallery" id="gallery" data-view="all">
+          <figure class="theme-card" data-theme="ivory" data-panel="ivory">
+            <figcaption class="card-heading"><div><h2>Marfil</h2><p>Fondo cálido, tinta azul.</p></div><span class="tag">CAPTURA ANDROID</span></figcaption>
+            <div class="image-frame" data-asset>
+              <img src="library-ivory.png" alt="Captura Android de Descargas con el tema Marfil" hidden>
+              <div class="placeholder"><strong>Preparando imagen</strong><p>La captura se carga desde la carpeta local.</p></div>
+            </div>
+            <div class="original"><a href="library-ivory.png" target="_blank" rel="noopener" hidden>Ver captura original</a></div>
+            <div class="palette" aria-label="Muestras de colores del tema Marfil"><span><i style="background:var(--canvas)" aria-hidden="true"></i>Fondo</span><span><i style="background:var(--surface)" aria-hidden="true"></i>Tarjetas</span><span><i style="background:var(--ink)" aria-hidden="true"></i>Texto</span></div>
+          </figure>
+
+          <figure class="theme-card" data-theme="blue-gray" data-panel="blue-gray">
+            <figcaption class="card-heading"><div><h2>Gris azulado</h2><p>Superficies suaves y frescas.</p></div><span class="tag">CAPTURA ANDROID</span></figcaption>
+            <div class="image-frame" data-asset>
+              <img src="library-blue-gray.png" alt="Captura Android de Descargas con el tema Gris azulado" hidden>
+              <div class="placeholder"><strong>Preparando imagen</strong><p>La captura se carga desde la carpeta local.</p></div>
+            </div>
+            <div class="original"><a href="library-blue-gray.png" target="_blank" rel="noopener" hidden>Ver captura original</a></div>
+            <div class="palette" aria-label="Muestras de colores del tema Gris azulado"><span><i style="background:var(--canvas)" aria-hidden="true"></i>Fondo</span><span><i style="background:var(--surface)" aria-hidden="true"></i>Tarjetas</span><span><i style="background:var(--ink)" aria-hidden="true"></i>Texto</span></div>
+          </figure>
+
+          <figure class="theme-card" data-theme="dark" data-panel="dark">
+            <figcaption class="card-heading"><div><h2>Oscuro</h2><p>Fondo profundo, tinta clara.</p></div><span class="tag">CAPTURA ANDROID</span></figcaption>
+            <div class="image-frame" data-asset>
+              <img src="library-dark.png" alt="Captura Android de Descargas con el tema Oscuro" hidden>
+              <div class="placeholder"><strong>Preparando imagen</strong><p>La captura se carga desde la carpeta local.</p></div>
+            </div>
+            <div class="original"><a href="library-dark.png" target="_blank" rel="noopener" hidden>Ver captura original</a></div>
+            <div class="palette" aria-label="Muestras de colores del tema Oscuro"><span><i style="background:var(--canvas)" aria-hidden="true"></i>Fondo</span><span><i style="background:var(--surface)" aria-hidden="true"></i>Tarjetas</span><span><i style="background:var(--ink)" aria-hidden="true"></i>Texto</span></div>
+          </figure>
+        </div>
+      </section>
+
+      <section class="selector" aria-labelledby="selector-heading">
+        <span class="eyebrow">Preferencias de la aplicación</span>
+        <h2 id="selector-heading" style="margin-top:8px">Elige cómo quieres verla</h2>
+        <p>El selector ofrece Seguir sistema y las tres opciones manuales. Esta captura muestra su presentación en Marfil.</p>
+        <details>
+          <summary>Mostrar el selector de apariencia</summary>
+          <figure class="selector-capture" data-theme="ivory">
+            <figcaption>Selector de apariencia · Marfil · <span class="tag">CAPTURA ANDROID</span></figcaption>
+            <div class="image-frame" data-asset>
+              <img src="selector-ivory.png" alt="Captura Android del selector de apariencia en Marfil con las opciones Seguir sistema, Marfil, Gris azulado y Oscuro" hidden>
+              <div class="placeholder"><strong>Preparando imagen</strong><p>La captura se carga desde la carpeta local.</p></div>
+            </div>
+            <div class="original"><a href="selector-ivory.png" target="_blank" rel="noopener" hidden>Ver captura original</a></div>
+          </figure>
+        </details>
+      </section>
+
+      <noscript><p class="view-note">Activa JavaScript para alternar las vistas y cargar las capturas.</p></noscript>
+    </main>
+
+    <footer>
+      <span>Capturas Android sin filtros. Los marcos usan los colores de cada tema. <a href="README.md">Ver alcance</a>.</span>
+      <span id="asset-status" role="status">Cargando imágenes locales…</span>
+    </footer>
+  </div>
+
+  <script>
+    (() => {
+      'use strict';
+      const byId = id => document.getElementById(id);
+      const labels = { ivory: 'Marfil', 'blue-gray': 'Gris azulado', dark: 'Oscuro' };
+      const panels = [...document.querySelectorAll('[data-panel]')];
+      const assets = [...document.querySelectorAll('[data-asset]')].map(container => {
+        const image = container.querySelector('img');
+        return { image, source: image.getAttribute('src'), placeholder: container.querySelector('.placeholder'), link: container.nextElementSibling.querySelector('a'), state: 'loading' };
+      });
+
+      function updateCount() {
+        const ready = assets.filter(asset => asset.state === 'ready').length;
+        const missing = assets.filter(asset => asset.state === 'missing').length;
+        byId('asset-status').textContent = `${ready} de ${assets.length} capturas disponibles${missing ? ` · ${missing} pendientes` : ''}`;
+      }
+
+      function updateAsset(asset, ready) {
+        asset.state = ready ? 'ready' : 'missing';
+        asset.image.hidden = !ready;
+        asset.placeholder.hidden = ready;
+        asset.link.hidden = !ready;
+        if (!ready) {
+          asset.placeholder.querySelector('strong').textContent = 'Captura pendiente';
+          asset.placeholder.querySelector('p').textContent = 'Todavía no está disponible. Cuando se incorpore, pulsa «Recargar capturas».';
+        }
+        updateCount();
+      }
+
+      function chooseView(view) {
+        const all = view === 'all';
+        document.documentElement.dataset.theme = all ? 'blue-gray' : view;
+        byId('gallery').dataset.view = all ? 'all' : 'single';
+        panels.forEach(panel => { panel.hidden = !all && panel.dataset.panel !== view; });
+        byId('view-note').textContent = all
+          ? 'Tres capturas de la biblioteca. En pantallas pequeñas se muestran una debajo de otra.'
+          : `Biblioteca en ${labels[view]}. El fondo del comparador acompaña al tema elegido.`;
+      }
+
+      document.querySelectorAll('input[name="view"]').forEach(input => input.addEventListener('change', () => {
+        if (input.checked) chooseView(input.value);
+      }));
+      assets.forEach(asset => {
+        asset.image.addEventListener('load', () => updateAsset(asset, asset.image.naturalWidth > 0));
+        asset.image.addEventListener('error', () => updateAsset(asset, false));
+        if (asset.image.complete) updateAsset(asset, asset.image.naturalWidth > 0);
+      });
+      byId('reload').addEventListener('click', () => {
+        const revision = Date.now();
+        assets.forEach(asset => {
+          asset.state = 'loading';
+          asset.image.src = `${asset.source}?revision=${revision}`;
+        });
+        byId('asset-status').textContent = 'Recargando imágenes locales…';
+      });
+      chooseView('all');
+    })();
+  </script>
+</body>
+</html>

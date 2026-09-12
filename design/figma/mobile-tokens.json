@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
   "date": "2026-09-12",
-  "status": "Blue-gray light surfaces and Android launcher background implemented and physically inspected; original symbol geometry preserved",
+  "status": "Three appearance choices implemented; physical validation recorded separately in mobile-three-themes",
   "source": {
     "file": "app/src/main/java/com/example/wifidrop/P2pRouteTheme.kt",
-    "sha256": "6ea065c1ea6798686694fe1cdac8bf05511007839c64424e5fe717351373ec70",
-    "revision": "Working tree based on f556bf865d534e22ef5c78c07abeafa8f72f395a",
+    "sha256": "0444142426e84afb5e9537bf4eb1ac6d51e4e0ddd01fc085456b422adc95b4cd",
+    "revision": "Working tree based on d7be5c5",
     "note": "Explicit Material 3 overrides only; unspecified color roles retain Material 3 defaults."
   },
   "reference": {
     "local": "design/figma/MOBILE.md",
-    "brandReview": "design/figma/mobile-surface-review/README.md",
-    "previousBrandReview": "design/figma/mobile-brand-adaptive/README.md",
+    "brandReview": "design/figma/mobile-three-themes/README.md",
+    "previousBrandReview": "design/figma/mobile-surface-review/README.md",
     "figmaFileKey": "FZhnKBdDPJWpPrbxn3AGQQ",
     "figmaStatus": "Starter MCP limit; remote file has no frames; no Figma review completed"
   },
@@ -89,6 +89,43 @@
       "onError": "#690005",
       "errorContainer": "#5A252A",
       "onErrorContainer": "#FFD9DB"
+    },
+    "ivory": {
+      "primary": "#0A6B77",
+      "onPrimary": "#FFFFFF",
+      "primaryContainer": "#DDF1F0",
+      "onPrimaryContainer": "#075460",
+      "secondary": "#666158",
+      "onSecondary": "#FFFFFF",
+      "secondaryContainer": "#F2E6D6",
+      "onSecondaryContainer": "#625D56",
+      "tertiary": "#765722",
+      "onTertiary": "#FFFFFF",
+      "tertiaryContainer": "#F7EBCD",
+      "onTertiaryContainer": "#574016",
+      "background": "#FFF7ED",
+      "onBackground": "#102A43",
+      "surface": "#FFFBF5",
+      "onSurface": "#102A43",
+      "surfaceVariant": "#F2E6D6",
+      "onSurfaceVariant": "#666158",
+      "surfaceDim": "#EEE2D0",
+      "surfaceBright": "#FFFDF8",
+      "surfaceContainerLowest": "#FFFDF8",
+      "surfaceContainerLow": "#FFF4E8",
+      "surfaceContainer": "#FFF1E2",
+      "surfaceContainerHigh": "#F5EBDC",
+      "surfaceContainerHighest": "#EEE2D0",
+      "outline": "#837568",
+      "outlineVariant": "#DDCEBC",
+      "inverseSurface": "#22373E",
+      "inverseOnSurface": "#FFF7ED",
+      "inversePrimary": "#88D3D7",
+      "surfaceTint": "#0A6B77",
+      "error": "#B3261E",
+      "onError": "#FFFFFF",
+      "errorContainer": "#FCE4E2",
+      "onErrorContainer": "#7A1D1D"
     }
   },
   "font": {
@@ -227,7 +264,7 @@
     "sourceInspection": "complete",
     "fontByteIdentityWithDesktop": "verified for all four TTFs",
     "runtimeVisual": "Android 16 physical phone, 360 dp width, 100% text: five light tabs, preferences, Flash off and dark library; installed icon inspected in Android app details",
-    "note": "APK and images: design/figma/mobile-surface-review/README.md. Splash geometry and day/night resource colors checked in source; no splash animation capture or complete accessibility audit. Figma quota prevented remote review."
+    "note": "Current three-theme APK evidence: design/figma/mobile-three-themes/README.md. Previous runtime checks remain attached to their original builds; launcher and native prelaunch splash keep their existing independent behavior."
   },
   "brand": {
     "symbol": "app/src/main/res/drawable/ic_launcher_foreground.xml",
@@ -244,11 +281,13 @@
       "role": "onBackground",
       "light": "#102A43",
       "dark": "#E7EFF2",
-      "application": "GUI only: Image with ColorFilter.tint(MaterialTheme.colorScheme.onBackground)"
+      "application": "GUI only: Image with ColorFilter.tint(MaterialTheme.colorScheme.onBackground)",
+      "ivory": "#102A43"
     },
     "headerBackdrop": {
       "light": "transparent",
-      "dark": "transparent"
+      "dark": "transparent",
+      "ivory": "transparent"
     },
     "layout": {
       "symbolViewportDp": [
@@ -295,5 +334,19 @@
       "surfaceContainerHigh",
       "onSurfaceVariant"
     ]
+  },
+  "appearance": {
+    "choices": [
+      "IVORY",
+      "BLUE_GRAY",
+      "DARK"
+    ],
+    "default": "SYSTEM",
+    "automatic": {
+      "light": "BLUE_GRAY",
+      "dark": "DARK"
+    },
+    "persistence": "Independent qetara_appearance preferences",
+    "reference": "design/figma/mobile-three-themes/README.md"
   }
 }

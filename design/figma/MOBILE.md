@@ -1,10 +1,12 @@
 # Qetara · Referencia móvil
 
-Referencia actualizada el 12 de septiembre de 2026. El modo claro comparte
-el fondo gris azulado con el icono Android; tarjetas y navegación utilizan
-matices de esa misma familia. El aleph y el nombre siguen sin fondo propio
-en la cabecera, con tinta adaptada al tema. La compilación, lint, contrastes
-y capturas físicas están en la [revisión de superficies](mobile-surface-review/README.md).
+Referencia actualizada el 12 de septiembre de 2026. Qetara permite elegir
+**Marfil, Gris azulado u Oscuro**, o **Seguir sistema**. El aleph y el nombre
+siguen sin fondo propio en la cabecera, con tinta adaptada al tema. El alcance
+de esta iteración se documenta en la
+[revisión de los tres temas](mobile-three-themes/README.md).
+La [revisión de superficies](mobile-surface-review/README.md) conserva la
+compilación, contrastes y capturas del ajuste gris azulado anterior.
 La [revisión de marca adaptable](mobile-brand-adaptive/README.md) conserva
 la evidencia del ajuste anterior de la cabecera.
 La [revisión de la marca anterior](mobile-brand-review/README.md) conserva las
@@ -25,30 +27,47 @@ La referencia de esta iteración se conserva localmente en
 
 Los valores se extrajeron de
 [P2pRouteTheme.kt](../../app/src/main/java/com/example/wifidrop/P2pRouteTheme.kt).
-El JSON registra el SHA-256 de esa instantánea, los 35 colores explícitos de
-cada modo, 15 estilos tipográficos y 5 radios Material 3. Los roles de color
-que el código no redefine conservan sus valores predeterminados de Material 3;
-no se inventan valores para ellos en este registro.
+El JSON registra el SHA-256 de esa instantánea, los roles de color,
+15 estilos tipográficos y 5 radios Material 3. Marfil parte de la paleta clara
+y sustituye sus superficies y neutros; los roles no sustituidos conservan
+los de la paleta base. Los valores que ninguna paleta redefine conservan
+los valores predeterminados de Material 3.
 
 Este trabajo es posterior a la candidata compilada desde `588a92f`. Las
 validaciones de sus APK anteriores no acreditan automáticamente los recursos
 y pantallas de esta iteración móvil.
 
+## Elegir apariencia
+
+Ruta: **⋮ → Ajustes de lectura y avisos → Apariencia**. El
+[selector](../../app/src/main/java/com/example/wifidrop/QetaraAppearanceControls.kt)
+presenta «Seguir sistema» y tres filas manuales con nombre, muestra de color
+y selección exclusiva. Las filas son pulsables completas, tienen un mínimo
+de 48 dp y permiten que el texto pase a otra línea.
+
+La elección se guarda inmediatamente mediante
+[QetaraAppearanceStore](../../app/src/main/java/com/example/wifidrop/QetaraAppearanceStore.kt),
+independiente de la sesión de transferencia, y se comparte con Flash.
+Elegir un tema manual sustituye a Seguir sistema. Volver a Seguir sistema
+usa Gris azulado cuando Android está en modo claro y Oscuro cuando está en
+modo oscuro. Una selección manual se mantiene aunque cambie el modo del sistema.
+
 ## Color y jerarquía
 
-El tema sigue el modo claro u oscuro del sistema mediante
-`isSystemInDarkTheme()`. Los componentes consumen `MaterialTheme.colorScheme`.
+El tema resuelve la preferencia guardada y consulta `isSystemInDarkTheme()`
+sólo para la opción Seguir sistema. Los componentes consumen
+`MaterialTheme.colorScheme`.
 
-| Rol Material 3 | Claro | Oscuro |
-| --- | --- | --- |
-| `primary` | `#0A6B77` | `#88D3D7` |
-| `onPrimary` | `#FFFFFF` | `#00363E` |
-| `background` | `#E7EFF2` | `#101B22` |
-| `surface` | `#F1F5F7` | `#182831` |
-| `onSurface` | `#102A43` | `#E7EFF2` |
-| `onSurfaceVariant` | `#536672` | `#AFC2CA` |
-| `outlineVariant` | `#C3D2DC` | `#344A54` |
-| `error` | `#B3261E` | `#FFB4AB` |
+| Rol Material 3 | Marfil | Gris azulado | Oscuro |
+| --- | --- | --- | --- |
+| `primary` | `#0A6B77` | `#0A6B77` | `#88D3D7` |
+| `onPrimary` | `#FFFFFF` | `#FFFFFF` | `#00363E` |
+| `background` | `#FFF7ED` | `#E7EFF2` | `#101B22` |
+| `surface` | `#FFFBF5` | `#F1F5F7` | `#182831` |
+| `onSurface` | `#102A43` | `#102A43` | `#E7EFF2` |
+| `onSurfaceVariant` | `#666158` | `#536672` | `#AFC2CA` |
+| `outlineVariant` | `#DDCEBC` | `#C3D2DC` | `#344A54` |
+| `error` | `#B3261E` | `#B3261E` | `#FFB4AB` |
 
 El fondo separa las tarjetas, el acento identifica acciones y selección y los
 mensajes de error usan el rol correspondiente. Los textos de estado y las
@@ -72,16 +91,17 @@ sincronizar y enviar comparten el acento de actividad; una cancelación es neutr
 
 El recurso `ic_launcher_foreground` permanece idéntico a HEAD: conserva su
 path, tinta original `#102A43`, viewport 108 × 108, escala uniforme `0.65625`
-y proporción. El fondo del launcher cambia de marfil `#FFF7ED` a gris
-azulado `#E7EFF2`, igual que el fondo claro de la GUI. Los diez WEBP de
-compatibilidad se regeneran mediante `scripts/generate-icons.py --android-only`.
-La pantalla de inicio y la ventana nativa usan los colores de fondo y texto
-del tema; el splash conserva su geometría propia y adapta la tinta en oscuro.
+y proporción. El launcher mantiene fijo el fondo gris azulado `#E7EFF2`;
+elegir Marfil u Oscuro no cambia el icono instalado. Los diez WEBP de
+compatibilidad corresponden a ese fondo. El splash nativo sigue el modo
+claro u oscuro de Android, no la preferencia manual de Qetara: antes de
+cargar Compose puede diferir del tema elegido dentro de la aplicación.
+Conserva su geometría propia y adapta la tinta al modo oscuro del sistema.
 
 La cabecera reutiliza ese recurso mediante `Image` y aplica únicamente en la
 GUI `ColorFilter.tint(MaterialTheme.colorScheme.onBackground)`: `#102A43`
-en claro y `#E7EFF2` en oscuro, igual que el nombre. Esta adaptación de tinta
-no altera la geometría ni el archivo vectorial. En ambos temas el símbolo
+en Marfil y Gris azulado, y `#E7EFF2` en Oscuro, igual que el nombre. Esta adaptación de tinta
+no altera la geometría ni el archivo vectorial. En los tres temas el símbolo
 aparece directamente sobre el fondo de la cabecera, sin base propia, baldosa,
 borde ni sombra. La función anterior `qetaraBrandBackdrop()` se ha eliminado.
 
@@ -90,9 +110,9 @@ de 40 × 40 dp y se elimina el espacio adicional de 10 dp: el margen propio
 del vector separa el trazo del nombre. El modo de conexión sigue debajo,
 alineado con la palabra, y el conjunto conserva el acceso al selector de modo.
 La altura de la cabecera se ajusta a la fila de marca y al tamaño del texto.
-La revisión actual incluye compilación, lint e inspección física de la
-cabecera en ambos temas. El informe distingue las capturas de Android de las
-comprobaciones estáticas del splash y las ilustraciones SVG del comparador.
+La revisión actual incluye compilación, lint y comprobaciones físicas de la
+selección de apariencia. Los informes distinguen las capturas de Android de
+las comprobaciones estáticas del splash y los vectores de los comparadores.
 
 ## Tipografía y forma
 
@@ -112,9 +132,10 @@ Android. Véase la [procedencia y licencia](../../licenses/inter-mobile-PROVENAN
 | Etiqueta de acción | `labelLarge` | 14 / 20 | 600 |
 
 Todos los estilos del tema usan espaciado de letras de 0 sp. Los tamaños en sp
-permiten el escalado de texto del sistema; su legibilidad y composición con
-escalas 1, 1,3 y 2 se inspeccionaron en los estados enumerados en el informe.
-Esto no acredita todas las pantallas ni todas sus combinaciones de contenido.
+permiten el escalado de texto del sistema. Las inspecciones con escalas 1,
+1,3 y 2 pertenecen a los estados e iteraciones enumerados en los informes
+anteriores. La revisión al 200 % del nuevo selector y los tres temas sigue
+pendiente; no se extrapolan aquellas comprobaciones a este cambio.
 
 Los radios de `MaterialTheme.shapes` son 6, 10, 16, 20 y 24 dp para
 `extraSmall`, `small`, `medium`, `large` y `extraLarge`. Algunos controles fijan
@@ -157,12 +178,6 @@ pueden pasar a otra línea. Los espacios principales son de 16/20 dp y los
 estados vacíos explican la acción disponible sin requerir conexión para leer
 archivos ya guardados.
 
-[Flash](../../app/src/main/java/com/example/wifidrop/FlashActivity.kt) conserva
-la selección, las verificaciones y la acción de envío en el pie. El contenido
-es desplazable y el temporizador puede pasar a otra línea. El recorrido en
-320 × 640 dp, fuente 2 y modo oscuro inspeccionó el temporizador, los bloques de
-archivos/receptor y el pie. No incluyó una transferencia real entre equipos.
-
 La [cabecera](../../app/src/main/java/com/example/wifidrop/P2pScreenRoute.kt)
 reutiliza el vector del launcher sin deformar su silueta, conserva el selector
 de conexión y agrupa Ajustes/Acerca de en un menú. Con texto grande, Flash usa
@@ -172,21 +187,118 @@ reserva el mismo ancho para cada icono y muestra debajo la etiqueta completa
 activa cuando no cabe en la fila. La variante compacta se comprobó a 320 dp
 con texto al 200 %; las capturas seleccionadas están en la galería local.
 
-## Validación y límites
+## Flash: receptor, archivos y acción siguiente
+
+[FlashActivity.kt](../../app/src/main/java/com/example/wifidrop/FlashActivity.kt)
+y [FlashComponents.kt](../../app/src/main/java/com/example/wifidrop/FlashComponents.kt)
+organizan la pantalla alrededor del siguiente paso. Apagado, Flash presenta
+«Comparte en un momento», tres instrucciones breves, el nombre editable del
+equipo y una única activación explícita por 30 minutos. Abrir la pantalla no
+activa el servicio.
+
+La sesión activa muestra estado y tiempo, con dirección y apagado como
+acciones secundarias. El flujo sigue **receptor → archivos → acción contextual**:
+
+- La búsqueda automática existente se conserva. «Volver a buscar» permite
+  repetirla y la dirección IP se despliega como alternativa, sin un indicador
+  de búsqueda inventado. El receptor elegido se resume y «Cambiar equipo»
+  vuelve a mostrar el selector. Se conserva la selección exacta por identidad,
+  dirección y puerto; al vencer no se sustituye automáticamente por otro equipo.
+- Es posible elegir archivos aunque todavía no haya receptor. Se conservan
+  agregar, cancelar la preparación y quitar todos. Con más de tres archivos,
+  «Ver los N archivos» despliega la selección entera con nombres completos;
+  «Mostrar menos» recupera el resumen. Las selecciones de hasta tres muestran
+  también el nombre completo.
+- El pie ofrece «Elegir receptor», «Elegir archivos» o «Solicitar envío» según
+  lo que falte. Se oculta cuando aparece el teclado para dejar espacio al
+  campo de dirección. Cambiar de fase devuelve el contenido al inicio. Las
+  operaciones aparecen antes del flujo y conservan su cancelación; actividad
+  y avisos opcionales quedan después.
+
+Apagar con preparación, solicitudes, operaciones o archivos seleccionados
+requiere confirmación. «Seguir en Flash» conserva la sesión. Los archivos
+recibidos siguen disponibles. Los controles respetan la escala de lectura
+de Qetara además de la escala del sistema, usan alturas mínimas de 48 dp
+y superficies opacas con sus colores de contenido correspondientes.
+
+Se añadieron mensajes específicos para seis errores ya existentes:
+confirmación caducada, sesión del receptor cambiada, dirección inválida,
+almacenamiento no disponible, respuesta incompatible y entrega sin confirmar.
+«Quitar todos» actualiza el estado a «Selección vacía. Elige archivos para
+compartir.». Estos ajustes de presentación no cambian el protocolo ni la
+comparación y aprobación explícita de cada archivo en ambos equipos.
+
+La [revisión Flash](mobile-flash-review/README.md) separa las capturas del APK
+comprobado y la compilación final. En un CPH2743 con Android 16 se inspeccionó
+la candidata 2: apagado/activo, reinicio del desplazamiento al activar, acción
+para elegir receptor, cuatro archivos sintéticos con lista expandida y, al
+200 %, sesión y diálogo de apagado completo con «Seguir en Flash».
+Su SHA-256 es
+`3afb079424bfa388bad920ea73436b660af60bcf7064b0861996834cbc8d7b19`.
+
+La compilación final 3 completó `assembleRelease`, `lintRelease` y
+`testDebugUnitTest` en modo offline: **202 pruebas, 0 fallos, 0 errores y
+0 omitidas**, reconfirmadas en los XML. Lint mantiene **0 errores y
+3 advertencias**, iguales al pase anterior: una `UsableSpace` y dos `UseKtx`.
+El APK final tiene SHA-256
+`16f5ab6d3ceffbf5ac14428075b94c61c9fa4ac7343d8f2b00437de5f4e0900a`.
+Los hashes de `FlashActivity.kt` y `FlashComponents.kt` coinciden entre la
+candidata 2 y la final 3; el único cambio posterior fue el mensaje al quitar
+todos los archivos. La final 3 se instaló correctamente. Se seleccionó un
+archivo sintético de 66 B y se comprobó que «Quitar todos» vaciaba la selección
+y mostraba «Selección vacía. Elige archivos para compartir.», como registra
+la [captura final](mobile-flash-review/final-cleared-top.png).
+También se inspeccionó Flash apagado en Marfil y Oscuro sobre la final 3,
+sin extender esa comprobación a receptores o transferencias en las tres
+paletas. La escala propia de lectura de Qetara se mantuvo al 105 %; el
+200 % del recorrido indicado corresponde al ajuste del sistema.
+Al terminar, Flash quedó apagado y Qetara en Gris azulado, con su escala de
+lectura al 105 %, la escala del sistema al 100 % y el modo oscuro original de
+Android restaurado. Se retiraron los cuatro archivos sintéticos de este pase
+del teléfono y su carpeta de pruebas; se conservaron las copias locales.
+
+No había conexión Wi-Fi para este recorrido: no se añaden pruebas de UDP,
+envío ni verificación real entre equipos. La comprobación al 200 % cubre los
+estados Flash indicados, no el selector completo de apariencias. Figma sigue
+bloqueado por la cuota Starter; no se declara una revisión allí ni publicación.
+
+## Validación de los tres temas y límites
+
+`assembleRelease`, `lintRelease` y `testDebugUnitTest` terminaron correctamente
+en modo offline para la iteración anterior de apariencia: **202 pruebas Android aprobadas en
+37 informes**, 0 fallos, 0 errores y 0 omitidas. Lint release terminó con
+**0 errores y 3 advertencias**: `UsableSpace` en `FileTransfer.kt`, `UseKtx`
+en `TransferForegroundService.kt` y una nueva `UseKtx` en `P2pRouteTheme.kt`.
+
+El APK release firmado se instaló mediante `adb install -r` en un teléfono
+CPH2743 con Android 16. Marfil se conservó tras forzar el cierre y volver a
+abrir la aplicación; Oscuro manual permaneció activo al cambiar Android a
+modo claro. La preferencia es compartida por la GUI habitual y Flash y no
+depende de abrir una sesión. La revisión física del selector de apariencia al
+**200 % está pendiente**. Al cerrar ese pase se dejó el trabajo pausado,
+con la escala del sistema restaurada al 100 %,
+Qetara en Marfil y el diálogo cerrado. La inspección visual del comparador
+en el navegador también queda pendiente.
+
+Estas comprobaciones no añaden validación de UDP, transferencias o cancelación
+entre equipos. Los [hallazgos F-01 y F-02](../../docs/VISUAL_FINDINGS-1.4.0.md)
+siguen pendientes. No se declara publicación ni revisión Figma completada.
+
+### Antecedentes del rediseño en emulador
 
 Se verificaron los hashes de los recursos y se contrastaron estos tokens con
 el código fuente. `assembleDebug`, `testDebugUnitTest` y
 `lintDebug` del rediseño anterior fueron correctos: **199 pruebas, 0 fallos, 0 errores, 0 omitidas**;
 el lint inspeccionado contiene 0 errores y dos advertencias preexistentes
 (`UsableSpace` y `UseKtx`). El informe identifica el APK debug exacto mediante
-su SHA-256; no se presenta como una distribución pública. Esos resultados no
-validan por sí solos el cambio actual de tinta del aleph: su compilación y
-recorrido visual se registrarán en la nueva revisión de marca adaptable.
+su SHA-256; no se presenta como una distribución pública. Esos resultados
+conservan su alcance histórico y no sustituyen la verificación de los tres
+temas documentada arriba.
 
-El recorrido usó un emulador Pixel 8 API 36 iniciado sin ventana, en modo
+Ese recorrido anterior usó un emulador Pixel 8 API 36 iniciado sin ventana, en modo
 `-read-only`, con configuraciones 411 × 914 dp/fuente 1/claro,
 360 × 800 dp/fuente 1,3/claro y 320 × 640 dp/fuente 2/oscuro. No se usó el
-teléfono físico. Las capturas y árboles auxiliares permanecen privados en
+teléfono físico en aquel pase. Las capturas y árboles auxiliares permanecen privados en
 `.local/design-review/mobile-qa/`; sus nombres y estados inspeccionados figuran
 en la [matriz de revisión](../../docs/MOBILE_DESIGN_REVIEW-2026-09-11.md).
 

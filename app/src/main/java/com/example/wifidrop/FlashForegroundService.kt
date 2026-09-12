@@ -539,7 +539,8 @@ class FlashForegroundService : Service() {
             val state = FlashAndroidRuntime.state.value
             if (current?.outgoingBatch?.active == true || state.engine?.operations?.isNotEmpty() == true || state.importing) return
             importSources.clear()
-            FlashAndroidRuntime.update { it.copy(selectedFiles = emptyList()) }
+            FlashAndroidRuntime.update { it.copy(selectedFiles = emptyList(),
+                status = "Selección vacía. Elige archivos para compartir.") }
             current?.scope?.launch(Dispatchers.IO) {
                 state.selectedFiles.forEach { file -> file.delete(); file.parentFile?.delete() }
             }
@@ -557,8 +558,14 @@ internal fun flashErrorCopy(code: String): String = when (code) {
     "cancelled" -> "Transferencia cancelada. Puedes volver a intentarlo cuando quieras."
     "rejected" -> "La solicitud fue rechazada o la verificación no coincidió. No se envió el archivo."
     "expired" -> "La solicitud o sesión expiró. Activa Flash y vuelve a intentar."
+    "approval_expired" -> "La confirmación caducó. Vuelve a solicitar el envío desde el equipo emisor y compara el nuevo código en ambos equipos."
     "busy" -> "El otro equipo ya está atendiendo una transferencia. Espera y vuelve a intentar."
     "invalid_file" -> "No se puede enviar ese archivo. Comprueba que esté disponible y haya espacio."
+    "peer_changed" -> "La sesión de Flash del otro equipo ya no coincide con la que elegiste. Búscalo de nuevo y vuelve a seleccionarlo."
+    "invalid_address" -> "La dirección no es válida. Escribe la IP local que aparece en Flash del otro equipo."
+    "storage_unavailable" -> "No se pudo preparar la carpeta para recibir el archivo. Revisa que el almacenamiento de este equipo esté disponible y tenga espacio."
+    "incompatible" -> "La respuesta del otro equipo no es compatible con Flash. Revisa la dirección y las versiones de Qetara en ambos equipos."
     "integrity_failed" -> "El archivo no superó la verificación. Vuelve a enviarlo."
+    "unconfirmed" -> "No se pudo confirmar la entrega. Comprueba en el otro equipo si el archivo llegó antes de volver a enviarlo."
     else -> "No se pudo completar la transferencia. Revisa Flash y la conexión del otro equipo."
 }

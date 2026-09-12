@@ -48,6 +48,7 @@ internal fun QetaraPreferencesDialog(
                                 "Ajusta Qetara a tu forma de leer y compartir. Los cambios se guardan automáticamente.",
                                 style = MaterialTheme.typography.bodySmall
                             )
+                            QetaraAppearanceControls()
                             Surface(
                                 shape = RoundedCornerShape(14.dp),
                                 color = MaterialTheme.colorScheme.surfaceContainerLow,

@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Qetara · El nuevo flujo de Flash</title>
+  <style>
+    @font-face{font-family:Inter;src:url('../../../app/src/main/res/font/inter_regular.ttf')}@font-face{font-family:Inter;src:url('../../../app/src/main/res/font/inter_semibold.ttf');font-weight:600}
+    *{box-sizing:border-box}body{margin:0;background:#e7eff2;color:#102a43;font-family:Inter,system-ui,sans-serif;line-height:1.6}main{max-width:1120px;margin:auto;padding:40px 24px 72px}header{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-bottom:48px}.brand{display:flex;align-items:center;gap:8px;font-weight:600;font-size:23px}.brand svg{width:38px;height:38px;object-fit:contain}a{color:#0a6b77;text-underline-offset:4px}h1{font-size:clamp(30px,4.4vw,48px);letter-spacing:-1.4px;line-height:1.15;max-width:800px;margin:12px 0 20px}h2{font-size:20px;margin:0 0 8px}.eyebrow{font-size:12px;font-weight:600;letter-spacing:.16em;color:#536672}.intro{max-width:710px;color:#536672;font-size:17px}.flow{display:flex;flex-wrap:wrap;gap:12px;padding:0;margin:28px 0 40px;list-style:none;counter-reset:steps}.flow li{counter-increment:steps;display:flex;gap:10px;align-items:center;font-size:14px}.flow li:before{content:counter(steps);border-radius:50%;background:#ddf1f0;color:#075460;width:30px;height:30px;display:grid;place-items:center;font-weight:600}
+    fieldset{border:0;padding:0;margin:0 0 26px}legend{font-size:13px;font-weight:600;margin-bottom:10px}.tabs{display:flex;flex-wrap:wrap;gap:8px}.tab{position:relative;cursor:pointer}.tab input{position:absolute;opacity:0}.tab span{display:block;border:1px solid #667e8b;border-radius:14px;padding:11px 16px;min-height:48px;color:#536672}.tab input:checked+span{background:#104d55;color:#bceff0;border-color:#104d55}.tab input:focus-visible+span{outline:3px solid #0a6b77;outline-offset:3px}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:32px}.column{min-width:0}.caption{color:#536672;font-size:14px;margin:0 0 18px}.phone{max-width:390px;margin:0 auto;border:1px solid #c3d2dc;border-radius:24px;overflow:hidden;background:#f1f5f7}.phone img{display:block;width:100%;height:auto}.label{display:block;font-size:12px;letter-spacing:.1em;color:#536672;margin-bottom:8px}.original{display:block;margin:12px 0 0;font-size:13px;text-align:center}.note{margin-top:32px;padding:20px 0;border-top:1px solid #c3d2dc;max-width:760px;color:#536672;font-size:14px}footer{margin-top:36px;color:#536672;font-size:13px}.hidden{display:none}.missing{padding:40px 20px;color:#536672}button{font:inherit}
+    @media(max-width:620px){main{padding:24px 18px 48px}header{margin-bottom:32px}.grid{grid-template-columns:1fr;gap:32px}.flow{gap:8px 18px}.phone{max-width:340px}}
+  </style>
+</head>
+<body>
+  <main>
+    <header><div class="brand"><svg viewBox="0 0 108 108" aria-hidden="true"><path fill="currentColor" transform="translate(54 54) scale(0.84) translate(-54 -54)" d="M78.8495,21.6103Q76.4784,21.8948 73.0165,23.2227Q69.5546,24.5505 64.7175,27.5856Q59.8804,30.6206 53.1464,36.0268Q45.6536,42.1918 40.8165,45.4639Q35.9794,48.7361 32.6598,50.0165Q29.3402,51.2969 26.2103,51.2969H24.6928Q25.2619,49.3052 26.0206,45.8907Q26.7794,42.4763 27.5856,38.4454Q28.3918,34.4144 29.1031,30.5258Q29.8144,26.6371 30.1938,23.6969H14.2598Q13.3113,29.8619 11.9361,36.7381Q10.5608,43.6144 9.0433,50.1588Q8.3794,53.3835 8.1897,55.6124Q8,57.8412 8,58.5052Q8,66.0928 12.7423,68.3691Q19.3814,67.4206 24.5505,67.1835Q29.7196,66.9464 31.8062,66.9464Q49.068,66.9464 63.532,71.6887Q77.9959,76.4309 90.0412,86.3897L100,75.3876Q94.5938,69.6021 86.7216,65.0495Q78.8495,60.4969 70.0763,57.699Q61.3031,54.901 52.9567,54.2371V53.8577Q57.0351,52.0557 59.9753,50.301Q62.9155,48.5464 66.4247,46.2701Q69.2701,44.468 71.9258,42.8557Q74.5814,41.2433 76.9526,39.8206Q79.4186,38.3031 81.8845,37.3072Q84.3505,36.3113 86.7216,35.6474Z"/></svg>Qetara</div><a href="README.md">Alcance de la revisión</a></header>
+    <div class="eyebrow">FLASH · ANDROID</div>
+    <h1>Un paso claro en cada momento.</h1>
+    <p class="intro">El receptor y los archivos pasan al centro. Los detalles de la sesión, la ayuda y el historial acompañan el flujo sin competir con la acción principal.</p>
+    <ol class="flow"><li>Activa Flash</li><li>Elige receptor</li><li>Prepara archivos</li><li>Compara y envía</li></ol>
+    <fieldset><legend>Vista que quieres comparar</legend><div class="tabs">
+      <label class="tab"><input type="radio" name="view" value="off" checked><span>Inicio</span></label>
+      <label class="tab"><input type="radio" name="view" value="active"><span>Buscar receptor</span></label>
+      <label class="tab"><input type="radio" name="view" value="ready"><span>Archivos</span></label>
+      <label class="tab"><input type="radio" name="view" value="large"><span>Texto grande</span></label>
+      <label class="tab"><input type="radio" name="view" value="themes"><span>Paletas</span></label>
+    </div></fieldset>
+    <section class="grid" aria-label="Comparación de capturas de Flash">
+      <article class="column"><span class="label" id="left-label">ANTES</span><h2 id="left-title">Inicio anterior</h2><p class="caption" id="left-caption">La explicación y los controles comparten una tarjeta extensa.</p><div class="phone"><img id="left-image" src="before-flash-off.png" alt="Flash antes del rediseño, desactivado"><p class="missing hidden">Captura pendiente de validación.</p></div><a class="original" id="left-link" href="before-flash-off.png">Abrir captura original</a></article>
+      <article class="column"><span class="label" id="right-label">AHORA</span><h2 id="right-title">Inicio ordenado</h2><p class="caption" id="right-caption">Una introducción breve y una acción principal.</p><div class="phone"><img id="right-image" src="after-flash-off.png" alt="Nuevo inicio de Flash"><p class="missing hidden">Captura pendiente de validación.</p></div><a class="original" id="right-link" href="after-flash-off.png">Abrir captura original</a></article>
+    </section>
+    <p class="note" id="view-note" aria-live="polite">Capturas reales del teléfono. El símbolo de Qetara y las paletas existentes se conservan.</p>
+    <footer>Referencia local de diseño · <a href="README.md">Pruebas realizadas y límites</a>. Las imágenes no son maquetas ni llevan filtros.</footer>
+  </main>
+  <script>
+    const views={
+      off:{left:['ANTES','Inicio anterior','La explicación y los controles comparten una tarjeta extensa.','before-flash-off.png'],right:['AHORA','Inicio ordenado','Una introducción breve y una acción principal.','after-flash-off.png'],note:'Capturas reales del teléfono. El símbolo de Qetara y las paletas existentes se conservan.'},
+      active:{left:['ANTES','Receptor fuera de vista','Sesión y avisos desplazan los pasos necesarios para enviar.','before-flash-active.png'],right:['AHORA','Primero, el receptor','La búsqueda y la ayuda para encontrarlo aparecen antes que los archivos.','after-flash-active.png'],note:'La búsqueda comienza al activar Flash. Puedes volver a buscar; cada receptor requiere selección explícita.'},
+      ready:{left:['SELECCIÓN','Varios archivos, juntos','Añade archivos y revisa el resumen de la selección.','after-flash-files.png'],right:['DETALLE','Nombres completos','Despliega la lista para leer también los nombres largos.','after-flash-files-expanded.png'],note:'Archivos sintéticos de prueba. Puedes prepararlos antes de elegir un receptor; solicitar el envío exige un destino disponible.'},
+      large:{left:['200 %','Apagar con contexto','El mensaje y las dos decisiones permanecen accesibles.','stop-confirm-large.png'],right:['200 %','Editar sin estorbos','El pie se oculta al escribir para dejar espacio al campo y al teclado.','after-flash-large-keyboard-filled.png'],note:'Escala de texto del sistema al 200 %. La dirección de ejemplo no se utilizó para enviar ni buscar un receptor.'},
+      themes:{left:['MARFIL','Un fondo cálido','La misma jerarquía con superficies en marfil.','flash-final-ivory.png'],right:['OSCURO','Contraste suave','Acciones en turquesa y texto claro sobre fondo oscuro.','flash-final-dark.png'],note:'Inicio de Flash tras desactivarlo, revisado en las otras dos paletas. Las vistas anteriores muestran gris azulado. Escala de la aplicación al 105 % y del sistema al 100 %.'}
+    };
+    function show(view){const data=views[view];for(const side of ['left','right']){const [label,title,caption,file]=data[side];document.getElementById(side+'-label').textContent=label;document.getElementById(side+'-title').textContent=title;document.getElementById(side+'-caption').textContent=caption;const img=document.getElementById(side+'-image');img.hidden=false;img.nextElementSibling.classList.add('hidden');img.alt=title;img.src=file;document.getElementById(side+'-link').href=file}document.getElementById('view-note').textContent=data.note}
+    for(const img of document.querySelectorAll('.phone img')){img.addEventListener('error',()=>{img.hidden=true;img.nextElementSibling.classList.remove('hidden')});img.addEventListener('load',()=>{img.hidden=false;img.nextElementSibling.classList.add('hidden')})}
+    for(const input of document.querySelectorAll('input[name="view"]'))input.addEventListener('change',()=>show(input.value));
+  </script>
+</body>
+</html>

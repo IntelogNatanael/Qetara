@@ -12,8 +12,10 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
@@ -73,10 +75,18 @@ fun QetaraAppShell() {
 
 @Composable
 internal fun QetaraTheme(content: @Composable () -> Unit) {
-    val dark = isSystemInDarkTheme()
+    val appearance by rememberQetaraAppearance()
+    val resolvedAppearance = appearance.resolved(isSystemInDarkTheme())
+    val dark = resolvedAppearance == QetaraAppearance.DARK
+    val colors = when (resolvedAppearance) {
+        QetaraAppearance.IVORY -> qetaraIvoryScheme
+        QetaraAppearance.DARK -> qetaraDarkScheme
+        else -> qetaraLightScheme
+    }
     val view = LocalView.current
     SideEffect {
         view.context.findActivity()?.window?.let { window ->
+            window.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(colors.background.toArgb()))
             WindowCompat.getInsetsController(window, view).apply {
                 isAppearanceLightStatusBars = !dark
                 isAppearanceLightNavigationBars = !dark
@@ -85,7 +95,7 @@ internal fun QetaraTheme(content: @Composable () -> Unit) {
     }
     ProvidePrivateClipboard {
         MaterialTheme(
-            colorScheme = if (dark) qetaraDarkScheme else qetaraLightScheme,
+            colorScheme = colors,
             typography = QetaraTypography,
             shapes = Shapes(
                 extraSmall = RoundedCornerShape(6.dp),
@@ -118,6 +128,20 @@ private val qetaraLightScheme = lightColorScheme(
     inversePrimary = Color(0xFF88D3D7), surfaceTint = Color(0xFF0A6B77),
     error = Color(0xFFB3261E), onError = Color.White,
     errorContainer = Color(0xFFFCE4E2), onErrorContainer = Color(0xFF7A1D1D)
+)
+
+private val qetaraIvoryScheme = qetaraLightScheme.copy(
+    secondary = Color(0xFF666158),
+    secondaryContainer = Color(0xFFF2E6D6), onSecondaryContainer = Color(0xFF625D56),
+    background = Color(0xFFFFF7ED),
+    surface = Color(0xFFFFFBF5),
+    surfaceVariant = Color(0xFFF2E6D6), onSurfaceVariant = Color(0xFF666158),
+    surfaceDim = Color(0xFFEEE2D0), surfaceBright = Color(0xFFFFFDF8),
+    surfaceContainerLowest = Color(0xFFFFFDF8), surfaceContainerLow = Color(0xFFFFF4E8),
+    surfaceContainer = Color(0xFFFFF1E2), surfaceContainerHigh = Color(0xFFF5EBDC),
+    surfaceContainerHighest = Color(0xFFEEE2D0),
+    outline = Color(0xFF837568), outlineVariant = Color(0xFFDDCEBC),
+    inverseOnSurface = Color(0xFFFFF7ED)
 )
 
 private val qetaraDarkScheme = darkColorScheme(
