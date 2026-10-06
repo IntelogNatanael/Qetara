@@ -37,7 +37,7 @@ jobs:
         run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0'
       - name: Build, lint and test Android and shared protocol
         run: ./gradlew :protocol:test :app:assembleDebug :app:assembleRelease :app:lintDebug :app:lintRelease :app:testDebugUnitTest --no-daemon --max-workers=2
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: ${{ always() && github.event_name == 'workflow_dispatch' && inputs['upload-reports'] }}
         with:
           name: android-results
@@ -66,7 +66,7 @@ jobs:
       - name: Verify local transfer protocol
         shell: bash
         run: ./gradlew -PqetaraDesktopOnly=true :pc:run --no-daemon --args="--no-gui --token ABCD1234 --pin 123456 --self-test --no-receiver --no-interactive --out build/qetara-selftest"
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: ${{ always() && github.event_name == 'workflow_dispatch' && inputs['upload-reports'] }}
         with:
           name: desktop-${{ matrix.os }}
