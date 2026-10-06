@@ -100,8 +100,18 @@ que sdkmanager no encontró. La misma causa afectó la ejecución de `main`.
 Se corrigió el workflow para solicitar sólo `platform-tools`; la plataforma 36
 y Build Tools 36.0.0 se siguen instalando explícitamente en el paso posterior.
 Esta corrección no cambia las entradas del APK ni invalida las compilaciones
-locales documentadas. La nueva CI del workflow corregido queda pendiente de
-registrar; el fallo histórico de la etiqueta no se presenta como aprobado.
+locales documentadas. La [CI del workflow corregido](https://github.com/IntelogNatanael/Qetara/actions/runs/37481564174),
+commit `154729bcc00ab721be2d66ae0f18dc6a3b367ea2`, terminó correctamente:
+Android en 6 min 12 s y escritorio en Windows, Ubuntu y macOS. Se ejecutaron
+las compilaciones, lint y pruebas Android/protocolo y el empaquetado, pruebas
+y autopruebas de escritorio definidos en el workflow. El fallo histórico de
+la etiqueta queda registrado; no se presenta como una ejecución aprobada.
+
+La CI valida ese commit posterior, cuyas entradas de aplicación coinciden con
+la etiqueta. Los hashes de reproducibilidad de este informe siguen siendo los
+de las compilaciones limpias del commit `c960afafbef5ad463e22127e979408e7a3c4d3af`;
+no se atribuyen a los APK de Actions. La comprobación de coherencia de la receta
+también pasó sobre `154729bcc00ab721be2d66ae0f18dc6a3b367ea2`.
 
 ## Licencias y revisión de publicación
 
@@ -144,6 +154,8 @@ HTTPS nuevo de `v1.4.2`, con HOME vacío, configuración global/sistema desactiv
 sin helpers, cabeceras de autenticación ni prompts. La etiqueta anotada
 `526030314145a04d36d5e99e6fd6908759aae5d7` resuelve al commit esperado y
 `gradle.properties` descargado declara `1.4.2`/`9`. No se requirieron credenciales.
+Una consulta HTTP anónima independiente confirmó después que la receta de
+`main` declara versión `1.4.2`, código `9` y el commit validado.
 
 Esta fase prepara y publica fuentes. El APK firmado de este informe permanece
 local; todavía falta publicar su URL versionada y añadir `binary`/`Binaries`
