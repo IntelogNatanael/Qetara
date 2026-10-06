@@ -2,11 +2,13 @@
 
 Esta guía permite continuar el desarrollo sin depender de la conversación que originó la entrega. Los comandos se ejecutan desde la raíz del repositorio.
 
-## Versión actual en desarrollo
+## Versión actual
 
-La candidata local actual es **1.4.2, código Android 9**, instalada en Windows y en el teléfono físico durante la [revisión de UX del 5 de octubre](UX_REVIEW-2026-10-05.md). Incluye detección de la zona Wi-Fi hospedada en Android 16 y un mensaje específico para errores de búsqueda Flash. Conserva la aprobación de todo el lote una vez por equipo y el icono marfil de la [fase 1.4.1](FLASH_BATCH_REVIEW-2026-10-05.md). Se preservaron la identidad y las preferencias de PC y la firma Android. El identificador sigue siendo `io.github.intelognatanael.qetara`; la decisión de identidad y migración está en [Identidad Android](ANDROID_IDENTITY.md). La versión se define en `gradle.properties` para todos los módulos.
+Las fuentes de **1.4.2, código Android 9**, están publicadas en la etiqueta [`v1.4.2`](https://github.com/IntelogNatanael/Qetara/tree/v1.4.2), commit `c960afafbef5ad463e22127e979408e7a3c4d3af`. La [validación del 6 de octubre](VALIDATION-1.4.2.md) documenta las compilaciones limpias, escáneres, licencias y reproducibilidad nuevas: Windows, Linux y F-Droid produjeron el mismo APK; 337 pruebas pasaron y dos pruebas opcionales con dispositivos quedaron omitidas. La receta fija ese commit y versión. El APK firmado limpio sigue local y la inclusión oficial en F-Droid está pendiente.
 
-La publicación pública y la solicitud a F-Droid son pasos separados de esta preparación. Consulta [Preparación de publicación](PUBLICATION_READINESS.md) para las comprobaciones y los límites pendientes.
+La build local anterior de **1.4.2/9** se instaló en Windows y en el teléfono físico durante la [revisión de UX del 5 de octubre](UX_REVIEW-2026-10-05.md); no se atribuyen esas pruebas físicas al nuevo APK limpio. Incluye detección de la zona Wi-Fi hospedada en Android 16 y un mensaje específico para errores de búsqueda Flash. Conserva la aprobación de todo el lote una vez por equipo y el icono marfil de la [fase 1.4.1](FLASH_BATCH_REVIEW-2026-10-05.md). Se preservaron la identidad y las preferencias de PC y la firma Android. El identificador sigue siendo `io.github.intelognatanael.qetara`; la decisión de identidad y migración está en [Identidad Android](ANDROID_IDENTITY.md). La versión se define en `gradle.properties` para todos los módulos.
+
+La publicación de fuentes ya está completada. La distribución del APK y la solicitud a F-Droid son pasos separados; consulta [VALIDATION-1.4.2](VALIDATION-1.4.2.md) y [preparación F-Droid](../fdroid/README.md) para los límites pendientes.
 
 La candidata histórica 1.4.0 comprobada procede de `588a92f2617815b5744eeb91a1da463c5c685f90`. Ya se validaron el APK final en emulador y teléfono, lotes Flash por Wi-Fi, la instalación MSI y la receta F-Droid con herramientas locales. UDP físico aprobó la repetición sin cambios del arnés; se conserva el timeout del primer intento. El [informe 1.4.0](VALIDATION-1.4.0.md) enlaza hashes y resultados completos. Después se revisaron la [interfaz de escritorio](DESKTOP_DESIGN_REVIEW-2026-09-11.md), la [interfaz móvil](MOBILE_DESIGN_REVIEW-2026-09-11.md), sus [colores](MOBILE_COLOR_REVIEW-2026-09-11.md) y la [marca adaptable](../design/figma/mobile-brand-adaptive/README.md). Estos cambios de diseño son posteriores a los binarios de la candidata. Siguen pendientes el recorrido visual completo de envío y cancelación y el nuevo paquete de entrega; no se ha publicado ni obtenido aceptación oficial de F-Droid.
 
@@ -15,7 +17,7 @@ La candidata histórica 1.4.0 comprobada procede de `588a92f2617815b5744eeb91a1d
 - **Android 1.3.1, código 6**, identificador `com.example.wifidrop`, Android 7/API 24 como mínimo y SDK objetivo 36.
 - **PC 1.3.0 es compatible con Android 1.3.1.** La corrección 1.3.1 afecta a la apertura, exportación y copia de archivos Android; no cambia el protocolo de red.
 - El APK 1.3.1 corresponde al commit `97e62099974d21659085f7e752ac49dc193acf01`. La referencia de distribución es [v1.3.1](https://github.com/IntelogNatanael/Qetara/releases/tag/v1.3.1); `main` incluye desarrollo posterior a esos binarios.
-- El repositorio [IntelogNatanael/Qetara](https://github.com/IntelogNatanael/Qetara) es privado: el compañero necesita permiso de acceso. El código conserva su [licencia MIT](../LICENSE).
+- El repositorio [IntelogNatanael/Qetara](https://github.com/IntelogNatanael/Qetara) es público desde el 6 de octubre de 2026. El código conserva su [licencia MIT](../LICENSE).
 - Los instaladores anteriores mantienen sus versiones originales; no contienen el desarrollo posterior descrito a continuación.
 
 Lee primero [CONTRIBUTING](../CONTRIBUTING.md), [arquitectura](../ARCHITECTURE.md), [principios de experiencia](EXPERIENCE.md) y [seguridad](../SECURITY.md). Trabaja en una rama propia y conserva los cambios del usuario. Antes de modificar interfaz, revisa [AGENTS.md](../AGENTS.md): usar exclusivamente Figma con `cchoquenairat@unsa.edu.pe`, equipo `dev-UNSA`. La [referencia activa](../design/figma/unsa-2026-10-05/README.md) ya contiene marca y confirmación de lotes editables y revisadas; el archivo antiguo vacío y sus límites pertenecen a las revisiones históricas.
@@ -24,7 +26,7 @@ Lee primero [CONTRIBUTING](../CONTRIBUTING.md), [arquitectura](../ARCHITECTURE.m
 
 `main` incorpora selección múltiple y envío por lotes en PC y Flash, con acumulación de selecciones Android, deduplicación y conservación de los archivos no confirmados. Flash detiene los pendientes al cancelar y espera el resultado de cada archivo antes de avanzar. Android y PC buscan receptores automáticamente al activar Flash; la búsqueda manual sigue disponible.
 
-Las mejoras se validaron con 199 pruebas Android, 57 PC y 45 del protocolo, además de compilación, lint y autopruebas locales de transferencia y reanudación. Los comandos, fechas y límites de cada ejecución están en [Validación](VALIDATION.md). Los instaladores de la entrega anterior no incorporan estas mejoras; los cambios forman parte de la candidata **1.4.0** en [Cambios](../CHANGELOG.md).
+La validación histórica de estas mejoras ejecutó 199 pruebas Android, 57 PC y 45 del protocolo, además de compilación, lint y autopruebas locales. Sus comandos, fechas y límites están en [Validación](VALIDATION.md); no son los resultados de la versión actual. Los resultados nuevos están en [VALIDATION-1.4.2](VALIDATION-1.4.2.md). Los instaladores de la entrega anterior no incorporan el desarrollo posterior descrito en [Cambios](../CHANGELOG.md).
 
 ## Preparar y comprobar el entorno
 
@@ -88,7 +90,7 @@ La aceptación requiere `result=PASS`, `checks_passed=9` y `created_fixtures_rem
 
 La entrada PC es [Main.kt](../pc/src/main/kotlin/com/example/wifidrop/pc/Main.kt), con CLI y motor habitual. [DesktopWorkspace.kt](../pc/src/main/kotlin/com/example/wifidrop/pc/DesktopWorkspace.kt) organiza la interfaz. [DesktopFlashController.kt](../pc/src/main/kotlin/com/example/wifidrop/pc/DesktopFlashController.kt) adapta Flash. Las tareas `:pc:test`, `:pc:run` y `:pc:createDistributable` están configuradas en [pc/build.gradle.kts](../pc/build.gradle.kts).
 
-El módulo `protocol` contiene reglas comunes, almacenamiento y el [motor Flash](../protocol/FLASH.md). Conserva la separación entre la sesión habitual WDRP v4 y Flash: Flash usa TCP/UDP 8989, empieza apagado y exige comparar y aceptar la verificación en ambos equipos para cada archivo. Una sesión cerrada, un error o un anuncio de descubrimiento no deben convertirse en autorización para enviar.
+El módulo `protocol` contiene reglas comunes, almacenamiento y el [motor Flash](../protocol/FLASH.md). Conserva la separación entre la sesión habitual WDRP v4 y Flash: Flash usa TCP/UDP 8989, empieza apagado y exige comparar y aceptar la verificación una vez en cada equipo para todo el lote, de hasta 128 archivos. Esa aprobación no cubre lotes posteriores. Una sesión cerrada, un error o un anuncio de descubrimiento no deben convertirse en autorización para enviar.
 
 Después de cambiar lógica compartida, ejecuta `:protocol:test`, `:pc:test` y `:app:testDebugUnitTest`. No presentes progreso o entrega como exitosos antes de la confirmación correspondiente. Los archivos ya publicados deben conservarse si después falla el acuse o se cierra la sesión.
 

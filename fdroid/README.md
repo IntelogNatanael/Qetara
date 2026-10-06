@@ -1,15 +1,27 @@
 # Preparación de F-Droid
 
 `metadata/io.github.intelognatanael.qetara.yml` describe la candidata Android
-1.4.0/código 7 del commit `588a92f2617815b5744eeb91a1da463c5c685f90`.
-Es una propuesta para revisión; no ha sido enviada a F-Droid ni publica nada.
+1.4.2/código 9 del commit `c960afafbef5ad463e22127e979408e7a3c4d3af`.
+Es una propuesta para revisión; no ha sido enviada a F-Droid y no contiene
+una URL de APK publicado.
 
-**Alcance histórico:** esa candidata se preparó el 11 de septiembre de 2026.
-Hay cambios de aplicación posteriores en el repositorio; la receta y sus hashes
-no representan automáticamente las fuentes actuales. El
+**Estado del 6 de octubre de 2026:** las fuentes son públicas bajo la etiqueta
+`v1.4.2`; un clon HTTPS sin credenciales verificó el commit y la versión. La
+receta corresponde a 1.4.2/9. `readmeta`, `rewritemeta`, lint, escáner de fuentes,
+build y escáner APK terminaron con código 0 en fdroidserver 2.4.5. Windows,
+Linux y el ensayo F-Droid produjeron APKs sin firma idénticos; la copia pública
+de firma sobre las dos reconstrucciones también coincide byte a byte con la
+candidata firmada. Las evidencias nuevas y sus límites están en
+[VALIDATION-1.4.2](../docs/VALIDATION-1.4.2.md). Los resultados locales no
+equivalen a aceptación de F-Droid.
+
+**Alcance histórico:** la candidata 1.4.0/código 7, del commit
+`588a92f2617815b5744eeb91a1da463c5c685f90`, se preparó el 11 de septiembre
+de 2026. Sus resultados y hashes se conservan en
+[FDROID_VALIDATION-1.4.0](../docs/FDROID_VALIDATION-1.4.0.md), pero no acreditan
+esta nueva build. El
 [informe del 23 de septiembre](../docs/AUDIT_RELEASE-2026-09-23.md) distingue
-fuentes, paquetes e instalaciones. No se ha sustituido el commit por una
-referencia futura ni se atribuye la validación anterior al código nuevo.
+el estado de fuentes, paquetes e instalaciones en esa fecha.
 
 La receta fija el commit completo y la huella del certificado del desarrollador.
 Las actualizaciones automáticas permanecen desactivadas durante la preparación
@@ -39,24 +51,31 @@ fdroiddata que incluya su configuración oficial de categorías. Ejecuta:
 fdroid readmeta
 fdroid rewritemeta io.github.intelognatanael.qetara
 fdroid lint --force-yamllint io.github.intelognatanael.qetara
-fdroid scanner --refresh --json --exit-code io.github.intelognatanael.qetara:7
-fdroid build --test --no-tarball --scan-binary --stop io.github.intelognatanael.qetara:7
+fdroid scanner --refresh --json --exit-code io.github.intelognatanael.qetara:9
+fdroid build --test --no-tarball --scan-binary --stop io.github.intelognatanael.qetara:9
 ```
 
 Los comandos de escáner y build preparan y limpian su propio checkout de trabajo.
 No deben apuntar al directorio donde desarrollas la aplicación. `--test` mantiene
 la salida en el área de prueba; no se utilizan `--force` ni `--skip-scan`.
 
-Los resultados y las adaptaciones del ensayo local se documentan en
-[`docs/FDROID_VALIDATION-1.4.0.md`](../docs/FDROID_VALIDATION-1.4.0.md).
+El [informe de 1.4.2/9](../docs/VALIDATION-1.4.2.md) registra el commit,
+las versiones de herramientas, las adaptaciones del entorno y los hashes
+nuevos. El [estado de publicación](../docs/PUBLICATION_READINESS.md) distingue
+esta revisión de la evidencia histórica. Las categorías `Connectivity`,
+`File Transfer` y
+`Messaging` siguen presentes en la
+[configuración oficial de fdroiddata](https://gitlab.com/fdroid/fdroiddata/-/raw/master/config/categories.yml),
+consultada el 6 de octubre de 2026.
 
 ## Antes de solicitar inclusión
 
-El repositorio de fuentes debe ser accesible públicamente por HTTPS sin
-autenticación. La consulta autenticada del 23 de septiembre sigue indicando
-`PRIVATE`. El ensayo histórico usó una copia local del mismo commit como origen.
-El YAML propuesto
-conserva la dirección HTTPS prevista; el origen local no forma parte de la
+El acceso público por Git HTTPS al commit fijado ya se comprobó el 6 de octubre
+de 2026 mediante un clon Linux sin credenciales. El repositorio era privado al
+iniciar esta ejecución y se cambió a público tras validar las fuentes. El ensayo
+de compilación F-Droid utilizó una copia local de ese mismo commit como origen;
+la comprobación HTTPS posterior no repitió la build. El YAML conserva la URL
+HTTPS del repositorio. Las sustituciones locales de ensayos quedan fuera de la
 receta pública.
 
 La candidata firmada tampoco tiene todavía una URL pública versionada.
@@ -82,17 +101,19 @@ y no se ha adoptado aquí esa alternativa.
    `CurrentVersion`/`CurrentVersionCode` por los valores reales. Retira del YAML
    los hashes históricos que ya no describan el APK propuesto. Ejecuta el guard
    y los comandos F-Droid en un checkout aislado.
-4. Publica las fuentes y la URL versionada real del APK firmado cuando se
-   autorice la publicación. Configura `binary`/`Binaries` y comprueba la descarga,
-   el certificado y la copia de firma desde la build F-Droid.
+4. Comprueba el acceso anónimo a las fuentes publicadas. Cuando se autorice
+   además publicar el APK firmado, registra su URL versionada real. Configura
+   `binary`/`Binaries` y comprueba la descarga, el certificado y la copia de
+   firma desde la build F-Droid.
 5. Somete la receta a la CI y revisión de fdroiddata. El resultado local no
    acredita la aceptación ni publicación oficial.
 
 La ficha editable está en `fastlane/metadata/android/en-US` y
 `fastlane/metadata/android/es-ES`, con nombre, resumen y descripción. Las capturas
 y el icono de tienda deben corresponder a la candidata final y conservar la
-geometría de la marca. Esos recursos y las notas por código de versión siguen
-pendientes; no se presentan capturas históricas como imágenes del APK nuevo.
+geometría de la marca. Las notas del código 9 están en `changelogs/9.txt` de ambos
+idiomas. Las capturas y el icono de tienda siguen pendientes; no se presentan
+capturas históricas como imágenes del APK nuevo.
 
 Las actualizaciones continúan manuales durante la preparación. Si después se
 habilitan por tags estables, hay que configurar `UpdateCheckData` para extraer

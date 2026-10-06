@@ -1,5 +1,10 @@
 # Preparación de la publicación pública
 
+La revisión actual de **1.4.2/código 9**, del 6 de octubre de 2026, se registra
+en [Validación 1.4.2](VALIDATION-1.4.2.md). El resto de este documento conserva
+la evidencia histórica de 1.4.0; sus resultados, recursos y estado de
+publicación no describen automáticamente la versión actual.
+
 Qetara 1.4.0, código Android 7. Preparación del 11 de septiembre de 2026; código de la candidata fijado en `588a92f2617815b5744eeb91a1da463c5c685f90`. Este documento registra resultados y condiciones de publicación; no anuncia una release pública ni la aceptación de F-Droid.
 
 La integración posterior incorpora las revisiones de [escritorio](DESKTOP_DESIGN_REVIEW-2026-09-11.md), [móvil](MOBILE_DESIGN_REVIEW-2026-09-11.md), [colores](MOBILE_COLOR_REVIEW-2026-09-11.md) y [marca adaptable](../design/figma/mobile-brand-adaptive/README.md), además de Inter con su licencia OFL. La [verificación integrada](VALIDATION.md) registra las comprobaciones del código actualizado. Los hashes y resultados de MSI, UDP físico y F-Droid que siguen pertenecen a la candidata indicada; deben repetirse según el alcance del nuevo paquete antes de distribuir la GUI actualizada.

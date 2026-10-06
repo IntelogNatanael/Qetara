@@ -1,0 +1,1338 @@
+{
+  "generated_at": "2026-10-06T14:32:45Z",
+  "qetara_version": "1.4.2",
+  "qetara_version_code": 9,
+  "source_commit": "c960afafbef5ad463e22127e979408e7a3c4d3af",
+  "scope": "88 Android release dependency coordinates from generateReleaseLintReportModel in the clean 1.4.2 source checkout; resolved POM hashes verified against the historical 1.4.0 inventory. POM license declarations and recorded upstream notices, not an exhaustive audit or source rebuild of embedded native code or build tools.",
+  "source_model": "app/build/intermediates/lint_report_lint_model/release/generateReleaseLintReportModel/release-artifact-libraries.xml",
+  "source_model_sha256": "8f26cd832b5be13334a89c382924e1908b20801dd785c319920ca59c2089e423",
+  "source_apk": "Qetara-1.4.2-unsigned.apk",
+  "source_apk_sha256": "124876116b6bb3ad7a3162dc320db5be9f6ce251204b0498034f6a9256dd1c65",
+  "source_apk_size": 14837252,
+  "previous_inventory": "android-release-dependency-inventory.json",
+  "previous_inventory_sha256": "61f1e6c0c43f956d3c531676d0ead1b31db544eb75143399ac51b3753e5909a2",
+  "coordinates_added": [],
+  "coordinates_removed": [],
+  "components": [
+    {
+      "coordinate": "androidx.activity:activity-compose:1.13.0",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "https://developer.android.com/jetpack/androidx/releases/activity#1.13.0",
+      "pom_url": "https://dl.google.com/dl/android/maven2/androidx/activity/activity-compose/1.13.0/activity-compose-1.13.0.pom",
+      "pom_sha256": "cb6a8ff89ffb7f107f214050e9fb32b0d0b0f665d8de7c9e4e2a4d5fea9951e9",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    },
+    {
+      "coordinate": "androidx.activity:activity-ktx:1.13.0",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "https://developer.android.com/jetpack/androidx/releases/activity#1.13.0",
+      "pom_url": "https://dl.google.com/dl/android/maven2/androidx/activity/activity-ktx/1.13.0/activity-ktx-1.13.0.pom",
+      "pom_sha256": "79d63d7b13c43f92faf63ade9fc6a4ab45e8e42493dbaa138c7a736184a4c775",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    },
+    {
+      "coordinate": "androidx.activity:activity:1.13.0",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "https://developer.android.com/jetpack/androidx/releases/activity#1.13.0",
+      "pom_url": "https://dl.google.com/dl/android/maven2/androidx/activity/activity/1.13.0/activity-1.13.0.pom",
+      "pom_sha256": "a5c53e074754835d30621618616e783b5b71875c2e7988ab06082348152e314e",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    },
+    {
+      "coordinate": "androidx.annotation:annotation-experimental:1.4.1",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "https://developer.android.com/jetpack/androidx/releases/annotation#1.4.1",
+      "pom_url": "https://dl.google.com/dl/android/maven2/androidx/annotation/annotation-experimental/1.4.1/annotation-experimental-1.4.1.pom",
+      "pom_sha256": "fe57b228417f4d7c677903dc61fb4a7cf993d603499de26d8d8113e477cc4f1b",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    },
+    {
+      "coordinate": "androidx.annotation:annotation-jvm:1.9.1",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "https://developer.android.com/jetpack/androidx/releases/annotation#1.9.1",
+      "pom_url": "https://dl.google.com/dl/android/maven2/androidx/annotation/annotation-jvm/1.9.1/annotation-jvm-1.9.1.pom",
+      "pom_sha256": "89b99c218d60019316b50aab79816707bc21696c896a030e1b1ae038961bcb8e",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    },
+    {
+      "coordinate": "androidx.appcompat:appcompat-resources:1.7.1",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "https://developer.android.com/jetpack/androidx/releases/appcompat#1.7.1",
+      "pom_url": "https://dl.google.com/dl/android/maven2/androidx/appcompat/appcompat-resources/1.7.1/appcompat-resources-1.7.1.pom",
+      "pom_sha256": "2faf922e8c3d706f29d862b3fbb3aa1347705c21c6eae18586d2bb1f7366ea01",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    },
+    {
+      "coordinate": "androidx.appcompat:appcompat:1.7.1",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "https://developer.android.com/jetpack/androidx/releases/appcompat#1.7.1",
+      "pom_url": "https://dl.google.com/dl/android/maven2/androidx/appcompat/appcompat/1.7.1/appcompat-1.7.1.pom",
+      "pom_sha256": "1f79910cc20de198acf3867b1e93f9ed59ddb643585b2e9c28ee55518af1bc00",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    },
+    {
+      "coordinate": "androidx.arch.core:core-common:2.2.0",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "https://developer.android.com/jetpack/androidx/releases/arch-core#2.2.0",
+      "pom_url": "https://dl.google.com/dl/android/maven2/androidx/arch/core/core-common/2.2.0/core-common-2.2.0.pom",
+      "pom_sha256": "1e17d4af8d6425be2a69f8af4d654a87e0456259a9eef1542869bcb023547e28",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    },
+    {
+      "coordinate": "androidx.arch.core:core-runtime:2.2.0",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "https://developer.android.com/jetpack/androidx/releases/arch-core#2.2.0",
+      "pom_url": "https://dl.google.com/dl/android/maven2/androidx/arch/core/core-runtime/2.2.0/core-runtime-2.2.0.pom",
+      "pom_sha256": "0f953706598140d9d8735cdd5aeb1fa35933f4e2f31c0bf3eb81a053a4c8c1a5",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    },
+    {
+      "coordinate": "androidx.autofill:autofill:1.0.0",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "https://developer.android.com/jetpack/androidx",
+      "pom_url": "https://dl.google.com/dl/android/maven2/androidx/autofill/autofill/1.0.0/autofill-1.0.0.pom",
+      "pom_sha256": "3677abead5d4e06cf76cbacb954151e051779c2274494451fb424e375aa9e450",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    },
+    {
+      "coordinate": "androidx.collection:collection-jvm:1.5.0",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "https://developer.android.com/jetpack/androidx/releases/collection#1.5.0",
+      "pom_url": "https://dl.google.com/dl/android/maven2/androidx/collection/collection-jvm/1.5.0/collection-jvm-1.5.0.pom",
+      "pom_sha256": "11c415864d3402f61d426e67210158dce1b04680412526a994f1823ecd3cb388",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    },
+    {
+      "coordinate": "androidx.collection:collection-ktx:1.5.0",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "https://developer.android.com/jetpack/androidx/releases/collection#1.5.0",
+      "pom_url": "https://dl.google.com/dl/android/maven2/androidx/collection/collection-ktx/1.5.0/collection-ktx-1.5.0.pom",
+      "pom_sha256": "983f8d0630d072d5bfcd166a498ac7213f3a44a98c09051004ce96429d867cea",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    },
+    {
+      "coordinate": "androidx.compose.animation:animation-android:1.10.1",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "https://developer.android.com/jetpack/androidx/releases/compose-animation#1.10.1",
+      "pom_url": "https://dl.google.com/dl/android/maven2/androidx/compose/animation/animation-android/1.10.1/animation-android-1.10.1.pom",
+      "pom_sha256": "b1ecb9e108e89239031a71ce11af72c9b536dad6b642444b4a5e83278b79cc0e",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    },
+    {
+      "coordinate": "androidx.compose.animation:animation-core-android:1.10.1",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "https://developer.android.com/jetpack/androidx/releases/compose-animation#1.10.1",
+      "pom_url": "https://dl.google.com/dl/android/maven2/androidx/compose/animation/animation-core-android/1.10.1/animation-core-android-1.10.1.pom",
+      "pom_sha256": "25be4533d740d73a6c00c60462a5f5da29c6333d5b535a576a13a1069e2eb6af",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    },
+    {
+      "coordinate": "androidx.compose.foundation:foundation-android:1.10.1",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "https://developer.android.com/jetpack/androidx/releases/compose-foundation#1.10.1",
+      "pom_url": "https://dl.google.com/dl/android/maven2/androidx/compose/foundation/foundation-android/1.10.1/foundation-android-1.10.1.pom",
+      "pom_sha256": "56267650b1ffb313de8161bdb8bf1b9b72eeafa107db8971e287973f0595e6a0",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    },
+    {
+      "coordinate": "androidx.compose.foundation:foundation-layout-android:1.10.1",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "https://developer.android.com/jetpack/androidx/releases/compose-foundation#1.10.1",
+      "pom_url": "https://dl.google.com/dl/android/maven2/androidx/compose/foundation/foundation-layout-android/1.10.1/foundation-layout-android-1.10.1.pom",
+      "pom_sha256": "9cec2546e9ebf37c89d7af78694ec5e59c03f2f3f996bbef800b2ad88265f21b",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    },
+    {
+      "coordinate": "androidx.compose.material:material-icons-core-android:1.7.8",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "https://developer.android.com/jetpack/androidx/releases/compose-material#1.7.8",
+      "pom_url": "https://dl.google.com/dl/android/maven2/androidx/compose/material/material-icons-core-android/1.7.8/material-icons-core-android-1.7.8.pom",
+      "pom_sha256": "df671e1144120b43f83464e1e94ff828d0ded8132b3b15b86de07f1b82d0d932",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    },
+    {
+      "coordinate": "androidx.compose.material:material-icons-extended-android:1.7.8",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "https://developer.android.com/jetpack/androidx/releases/compose-material#1.7.8",
+      "pom_url": "https://dl.google.com/dl/android/maven2/androidx/compose/material/material-icons-extended-android/1.7.8/material-icons-extended-android-1.7.8.pom",
+      "pom_sha256": "e1582bfe84d5df59487c3ed2d3399601dc2a16241708ecb6721a25809df8558e",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    },
+    {
+      "coordinate": "androidx.compose.material:material-ripple-android:1.10.1",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "https://developer.android.com/jetpack/androidx/releases/compose-material#1.10.1",
+      "pom_url": "https://dl.google.com/dl/android/maven2/androidx/compose/material/material-ripple-android/1.10.1/material-ripple-android-1.10.1.pom",
+      "pom_sha256": "05412bb00d40ce467fb858c2f999d3423ca69ffdc38e1e4da81ce68e7c830c71",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    },
+    {
+      "coordinate": "androidx.compose.material3:material3-android:1.4.0",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "https://developer.android.com/jetpack/androidx/releases/compose-material3#1.4.0",
+      "pom_url": "https://dl.google.com/dl/android/maven2/androidx/compose/material3/material3-android/1.4.0/material3-android-1.4.0.pom",
+      "pom_sha256": "cc0362653240708a010de50fee8caf884a610fbb10b6013e86694d77c43febc7",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    },
+    {
+      "coordinate": "androidx.compose.runtime:runtime-android:1.10.1",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "https://developer.android.com/jetpack/androidx/releases/compose-runtime#1.10.1",
+      "pom_url": "https://dl.google.com/dl/android/maven2/androidx/compose/runtime/runtime-android/1.10.1/runtime-android-1.10.1.pom",
+      "pom_sha256": "14ed04ad6ab7c4ac00190bf586b3c151d7c962eebfb2e34e048a3fff6de3be2a",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    },
+    {
+      "coordinate": "androidx.compose.runtime:runtime-annotation-android:1.10.1",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "https://developer.android.com/jetpack/androidx/releases/compose-runtime#1.10.1",
+      "pom_url": "https://dl.google.com/dl/android/maven2/androidx/compose/runtime/runtime-annotation-android/1.10.1/runtime-annotation-android-1.10.1.pom",
+      "pom_sha256": "7db7ff36aa617362015439337347c5b7fc488e4b6214c1c4b2cbaf83393270e0",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    },
+    {
+      "coordinate": "androidx.compose.runtime:runtime-retain-android:1.10.1",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "https://developer.android.com/jetpack/androidx/releases/compose-runtime#1.10.1",
+      "pom_url": "https://dl.google.com/dl/android/maven2/androidx/compose/runtime/runtime-retain-android/1.10.1/runtime-retain-android-1.10.1.pom",
+      "pom_sha256": "4a784678faec26ecfc45cbd4fb0366eee96a75b95d375dbe25db528abbbe7349",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    },
+    {
+      "coordinate": "androidx.compose.runtime:runtime-saveable-android:1.10.1",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "https://developer.android.com/jetpack/androidx/releases/compose-runtime#1.10.1",
+      "pom_url": "https://dl.google.com/dl/android/maven2/androidx/compose/runtime/runtime-saveable-android/1.10.1/runtime-saveable-android-1.10.1.pom",
+      "pom_sha256": "83a5aafaedc77fd66101bfe5f80daa34188b3f1cab22899bb7eba9bd823524dc",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    },
+    {
+      "coordinate": "androidx.compose.ui:ui-android:1.10.1",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "https://developer.android.com/jetpack/androidx/releases/compose-ui#1.10.1",
+      "pom_url": "https://dl.google.com/dl/android/maven2/androidx/compose/ui/ui-android/1.10.1/ui-android-1.10.1.pom",
+      "pom_sha256": "99a9ec43a88964b490d001155847b0dc96c124e5bb0c110b7640932846906a8e",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    },
+    {
+      "coordinate": "androidx.compose.ui:ui-geometry-android:1.10.1",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "https://developer.android.com/jetpack/androidx/releases/compose-ui#1.10.1",
+      "pom_url": "https://dl.google.com/dl/android/maven2/androidx/compose/ui/ui-geometry-android/1.10.1/ui-geometry-android-1.10.1.pom",
+      "pom_sha256": "babaede091101126008e794cedae76090b89ec63a1bf9947f6a869189db34b93",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    },
+    {
+      "coordinate": "androidx.compose.ui:ui-graphics-android:1.10.1",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "https://developer.android.com/jetpack/androidx/releases/compose-ui#1.10.1",
+      "pom_url": "https://dl.google.com/dl/android/maven2/androidx/compose/ui/ui-graphics-android/1.10.1/ui-graphics-android-1.10.1.pom",
+      "pom_sha256": "d8fb25228689c47735b58dbcd2fb44eb4d0975c4587ae82cee9c1a9f99a627f6",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    },
+    {
+      "coordinate": "androidx.compose.ui:ui-text-android:1.10.1",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "https://developer.android.com/jetpack/androidx/releases/compose-ui#1.10.1",
+      "pom_url": "https://dl.google.com/dl/android/maven2/androidx/compose/ui/ui-text-android/1.10.1/ui-text-android-1.10.1.pom",
+      "pom_sha256": "b9e6cd6bd9d27aab8718ac70a1c2fb0e583e5bb7f121f0ce6d9c8348c2eaf7cc",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    },
+    {
+      "coordinate": "androidx.compose.ui:ui-tooling-preview-android:1.10.1",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "https://developer.android.com/jetpack/androidx/releases/compose-ui#1.10.1",
+      "pom_url": "https://dl.google.com/dl/android/maven2/androidx/compose/ui/ui-tooling-preview-android/1.10.1/ui-tooling-preview-android-1.10.1.pom",
+      "pom_sha256": "87273efd98ebf973f52c22f987545527ad33a7421bf08d16b8337a9714765fdb",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    },
+    {
+      "coordinate": "androidx.compose.ui:ui-unit-android:1.10.1",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "https://developer.android.com/jetpack/androidx/releases/compose-ui#1.10.1",
+      "pom_url": "https://dl.google.com/dl/android/maven2/androidx/compose/ui/ui-unit-android/1.10.1/ui-unit-android-1.10.1.pom",
+      "pom_sha256": "f10f2a4fdf08e1a5a89ee438ef7516c1cfd5ae6a753db8c53643355b4cbf1219",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    },
+    {
+      "coordinate": "androidx.compose.ui:ui-util-android:1.10.1",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "https://developer.android.com/jetpack/androidx/releases/compose-ui#1.10.1",
+      "pom_url": "https://dl.google.com/dl/android/maven2/androidx/compose/ui/ui-util-android/1.10.1/ui-util-android-1.10.1.pom",
+      "pom_sha256": "e63907e679927d19559e11c9fda336936af62917db59094c702df890a7774ae1",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    },
+    {
+      "coordinate": "androidx.concurrent:concurrent-futures:1.1.0",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "https://developer.android.com/topic/libraries/architecture/index.html",
+      "pom_url": "https://dl.google.com/dl/android/maven2/androidx/concurrent/concurrent-futures/1.1.0/concurrent-futures-1.1.0.pom",
+      "pom_sha256": "748a34eb5d13d19d187adecaea82667fded5f1b0b98a655e13ed2e4a8b3d8ae6",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    },
+    {
+      "coordinate": "androidx.core:core-ktx:1.18.0",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "https://developer.android.com/jetpack/androidx/releases/core#1.18.0",
+      "pom_url": "https://dl.google.com/dl/android/maven2/androidx/core/core-ktx/1.18.0/core-ktx-1.18.0.pom",
+      "pom_sha256": "3a5e0009e06517627756b9203d9a8f055fda87b215a17b775bae568697854196",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    },
+    {
+      "coordinate": "androidx.core:core-splashscreen:1.2.0",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "https://developer.android.com/jetpack/androidx/releases/core#1.2.0",
+      "pom_url": "https://dl.google.com/dl/android/maven2/androidx/core/core-splashscreen/1.2.0/core-splashscreen-1.2.0.pom",
+      "pom_sha256": "351c49fa60702a1635749dc1d24c6c02450af874fb67852cbdb0ade06beac66a",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    },
+    {
+      "coordinate": "androidx.core:core-viewtree:1.0.0",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "https://developer.android.com/jetpack/androidx/releases/core#1.0.0",
+      "pom_url": "https://dl.google.com/dl/android/maven2/androidx/core/core-viewtree/1.0.0/core-viewtree-1.0.0.pom",
+      "pom_sha256": "d4f2ed1176fa8c5612b80f74c952a8799142a9ed36022a1a238fde5b140580d9",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    },
+    {
+      "coordinate": "androidx.core:core:1.18.0",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "https://developer.android.com/jetpack/androidx/releases/core#1.18.0",
+      "pom_url": "https://dl.google.com/dl/android/maven2/androidx/core/core/1.18.0/core-1.18.0.pom",
+      "pom_sha256": "57d644ebb37d309ad959d740157d8e8424e273b9c672842e4f4c758edc6d30e7",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    },
+    {
+      "coordinate": "androidx.cursoradapter:cursoradapter:1.0.0",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "http://developer.android.com/tools/extras/support-library.html",
+      "pom_url": "https://dl.google.com/dl/android/maven2/androidx/cursoradapter/cursoradapter/1.0.0/cursoradapter-1.0.0.pom",
+      "pom_sha256": "62d95c89850af21030b19f14d5f7ecd6d8bcc9a3014c59002ec99624caac8100",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    },
+    {
+      "coordinate": "androidx.customview:customview-poolingcontainer:1.0.0",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "https://developer.android.com/jetpack/androidx/releases/customview#1.0.0",
+      "pom_url": "https://dl.google.com/dl/android/maven2/androidx/customview/customview-poolingcontainer/1.0.0/customview-poolingcontainer-1.0.0.pom",
+      "pom_sha256": "9fa62196c4c4e79b6a58dbb38a8c022bef8db21989d7dae2da0f6f5b66289a9c",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    },
+    {
+      "coordinate": "androidx.customview:customview:1.0.0",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "http://developer.android.com/tools/extras/support-library.html",
+      "pom_url": "https://dl.google.com/dl/android/maven2/androidx/customview/customview/1.0.0/customview-1.0.0.pom",
+      "pom_sha256": "ce9e47b87184f5bd5e139e9becd5b26476d42d78c31bf2fdedc37acb41b9ad49",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    },
+    {
+      "coordinate": "androidx.documentfile:documentfile:1.0.0",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "http://developer.android.com/tools/extras/support-library.html",
+      "pom_url": "https://dl.google.com/dl/android/maven2/androidx/documentfile/documentfile/1.0.0/documentfile-1.0.0.pom",
+      "pom_sha256": "013288a9317a552706ce625fb24493e8223288529223ec578cf855a5ae9c16e5",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    },
+    {
+      "coordinate": "androidx.drawerlayout:drawerlayout:1.0.0",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "http://developer.android.com/tools/extras/support-library.html",
+      "pom_url": "https://dl.google.com/dl/android/maven2/androidx/drawerlayout/drawerlayout/1.0.0/drawerlayout-1.0.0.pom",
+      "pom_sha256": "da6733425a83f5ce850878fa7201082345fed7c668dd58550fdd19c0396c6fa4",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    },
+    {
+      "coordinate": "androidx.dynamicanimation:dynamicanimation:1.0.0",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "http://developer.android.com/tools/extras/support-library.html",
+      "pom_url": "https://dl.google.com/dl/android/maven2/androidx/dynamicanimation/dynamicanimation/1.0.0/dynamicanimation-1.0.0.pom",
+      "pom_sha256": "44ce22ee620d28f17301bcc60ad49b69b7d0596c2a87b054ad1e3feac7b4a898",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    },
+    {
+      "coordinate": "androidx.emoji2:emoji2-views-helper:1.4.0",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "https://developer.android.com/jetpack/androidx/releases/emoji2#1.4.0",
+      "pom_url": "https://dl.google.com/dl/android/maven2/androidx/emoji2/emoji2-views-helper/1.4.0/emoji2-views-helper-1.4.0.pom",
+      "pom_sha256": "e9b7f90b4d7c4a94bb56f76ee7e2bbe78dbaa3b18deb46858b8693fcee2d714b",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    },
+    {
+      "coordinate": "androidx.emoji2:emoji2:1.4.0",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "https://developer.android.com/jetpack/androidx/releases/emoji2#1.4.0",
+      "pom_url": "https://dl.google.com/dl/android/maven2/androidx/emoji2/emoji2/1.4.0/emoji2-1.4.0.pom",
+      "pom_sha256": "1f67221484f7d1260eb6e2b490cd4e7046bf5cb536276d79f972ad3f198b474d",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    },
+    {
+      "coordinate": "androidx.fragment:fragment:1.5.4",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "https://developer.android.com/jetpack/androidx/releases/fragment#1.5.4",
+      "pom_url": "https://dl.google.com/dl/android/maven2/androidx/fragment/fragment/1.5.4/fragment-1.5.4.pom",
+      "pom_sha256": "f8ca1877c66e642c554907e1ce5a493a897ca29270cb19e2bb6d424ba43b6c98",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    },
+    {
+      "coordinate": "androidx.graphics:graphics-path:1.0.1",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "https://developer.android.com/jetpack/androidx/releases/graphics#1.0.1",
+      "pom_url": "https://dl.google.com/dl/android/maven2/androidx/graphics/graphics-path/1.0.1/graphics-path-1.0.1.pom",
+      "pom_sha256": "866fb357c7146f5f7678ad44e4bc6c2823d568defce1ed2805bb6c899606b228",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    },
+    {
+      "coordinate": "androidx.interpolator:interpolator:1.0.0",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "http://developer.android.com/tools/extras/support-library.html",
+      "pom_url": "https://dl.google.com/dl/android/maven2/androidx/interpolator/interpolator/1.0.0/interpolator-1.0.0.pom",
+      "pom_sha256": "0ddc07cc39699f48ecd9ec894b5830c0f09e22e82959294edf37217224c88b7b",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    },
+    {
+      "coordinate": "androidx.legacy:legacy-support-core-utils:1.0.0",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "http://developer.android.com/tools/extras/support-library.html",
+      "pom_url": "https://dl.google.com/dl/android/maven2/androidx/legacy/legacy-support-core-utils/1.0.0/legacy-support-core-utils-1.0.0.pom",
+      "pom_sha256": "8fd093008b3ee7c06e52c78da2af980a7b47b69b967fa91dad7af466f7a00a38",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    },
+    {
+      "coordinate": "androidx.lifecycle:lifecycle-common-java8:2.9.4",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "https://developer.android.com/jetpack/androidx/releases/lifecycle#2.9.4",
+      "pom_url": "https://dl.google.com/dl/android/maven2/androidx/lifecycle/lifecycle-common-java8/2.9.4/lifecycle-common-java8-2.9.4.pom",
+      "pom_sha256": "f7a0077f2b20312c30ea74c9fe77626fbe2ad09bb48922851cde20bcd1a33266",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    },
+    {
+      "coordinate": "androidx.lifecycle:lifecycle-common-jvm:2.9.4",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "https://developer.android.com/jetpack/androidx/releases/lifecycle#2.9.4",
+      "pom_url": "https://dl.google.com/dl/android/maven2/androidx/lifecycle/lifecycle-common-jvm/2.9.4/lifecycle-common-jvm-2.9.4.pom",
+      "pom_sha256": "31735e9953aaeeab4e07fcffa4c6ab3519f90b331c4b1da8173df911607d3906",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    },
+    {
+      "coordinate": "androidx.lifecycle:lifecycle-livedata-core-ktx:2.9.4",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "https://developer.android.com/jetpack/androidx/releases/lifecycle#2.9.4",
+      "pom_url": "https://dl.google.com/dl/android/maven2/androidx/lifecycle/lifecycle-livedata-core-ktx/2.9.4/lifecycle-livedata-core-ktx-2.9.4.pom",
+      "pom_sha256": "ca2073ac46d364107fdf4d832c5b729e610cdc7d12e736d9151b5a5119be80b9",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    },
+    {
+      "coordinate": "androidx.lifecycle:lifecycle-livedata-core:2.9.4",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "https://developer.android.com/jetpack/androidx/releases/lifecycle#2.9.4",
+      "pom_url": "https://dl.google.com/dl/android/maven2/androidx/lifecycle/lifecycle-livedata-core/2.9.4/lifecycle-livedata-core-2.9.4.pom",
+      "pom_sha256": "cec1161148e3f6c4b7d513aa989729e84a8ee9471f0c47c03478b3fb3c49ea21",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    },
+    {
+      "coordinate": "androidx.lifecycle:lifecycle-livedata:2.9.4",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "https://developer.android.com/jetpack/androidx/releases/lifecycle#2.9.4",
+      "pom_url": "https://dl.google.com/dl/android/maven2/androidx/lifecycle/lifecycle-livedata/2.9.4/lifecycle-livedata-2.9.4.pom",
+      "pom_sha256": "24f8b944549912ab683aa70e61d32b5e1aa83c2f1f9d42f09e8eda3237760ab1",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    },
+    {
+      "coordinate": "androidx.lifecycle:lifecycle-process:2.9.4",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "https://developer.android.com/jetpack/androidx/releases/lifecycle#2.9.4",
+      "pom_url": "https://dl.google.com/dl/android/maven2/androidx/lifecycle/lifecycle-process/2.9.4/lifecycle-process-2.9.4.pom",
+      "pom_sha256": "5eac5a0a27138477f40f0aa0e749cd07fbf5580d4a9adc6d2d59db64cac49b10",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    },
+    {
+      "coordinate": "androidx.lifecycle:lifecycle-runtime-android:2.9.4",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "https://developer.android.com/jetpack/androidx/releases/lifecycle#2.9.4",
+      "pom_url": "https://dl.google.com/dl/android/maven2/androidx/lifecycle/lifecycle-runtime-android/2.9.4/lifecycle-runtime-android-2.9.4.pom",
+      "pom_sha256": "271e54009fdf3a2cd5ab414e8a09e6af4251b63d484a42c530ab868974a5ea1f",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    },
+    {
+      "coordinate": "androidx.lifecycle:lifecycle-runtime-compose-android:2.9.4",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "https://developer.android.com/jetpack/androidx/releases/lifecycle#2.9.4",
+      "pom_url": "https://dl.google.com/dl/android/maven2/androidx/lifecycle/lifecycle-runtime-compose-android/2.9.4/lifecycle-runtime-compose-android-2.9.4.pom",
+      "pom_sha256": "a7a073c7db10974627ba883f648a34fe8053f50c294d9192e183c901daea8c65",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    },
+    {
+      "coordinate": "androidx.lifecycle:lifecycle-runtime-ktx-android:2.9.4",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "https://developer.android.com/jetpack/androidx/releases/lifecycle#2.9.4",
+      "pom_url": "https://dl.google.com/dl/android/maven2/androidx/lifecycle/lifecycle-runtime-ktx-android/2.9.4/lifecycle-runtime-ktx-android-2.9.4.pom",
+      "pom_sha256": "78aace79fbced8eb8c17e0b02b2d55be9906fbdda053e6a617ee6e595fcace14",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    },
+    {
+      "coordinate": "androidx.lifecycle:lifecycle-viewmodel-android:2.9.4",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "https://developer.android.com/jetpack/androidx/releases/lifecycle#2.9.4",
+      "pom_url": "https://dl.google.com/dl/android/maven2/androidx/lifecycle/lifecycle-viewmodel-android/2.9.4/lifecycle-viewmodel-android-2.9.4.pom",
+      "pom_sha256": "9660b5a2d80ffe0f0e5b4f993b581d15972a8c14aae51784b6097bc97be0379e",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    },
+    {
+      "coordinate": "androidx.lifecycle:lifecycle-viewmodel-ktx:2.9.4",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "https://developer.android.com/jetpack/androidx/releases/lifecycle#2.9.4",
+      "pom_url": "https://dl.google.com/dl/android/maven2/androidx/lifecycle/lifecycle-viewmodel-ktx/2.9.4/lifecycle-viewmodel-ktx-2.9.4.pom",
+      "pom_sha256": "0ccd0e9d361ad69b6a7253ab4ed2124a3bd4fbf9b338e36c1431b3c5ee7bc794",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    },
+    {
+      "coordinate": "androidx.lifecycle:lifecycle-viewmodel-savedstate-android:2.9.4",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "https://developer.android.com/jetpack/androidx/releases/lifecycle#2.9.4",
+      "pom_url": "https://dl.google.com/dl/android/maven2/androidx/lifecycle/lifecycle-viewmodel-savedstate-android/2.9.4/lifecycle-viewmodel-savedstate-android-2.9.4.pom",
+      "pom_sha256": "34ab8491e6b631123ce5f7f0ae06dfa238c211dcf3e71033ed61656f9d47718c",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    },
+    {
+      "coordinate": "androidx.lifecycle:lifecycle-viewmodel:2.9.4",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "https://developer.android.com/jetpack/androidx/releases/lifecycle#2.9.4",
+      "pom_url": "https://dl.google.com/dl/android/maven2/androidx/lifecycle/lifecycle-viewmodel/2.9.4/lifecycle-viewmodel-2.9.4.pom",
+      "pom_sha256": "054db6f92d9230103b3aca8b0dabcc0d63de26e440ff98eb5b19a2555d3eb037",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    },
+    {
+      "coordinate": "androidx.loader:loader:1.0.0",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "http://developer.android.com/tools/extras/support-library.html",
+      "pom_url": "https://dl.google.com/dl/android/maven2/androidx/loader/loader/1.0.0/loader-1.0.0.pom",
+      "pom_sha256": "c978d550808b47434aa49a63164110a50b55b0bcc6160a93a2e37d5110df8c5e",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    },
+    {
+      "coordinate": "androidx.localbroadcastmanager:localbroadcastmanager:1.0.0",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "http://developer.android.com/tools/extras/support-library.html",
+      "pom_url": "https://dl.google.com/dl/android/maven2/androidx/localbroadcastmanager/localbroadcastmanager/1.0.0/localbroadcastmanager-1.0.0.pom",
+      "pom_sha256": "a000041f5a1f79283c5175e1bb60cf3683780f401c6a9d34fbe9751253fa6ff9",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    },
+    {
+      "coordinate": "androidx.navigationevent:navigationevent-android:1.0.0",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "https://developer.android.com/jetpack/androidx/releases/navigationevent#1.0.0",
+      "pom_url": "https://dl.google.com/dl/android/maven2/androidx/navigationevent/navigationevent-android/1.0.0/navigationevent-android-1.0.0.pom",
+      "pom_sha256": "5cabbb40f3fba11166576a839acf4eb6db59ab5e5ebcb16361d41f8bec805b50",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    },
+    {
+      "coordinate": "androidx.navigationevent:navigationevent-compose-android:1.0.0",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "https://developer.android.com/jetpack/androidx/releases/navigationevent#1.0.0",
+      "pom_url": "https://dl.google.com/dl/android/maven2/androidx/navigationevent/navigationevent-compose-android/1.0.0/navigationevent-compose-android-1.0.0.pom",
+      "pom_sha256": "6a3b7e989b18ab25274dbd0531dcc4d66e4efb8de4985daff539d5131285bff8",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    },
+    {
+      "coordinate": "androidx.print:print:1.0.0",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "http://developer.android.com/tools/extras/support-library.html",
+      "pom_url": "https://dl.google.com/dl/android/maven2/androidx/print/print/1.0.0/print-1.0.0.pom",
+      "pom_sha256": "62482c0594841bee24bb996abb6cb7b320a6a3b77dca9f0a0ba4fe3be5530aa7",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    },
+    {
+      "coordinate": "androidx.profileinstaller:profileinstaller:1.4.0",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "https://developer.android.com/jetpack/androidx/releases/profileinstaller#1.4.0",
+      "pom_url": "https://dl.google.com/dl/android/maven2/androidx/profileinstaller/profileinstaller/1.4.0/profileinstaller-1.4.0.pom",
+      "pom_sha256": "d5fe39981a3b4b7c39585130da0bfc93835054c834a438d3e63e065e5f78be55",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    },
+    {
+      "coordinate": "androidx.resourceinspection:resourceinspection-annotation:1.0.1",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "https://developer.android.com/jetpack/androidx/releases/resourceinspection#1.0.1",
+      "pom_url": "https://dl.google.com/dl/android/maven2/androidx/resourceinspection/resourceinspection-annotation/1.0.1/resourceinspection-annotation-1.0.1.pom",
+      "pom_sha256": "b8eb4938ed95d7fcdaa2712ebca363e46a0f9228b8be7f23154def56846815dc",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    },
+    {
+      "coordinate": "androidx.savedstate:savedstate-android:1.3.2",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "https://developer.android.com/jetpack/androidx/releases/savedstate#1.3.2",
+      "pom_url": "https://dl.google.com/dl/android/maven2/androidx/savedstate/savedstate-android/1.3.2/savedstate-android-1.3.2.pom",
+      "pom_sha256": "df09758721e2fe8d5714a2101dcc0941ac824a424b08466e2818876851cdb826",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    },
+    {
+      "coordinate": "androidx.savedstate:savedstate-compose-android:1.3.2",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "https://developer.android.com/jetpack/androidx/releases/savedstate#1.3.2",
+      "pom_url": "https://dl.google.com/dl/android/maven2/androidx/savedstate/savedstate-compose-android/1.3.2/savedstate-compose-android-1.3.2.pom",
+      "pom_sha256": "701c5a665f8f3d29bd7c622481f6e34785338738e899de3c44c3ce362f03d90a",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    },
+    {
+      "coordinate": "androidx.savedstate:savedstate-ktx:1.3.2",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "https://developer.android.com/jetpack/androidx/releases/savedstate#1.3.2",
+      "pom_url": "https://dl.google.com/dl/android/maven2/androidx/savedstate/savedstate-ktx/1.3.2/savedstate-ktx-1.3.2.pom",
+      "pom_sha256": "7c0d5190b3ea64e14782bcf93d9a8f336a026f5609bdaa1f35f63ff426015081",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    },
+    {
+      "coordinate": "androidx.startup:startup-runtime:1.1.1",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "https://developer.android.com/jetpack/androidx/releases/startup#1.1.1",
+      "pom_url": "https://dl.google.com/dl/android/maven2/androidx/startup/startup-runtime/1.1.1/startup-runtime-1.1.1.pom",
+      "pom_sha256": "f4114b5c6859bb1bc3caf281cb6d6f25998fa7f7292c64ceaea74a93210e746b",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    },
+    {
+      "coordinate": "androidx.tracing:tracing:1.2.0",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "https://developer.android.com/jetpack/androidx/releases/tracing#1.2.0",
+      "pom_url": "https://dl.google.com/dl/android/maven2/androidx/tracing/tracing/1.2.0/tracing-1.2.0.pom",
+      "pom_sha256": "f34bec4eb58871d31002901377108aaa1ebfe77fa6d882b8b86200b158e26ea1",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    },
+    {
+      "coordinate": "androidx.transition:transition:1.6.0",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "https://developer.android.com/jetpack/androidx/releases/transition#1.6.0",
+      "pom_url": "https://dl.google.com/dl/android/maven2/androidx/transition/transition/1.6.0/transition-1.6.0.pom",
+      "pom_sha256": "070d7795010071edefbef94b8c9d5a2cac5cb5f3b1a2c5e558546438177c8ef8",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    },
+    {
+      "coordinate": "androidx.vectordrawable:vectordrawable-animated:1.1.0",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "https://developer.android.com/jetpack/androidx",
+      "pom_url": "https://dl.google.com/dl/android/maven2/androidx/vectordrawable/vectordrawable-animated/1.1.0/vectordrawable-animated-1.1.0.pom",
+      "pom_sha256": "276a20116b705fb75b9003ee9496c56f6fd3b32375fb232472811eba60a040bd",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    },
+    {
+      "coordinate": "androidx.vectordrawable:vectordrawable:1.1.0",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "https://developer.android.com/jetpack/androidx",
+      "pom_url": "https://dl.google.com/dl/android/maven2/androidx/vectordrawable/vectordrawable/1.1.0/vectordrawable-1.1.0.pom",
+      "pom_sha256": "5b0e2d5b2179e54804785cbc21ce5f473b5e1ddd55a57da482e94dcd39492bb2",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    },
+    {
+      "coordinate": "androidx.versionedparcelable:versionedparcelable:1.1.1",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "http://developer.android.com/tools/extras/support-library.html",
+      "pom_url": "https://dl.google.com/dl/android/maven2/androidx/versionedparcelable/versionedparcelable/1.1.1/versionedparcelable-1.1.1.pom",
+      "pom_sha256": "5f51e65873ca612de3838fa90d2ee95b8d040efd31b9c390a19bf94d615cdb2f",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    },
+    {
+      "coordinate": "androidx.viewpager:viewpager:1.0.0",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "http://developer.android.com/tools/extras/support-library.html",
+      "pom_url": "https://dl.google.com/dl/android/maven2/androidx/viewpager/viewpager/1.0.0/viewpager-1.0.0.pom",
+      "pom_sha256": "1f72f836339d03c6eb013f65075e76ca87075a577578eb4f95f74a3a5d253128",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    },
+    {
+      "coordinate": "androidx.window:window-core-android:1.5.0",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "https://developer.android.com/jetpack/androidx/releases/window#1.5.0",
+      "pom_url": "https://dl.google.com/dl/android/maven2/androidx/window/window-core-android/1.5.0/window-core-android-1.5.0.pom",
+      "pom_sha256": "463c50b22a969c6274ebdb7b5f56ba1ea1dde352e9679f0a0ba90f3971dbcd57",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    },
+    {
+      "coordinate": "androidx.window:window:1.5.0",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "https://developer.android.com/jetpack/androidx/releases/window#1.5.0",
+      "pom_url": "https://dl.google.com/dl/android/maven2/androidx/window/window/1.5.0/window-1.5.0.pom",
+      "pom_sha256": "d4f22b991a69600e2ffc36b42ac199626fd96d5f1648c3beeccd35de06fcc351",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    },
+    {
+      "coordinate": "com.google.guava:listenablefuture:1.0",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "https://github.com/google/guava",
+      "pom_url": "https://repo.maven.apache.org/maven2/com/google/guava/listenablefuture/1.0/listenablefuture-1.0.pom",
+      "pom_sha256": "53873caf26bc1ed8a567ea6c939ab2aaa3f47a5e32d5cade95ddf5080d23238a",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    },
+    {
+      "coordinate": "kr.jclab:noise-java:0.0.1",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "The Apache License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "https://github.com/jc-lab/noise-java",
+      "pom_url": "https://repo.maven.apache.org/maven2/kr/jclab/noise-java/0.0.1/noise-java-0.0.1.pom",
+      "pom_sha256": "1d778667c247000abde26a33faa4d99e2be5d624b9e1ee1c9129928770053991",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    },
+    {
+      "coordinate": "org.jetbrains:annotations:23.0.0",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "https://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "https://github.com/JetBrains/java-annotations",
+      "pom_url": "https://repo.maven.apache.org/maven2/org/jetbrains/annotations/23.0.0/annotations-23.0.0.pom",
+      "pom_sha256": "c9490f655132328df2cfbcfdf743f53fc3916d6c1d10437175a6ca6e3a67771c",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    },
+    {
+      "coordinate": "org.jetbrains.kotlin:kotlin-stdlib:2.2.20",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "Apache-2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "https://kotlinlang.org/",
+      "pom_url": "https://repo.maven.apache.org/maven2/org/jetbrains/kotlin/kotlin-stdlib/2.2.20/kotlin-stdlib-2.2.20.pom",
+      "pom_sha256": "4a8b086e6431bcf623637f52b2ff192e1adb913838742e5c0eea70a8dee429c4",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    },
+    {
+      "coordinate": "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "Apache-2.0",
+          "url": "https://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "https://github.com/Kotlin/kotlinx.coroutines",
+      "pom_url": "https://repo.maven.apache.org/maven2/org/jetbrains/kotlinx/kotlinx-coroutines-android/1.11.0/kotlinx-coroutines-android-1.11.0.pom",
+      "pom_sha256": "224567420d3e0ed5fef40f789fded45dfd51b162319e28d77d3c9a8dec4821b8",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    },
+    {
+      "coordinate": "org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:1.11.0",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "Apache-2.0",
+          "url": "https://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "https://github.com/Kotlin/kotlinx.coroutines",
+      "pom_url": "https://repo.maven.apache.org/maven2/org/jetbrains/kotlinx/kotlinx-coroutines-core-jvm/1.11.0/kotlinx-coroutines-core-jvm-1.11.0.pom",
+      "pom_sha256": "dd54b97aa3fab91fc24f5df2916c22be9429a339d2f45b7ff092332f6c19dc39",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    },
+    {
+      "coordinate": "org.jetbrains.kotlinx:kotlinx-serialization-core-jvm:1.7.3",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "https://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "https://github.com/Kotlin/kotlinx.serialization",
+      "pom_url": "https://repo.maven.apache.org/maven2/org/jetbrains/kotlinx/kotlinx-serialization-core-jvm/1.7.3/kotlinx-serialization-core-jvm-1.7.3.pom",
+      "pom_sha256": "734f5f749208dd0bef3d98caa594cf9222afdf0fee5b6843347a8fe64e240427",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    },
+    {
+      "coordinate": "org.jspecify:jspecify:1.0.0",
+      "android_release_runtime": true,
+      "licenses": [
+        {
+          "name": "The Apache License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "project_url": "http://jspecify.org/",
+      "pom_url": "https://repo.maven.apache.org/maven2/org/jspecify/jspecify/1.0.0/jspecify-1.0.0.pom",
+      "pom_sha256": "cdab929a3b95211f43d2090c5e2d0dfe8465960e378bc32b35841dab324433a6",
+      "matches_previous_pom": true,
+      "evidence": "Fresh 1.4.2 release lint library model; cached resolved POM SHA-256 rechecked against the 1.4.0 inventory. License declarations retained from that byte-identical POM and its recorded review."
+    }
+  ]
+}
