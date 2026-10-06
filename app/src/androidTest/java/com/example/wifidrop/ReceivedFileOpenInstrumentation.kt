@@ -18,17 +18,23 @@ import java.io.File
 class ReceivedFileOpenInstrumentation : Instrumentation() {
     private var flashSockets = false
     private var flashUdp = false
+    private var flashApprovalPreview = false
     private var flashPcHost = "127.0.0.1"
 
     override fun onCreate(arguments: Bundle?) {
         super.onCreate(arguments)
         flashSockets = arguments?.getString("scenario") == "flash-sockets"
         flashUdp = arguments?.getString("scenario") == "flash-udp"
+        flashApprovalPreview = arguments?.getString("scenario") == "flash-approval-preview"
         flashPcHost = arguments?.getString("pc-host")?.trim()?.takeIf { it.isNotEmpty() } ?: "127.0.0.1"
         start()
     }
 
     override fun onStart() {
+        if (flashApprovalPreview) {
+            FlashApprovalPreviewScenario(this).run()
+            return
+        }
         if (flashUdp) {
             FlashUdpInstrumentationScenario(this).run()
             return

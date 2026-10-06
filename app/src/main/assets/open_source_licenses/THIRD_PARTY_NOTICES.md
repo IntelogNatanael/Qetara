@@ -27,7 +27,6 @@ El [inventario Android release del 11 de septiembre de 2026](licenses/android-re
 | Noto Sans Syriac | archivos Regular y Black incluidos en design/brand/fonts | Recursos tipográficos de marca | [SIL Open Font License 1.1](design/brand/fonts/OFL.txt), Copyright 2022 The Noto Project Authors |
 | Inter | 4.1; Regular, Medium, SemiBold y Bold | Tipografía de la interfaz Android y de escritorio | [SIL Open Font License 1.1](licenses/Inter-OFL-1.1.txt); [origen de escritorio](pc/src/main/resources/fonts/PROVENANCE.md) y [correspondencia Android](licenses/inter-mobile-PROVENANCE.md) |
 | Circum Icons, Klarr Agency | doce SVG exportados en design/penpot/extracted-icons | Recursos de diseño conservados en el código fuente | [MPL 2.0](licenses/Circum-Icons-MPL-2.0.txt); [procedencia por archivo](design/penpot/extracted-icons/PROVENANCE.md) |
-| GitHub Invertocat | PNG idéntico en Android y PC | Botón de enlace al perfil del desarrollador | [Aviso y permiso contextual de uso](licenses/GitHub-Invertocat-NOTICE.txt); no es un recurso bajo MIT |
 
 Las bibliotecas AndroidX, Kotlin y Compose incluyen dependencias transitivas de sus respectivas familias. Las versiones concretas del artefacto inspeccionado se detallan en el inventario; no se deducen únicamente de las versiones declaradas directamente en Gradle. También se incluyen las declaraciones Apache 2.0 de JetBrains Annotations, JSpecify y Guava ListenableFuture (esta última heredada de su POM padre).
 
@@ -52,7 +51,7 @@ Los TTF Noto Sans Syriac contienen metadatos de la versión 3.000 y su aviso OFL
 
 Inter 4.1 se incluye localmente en Android y escritorio. Los cuatro TTF Android conservan exactamente los bytes de escritorio; solo cambian los nombres externos a inter_*.ttf para res/font. La [procedencia móvil](licenses/inter-mobile-PROVENANCE.md) documenta pesos, tamaños y SHA-256. Se conserva Copyright (c) 2016 The Inter Project Authors y el texto OFL 1.1 completo, también dentro del NOTICES.txt que lee el diálogo Android.
 
-El Invertocat se utiliza para enlazar a `https://github.com/IntelogNatanael`. El [Brand Toolkit oficial de GitHub](https://brand.github.com/foundations/logo) contempla el uso como botón hacia un perfil o proyecto GitHub. Ese permiso no es una licencia libre general del logotipo ni permite presentarlo como marca propia o atribuir respaldo de GitHub. No se conservó una URL de descarga original de los PNG; el [aviso](licenses/GitHub-Invertocat-NOTICE.txt) registra ese límite. No se afirma aceptación por una tienda de aplicaciones.
+Desde 1.4.1 se retiró el logotipo GitHub Invertocat de Android y PC. El enlace al perfil del desarrollador conserva su texto y usa un icono genérico Material Icons (Apache-2.0) en Android.
 
 ## Avisos de Noise Java
 

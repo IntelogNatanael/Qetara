@@ -1,6 +1,7 @@
 package com.example.wifidrop
 
 import com.example.wifidrop.protocol.flash.FlashPeer
+import com.example.wifidrop.protocol.flash.FlashOperation
 import org.junit.Assert.*
 import org.junit.Test
 import java.io.File
@@ -9,87 +10,92 @@ class FlashOutgoingBatchTest {
     private val peer = FlashPeer("receiver", "Receiver", "192.168.1.5", 8989, Long.MAX_VALUE)
     private val files = listOf(File("first.txt"), File("second.txt"), File("third.txt"))
 
-    @Test fun idleSnapshotsCannotAdvanceUntilThePreviousResultIsConsumed() {
+    private fun operation(index: Int, batch: String = "batch") = FlashOperation(
+        if (index == 0) batch else "$batch-$index", peer, files[index].name, 0, true,
+        batchId = batch, fileIndex = index, fileCount = files.size
+    )
+
+    @Test fun oneSubmissionTracksDistinctFileResultsUntilTheBatchEnds() {
         val batch = FlashOutgoingBatch()
-        assertTrue(batch.start(files, peer))
-        assertEquals(files[0], batch.next()!!.file)
-        // send() itself can emit a synchronous state callback before returning the operation ID.
-        assertNull(batch.next())
-        batch.started("first")
-        // The transport is idle, but its terminal callback is still waiting on the main thread.
-        assertNull(batch.next())
-        assertFalse(batch.start(listOf(File("replacement.txt")), peer))
-        val first = batch.complete("first")!!
-        assertEquals(1, first.completed)
-        assertEquals(2, first.remaining)
-        val next = batch.next()!!
-        assertEquals(files[1], next.file)
-        assertEquals(2, next.position)
-        assertEquals(3, next.total)
+        assertTrue(batch.start(files))
+        assertFalse(batch.start(listOf(File("replacement.txt"))))
+        files.indices.forEach { index ->
+            val current = operation(index)
+            batch.observe(current)
+            val result = batch.complete(current.id)!!
+            assertEquals(files[index], result.file)
+            assertEquals(index + 1, result.completed)
+            assertEquals(files.size - index - 1, result.remaining)
+        }
+        assertFalse(batch.active)
+        batch.started("batch") // A late transport return cannot resurrect the completed batch.
+        assertFalse(batch.active)
     }
 
-    @Test fun failureAfterIdleSnapshotNeverSendsTheNextFile() {
+    @Test fun failureAfterTheFirstDeliveryReleasesTheRemainingSelectionForExplicitRetry() {
         val batch = FlashOutgoingBatch()
-        batch.start(files, peer)
-        batch.next()
-        batch.started("first")
-        assertNull(batch.next())
-        batch.fail("first")
-        assertNull(batch.next())
+        batch.start(files)
+        batch.started("batch")
+        batch.observe(operation(0))
+        assertEquals(files[0], batch.complete("batch")!!.file)
+        batch.observe(operation(1))
+        batch.fail("batch-1")
         assertFalse(batch.active)
-        // A failed batch leaves the caller's selection intact and can be retried.
-        assertTrue(batch.start(files, peer))
-        assertEquals(files[0], batch.next()!!.file)
+        assertTrue(batch.start(files.drop(1)))
     }
 
     @Test fun cancellationStopsPendingFilesEvenWhenDeliveryAlreadyWonTheRace() {
         val batch = FlashOutgoingBatch()
-        batch.start(files, peer)
-        batch.next()
-        batch.started("first")
-        batch.cancelPending("first")
+        batch.start(files)
+        batch.observe(operation(0))
+        batch.cancelPending("batch")
         assertTrue(batch.active)
-        val completion = batch.complete("first")!!
+        val completion = batch.complete("batch")!!
         assertEquals(files[0], completion.file)
         assertEquals(1, completion.completed)
         assertEquals(0, completion.remaining)
-        assertNull(batch.next())
+        batch.observe(operation(1))
+        assertEquals(files[1], batch.complete("batch-1")!!.file)
+        batch.idle()
         assertFalse(batch.active)
     }
 
     @Test fun unrelatedOrRepeatedCallbacksCannotReleaseTheCurrentFile() {
         val batch = FlashOutgoingBatch()
-        batch.start(files, peer)
-        batch.next()
-        batch.started("first")
+        batch.start(files)
+        batch.observe(operation(0))
         batch.fail("incoming")
         batch.cancelPending("incoming")
         assertNull(batch.complete("incoming"))
-        assertNull(batch.next())
-        assertEquals(2, batch.complete("first")!!.remaining)
-        batch.next()
-        batch.started("second")
-        assertNull(batch.complete("first"))
-        batch.fail("first")
-        assertNull(batch.next())
-        assertEquals(2, batch.complete("second")!!.completed)
+        assertEquals(2, batch.complete("batch")!!.remaining)
+        batch.observe(operation(1))
+        batch.observe(operation(2, "unrelated"))
+        assertNull(batch.complete("batch"))
+        assertNull(batch.complete("unrelated-2"))
+        assertEquals(2, batch.complete("batch-1")!!.completed)
     }
 
-    @Test fun completedBatchReleasesTheQueueAndRestartsItsCounters() {
+    @Test fun idleAfterCancellationBetweenFilesCannotLeaveTheBatchActive() {
         val batch = FlashOutgoingBatch()
-        batch.start(files.take(2), peer)
-        batch.next()
-        batch.started("first")
-        batch.complete("first")
-        batch.next()
-        batch.started("second")
-        val result = batch.complete("second")!!
-        assertEquals(2, result.completed)
-        assertEquals(2, result.total)
+        batch.start(files)
+        batch.observe(operation(0))
+        batch.complete("batch")
+        batch.idle()
         assertFalse(batch.active)
-        assertTrue(batch.start(files.takeLast(1), peer))
-        val next = batch.next()!!
-        assertEquals(1, next.position)
-        assertEquals(1, next.total)
+        assertTrue(batch.start(files))
+        batch.observe(operation(0, "retry"))
+        assertEquals(1, batch.complete("retry")!!.completed)
+    }
+
+    @Test fun previouslyQueuedIdleSnapshotDoesNotEraseASubmissionBeforeItsReservationIsObserved() {
+        val batch = FlashOutgoingBatch()
+        batch.start(files)
+        batch.started("batch")
+        batch.idle()
+        assertTrue(batch.active)
+        batch.observe(operation(0))
+        assertEquals(files[0], batch.complete("batch")!!.file)
+        batch.observe(operation(0))
+        assertNull(batch.complete("batch"))
     }
 }

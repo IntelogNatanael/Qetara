@@ -10,7 +10,7 @@ import java.io.File
 internal interface DesktopFlashTransport {
     fun start()
     fun stop()
-    fun send(file: File, peer: FlashPeer): String
+    fun sendBatch(files: List<File>, peer: FlashPeer): String
     fun approve(requestId: String, accepted: Boolean): Boolean
     fun cancel(operationId: String): Boolean
     fun discover()
@@ -22,7 +22,7 @@ internal fun createDesktopFlashTransport(label: String, directory: File, listene
     return object : DesktopFlashTransport {
         override fun start() { engine.start() }
         override fun stop() = engine.stop()
-        override fun send(file: File, peer: FlashPeer) = engine.send(file, peer)
+        override fun sendBatch(files: List<File>, peer: FlashPeer) = engine.sendBatch(files, peer)
         override fun approve(requestId: String, accepted: Boolean) = engine.approve(requestId, accepted)
         override fun cancel(operationId: String) = engine.cancel(operationId)
         override fun discover() = engine.discover()

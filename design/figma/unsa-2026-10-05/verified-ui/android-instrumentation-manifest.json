@@ -1,0 +1,44 @@
+{
+  "source": "Production FlashActivity with synthetic FlashAndroidRuntime state",
+  "network": "none",
+  "approvals_submitted": false,
+  "captures": [
+    {
+      "name": "send-3-top",
+      "file": "send-3-top.png",
+      "width": 1080,
+      "height": 2400
+    },
+    {
+      "name": "receive-3-top",
+      "file": "receive-3-top.png",
+      "width": 1080,
+      "height": 2400
+    },
+    {
+      "name": "send-128-top",
+      "file": "send-128-top.png",
+      "width": 1080,
+      "height": 2400
+    },
+    {
+      "name": "send-128-list-end",
+      "file": "send-128-list-end.png",
+      "width": 1080,
+      "height": 2400
+    },
+    {
+      "name": "receive-128-top",
+      "file": "receive-128-top.png",
+      "width": 1080,
+      "height": 2400
+    },
+    {
+      "name": "receive-128-list-end",
+      "file": "receive-128-list-end.png",
+      "width": 1080,
+      "height": 2400
+    }
+  ],
+  "scope": "Visual artifacts and accessibility scroll reachability; not transfer validation"
+}

@@ -26,16 +26,14 @@ internal class FlashSocketInstrumentationScenario(
         val errors = mutableListOf<String>()
         var outgoingCompleted = 0
         lateinit var engine: FlashEngine
-        fun pump() {
-            if (engine.snapshot().operations.isNotEmpty()) return
-            val next = batch.next() ?: return
-            batch.started(engine.send(next.file, next.peer))
-        }
         fun post(action: () -> Unit) {
             serial.execute { runCatching(action).onFailure { errors += it.toString() } }
         }
         engine = FlashEngine("Qetara Android socket QA", receivedDirectory, object : FlashListener {
-            override fun onState(state: FlashState) = post { if (state.active) pump() }
+            override fun onState(state: FlashState) = post {
+                state.operations.forEach(batch::observe)
+                if (state.operations.isEmpty()) batch.idle()
+            }
             override fun onReceived(received: FlashReceived) = post {
                 receivedHashes[received.file.name] = sha256File(received.file)
             }
@@ -43,7 +41,6 @@ internal class FlashSocketInstrumentationScenario(
                 if (completed.outgoing) {
                     checkNotNull(batch.complete(completed.operationId))
                     outgoingCompleted++
-                    pump()
                 }
             }
             override fun onError(error: FlashError) = post { errors += "${error.code}: ${error.message}" }
@@ -79,10 +76,10 @@ internal class FlashSocketInstrumentationScenario(
                                                 writeBytes(ByteArray(size) { ((it * 31 + index) % 251).toByte() })
                                             }
                                         }
-                                        check(batch.start(files, peer))
+                                        check(batch.start(files))
                                         body.writeInt(files.size)
                                         files.forEach { body.writeUTF(it.name); body.writeUTF(sha256File(it)) }
-                                        pump()
+                                        batch.started(engine.sendBatch(files, peer))
                                     }
                                     "APPROVE" -> {
                                         val approval = engine.snapshot().approvals.single { it.requestId == requestId }

@@ -1,0 +1,215 @@
+{
+  "date": "2026-10-05",
+  "account": "cchoquenairat@unsa.edu.pe",
+  "linkId": "link_6abd7a9986f4819182a83c09229e1b44",
+  "plan": "dev-UNSA",
+  "planKey": "team::1687252646982958302",
+  "fileKey": "KRV4r4m1p1fSOFZOHOMV0B",
+  "url": "https://www.figma.com/design/KRV4r4m1p1fSOFZOHOMV0B",
+  "scope": "Marca clásica y confirmación por lote Flash; referencias editables, no capturas de aplicación",
+  "brand": {
+    "createdNodeIds": [
+      "2:8",
+      "2:6",
+      "2:7",
+      "2:9",
+      "2:10",
+      "2:11",
+      "2:12",
+      "2:13",
+      "I2:13;2:6",
+      "I2:13;2:7",
+      "2:16",
+      "2:17",
+      "2:18",
+      "2:19",
+      "2:20",
+      "2:21",
+      "2:22"
+    ],
+    "mutatedNodeIds": [
+      "0:1"
+    ],
+    "pageId": "0:1",
+    "reviewId": "2:9",
+    "componentId": "2:8",
+    "collectionId": "VariableCollectionId:2:2",
+    "variables": {
+      "color/marca/fondo": {
+        "id": "VariableID:2:3",
+        "scopes": [
+          "FRAME_FILL",
+          "SHAPE_FILL"
+        ],
+        "valuesByMode": {
+          "2:0": {
+            "r": 1,
+            "g": 0.9686274528503418,
+            "b": 0.929411768913269,
+            "a": 1
+          }
+        }
+      },
+      "color/marca/simbolo": {
+        "id": "VariableID:2:4",
+        "scopes": [
+          "FRAME_FILL",
+          "SHAPE_FILL"
+        ],
+        "valuesByMode": {
+          "2:0": {
+            "r": 0.062745101749897,
+            "g": 0.16470588743686676,
+            "b": 0.26274511218070984,
+            "a": 1
+          }
+        }
+      }
+    },
+    "componentBounds": {
+      "width": 108,
+      "height": 108
+    },
+    "reviewBounds": {
+      "width": 920,
+      "height": 586
+    }
+  },
+  "flash": {
+    "createdNodeIds": [
+      "4:4",
+      "4:22",
+      "4:23",
+      "4:24",
+      "4:25",
+      "4:26",
+      "4:27",
+      "4:44",
+      "I4:44;4:29",
+      "I4:44;4:30",
+      "I4:44;4:31",
+      "I4:44;4:32",
+      "I4:44;4:33",
+      "I4:44;4:34",
+      "I4:44;4:35",
+      "I4:44;4:36",
+      "I4:44;4:37",
+      "I4:44;4:38",
+      "I4:44;4:39",
+      "I4:44;4:40",
+      "I4:44;4:41",
+      "I4:44;4:42",
+      "4:59",
+      "4:60",
+      "4:77",
+      "I4:77;4:62",
+      "I4:77;4:63",
+      "I4:77;4:64",
+      "I4:77;4:65",
+      "I4:77;4:66",
+      "I4:77;4:67",
+      "I4:77;4:68",
+      "I4:77;4:69",
+      "I4:77;4:70",
+      "I4:77;4:71",
+      "I4:77;4:72",
+      "I4:77;4:73",
+      "I4:77;4:74",
+      "I4:77;4:75",
+      "4:92",
+      "4:43",
+      "4:29",
+      "4:30",
+      "4:31",
+      "4:32",
+      "4:33",
+      "4:34",
+      "4:35",
+      "4:36",
+      "4:37",
+      "4:38",
+      "4:39",
+      "4:40",
+      "4:41",
+      "4:42",
+      "4:76",
+      "4:62",
+      "4:63",
+      "4:64",
+      "4:65",
+      "4:66",
+      "4:67",
+      "4:68",
+      "4:69",
+      "4:70",
+      "4:71",
+      "4:72",
+      "4:73",
+      "4:74",
+      "4:75"
+    ],
+    "mutatedNodeIds": [],
+    "pageId": "4:4",
+    "boardId": "4:22",
+    "sender": {
+      "componentId": "4:43",
+      "instanceId": "4:44"
+    },
+    "receiver": {
+      "componentId": "4:76",
+      "instanceId": "4:77"
+    },
+    "collectionId": "VariableCollectionId:4:5",
+    "variables": {
+      "canvas": "VariableID:4:6",
+      "surface": "VariableID:4:7",
+      "mobileSurface": "VariableID:4:8",
+      "ink": "VariableID:4:9",
+      "muted": "VariableID:4:10",
+      "accent": "VariableID:4:11",
+      "accentSoft": "VariableID:4:12",
+      "accentInk": "VariableID:4:13",
+      "card": "VariableID:4:14",
+      "gap": "VariableID:4:15",
+      "padding": "VariableID:4:16",
+      "radius": "VariableID:4:17"
+    },
+    "textStyles": {
+      "title": "S:dfd3b003dbbf7775fab773c78baca21159dcd91b,",
+      "body": "S:c996275fe74db61f51b95595114712d2e58b6efb,",
+      "label": "S:a09c5b9e560a1e541514314df190ca2a1cdf7f4e,",
+      "small": "S:4934001402e542444ffbf64f24d41be793fc5883,"
+    },
+    "bounds": {
+      "width": 1080,
+      "height": 907
+    },
+    "nodeTypeCounts": {
+      "TEXT": 28,
+      "FRAME": 10,
+      "INSTANCE": 2,
+      "RECTANGLE": 1
+    },
+    "imageFilledNodes": [],
+    "fontFamilies": [
+      "Inter",
+      "Roboto Mono"
+    ]
+  },
+  "visualReview": {
+    "brand": true,
+    "flash": true
+  },
+  "desktopCheckboxAlignment": {
+    "createdNodeIds": [
+      "5:32",
+      "5:33",
+      "5:34"
+    ],
+    "mutatedNodeIds": [
+      "4:43",
+      "4:40"
+    ],
+    "status": "Visually verified; unchecked and confirmation disabled"
+  }
+}

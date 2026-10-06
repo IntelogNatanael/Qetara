@@ -26,9 +26,9 @@ La UI y la CLI comparten el mismo motor. Un error debe describir la fase que fal
 
 ## Flash opcional
 
-`protocol/flash` implementa `FlashEngine`: descubrimiento temporal, Noise XX, comparación y aceptación por archivo, transferencia y publicación verificada. Tiene puerto y activación propios, separados de WDRP v4, y no conserva identidad ni confianza después de su cierre. El contrato detallado está en [protocol/FLASH.md](protocol/FLASH.md).
+`protocol/flash` implementa `FlashEngine`: descubrimiento temporal, Noise XX, comparación y aceptación del lote exacto en ambos equipos, transferencia y publicación verificada por archivo. Un lote utiliza un único canal cifrado y una lista fija de nombres, tamaños y hashes; los archivos se procesan en orden, con progreso, verificación y confirmación de recepción individuales. La aprobación no se reutiliza para otro lote ni otra conexión. Tiene puerto y activación propios, separados de WDRP v4, y no conserva identidad ni confianza después de su cierre. El contrato detallado está en [protocol/FLASH.md](protocol/FLASH.md).
 
-Android utiliza `FlashActivity`, `FlashForegroundService` y estado observable del proceso. PC utiliza `DesktopFlashController`, conservado al cambiar de espacio, y un diálogo global de solicitudes. Los adaptadores consumen callbacks en orden y descartan comandos de activaciones anteriores. Los resultados de archivos ya publicados se conservan aunque la interfaz haya empezado a cerrar la sesión; un resultado tardío no reactiva Flash.
+Android utiliza `FlashActivity`, `FlashForegroundService` y estado observable del proceso. PC utiliza `DesktopFlashController`, conservado al cambiar de espacio, y un diálogo global de solicitudes. La confirmación muestra todos los nombres, el número de archivos y el tamaño total. Los adaptadores consumen callbacks en orden y descartan comandos de activaciones anteriores. Un rechazo, cancelación o fallo detiene lo pendiente del lote, sin borrar los archivos ya publicados. Sus resultados se conservan aunque la interfaz haya empezado a cerrar la sesión; un resultado tardío no reactiva Flash.
 
 ## Transferencias y almacenamiento
 

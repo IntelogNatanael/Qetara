@@ -12,8 +12,9 @@
     "local": "design/figma/MOBILE.md",
     "brandReview": "design/figma/mobile-three-themes/README.md",
     "previousBrandReview": "design/figma/mobile-surface-review/README.md",
-    "figmaFileKey": "FZhnKBdDPJWpPrbxn3AGQQ",
-    "figmaStatus": "Starter MCP limit; remote file has no frames; no Figma review completed"
+    "figmaFileKey": "KRV4r4m1p1fSOFZOHOMV0B",
+    "figmaStatus": "UNSA / dev-UNSA: classic brand and Flash batch approval references created and visually reviewed on 2026-10-05; full mobile screens not migrated",
+    "figmaAccount": "cchoquenairat@unsa.edu.pe"
   },
   "color": {
     "light": {
@@ -298,8 +299,8 @@
       "modeIndentDp": 40,
       "alignment": "Symbol and wordmark share a vertically centered row; mode below."
     },
-    "note": "Original launcher foreground is unchanged: path, ink, viewport, scale and aspect ratio. Launcher backdrop now matches light GUI background; header remains borderless and tinted with onBackground. Splash uses day/night onBackground ink with its existing geometry.",
-    "launcherBackdrop": "#E7EFF2",
+    "note": "Original launcher foreground is unchanged: path, ink, viewport, scale and aspect ratio. Launcher restores the classic ivory backdrop independently of the selected GUI theme; the background vector and ten legacy WEBP icons match d7be5c5^ byte for byte. Header remains borderless and tinted with onBackground. Splash uses day/night onBackground ink with its existing geometry.",
+    "launcherBackdrop": "#FFF7ED",
     "splashBackground": {
       "light": "#E7EFF2",
       "dark": "#101B22"

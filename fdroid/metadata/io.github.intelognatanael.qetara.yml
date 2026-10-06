@@ -33,17 +33,20 @@ Builds:
 AllowedAPKSigningKeys: 5f5cdbfb03c1f62f7dc42aee12a5ea4a347b767ccfc268eb450ca69c98ba7a3b
 
 MaintainerNotes: |-
-  Candidate recipe, not yet submitted. At validation time the upstream source
-  repository is private and the signed candidate has no public download URL.
-  Public source access and a versioned binary URL must be supplied before
-  requesting inclusion; do not invent or activate a Binaries URL.
+  Historical candidate recipe, validated locally on 2026-09-11, not submitted.
+  Newer application changes are not covered by this pinned build or its hashes.
+  Select and validate a real final source commit before proposing the update.
+  The upstream repository was still private when checked on 2026-09-23.
+  Public source access is required for inclusion. A versioned binary URL is
+  additionally required for the intended developer-signature workflow; it is
+  not a general inclusion requirement. Do not invent a Binaries URL.
 
   Build exactly the pinned commit with JDK 21, Android platform 36 revision 2
   and Build Tools 36.0.0. A clean checkout is required: a previous incremental
   Compose build retained different stability bytecode. Clean Windows/Linux
   builds were byte-identical. Preserve the upstream ART profile and VCS info.
 
-  The developer-signed candidate has SHA-256
+  The historical developer-signed candidate has SHA-256
   5d9e28651ffdaf0216d0a82c049b287851906065bbc713eefa77d793670e22f6.
   Signing used apksigner 36 with --alignment-preserved true; standard
   apksigcopier 1.1.1 reproduced it from the clean Linux unsigned APK.

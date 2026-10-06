@@ -3,6 +3,7 @@ package com.example.wifidrop.pc
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.VerticalScrollbar
 import androidx.compose.foundation.rememberScrollbarAdapter
@@ -99,7 +100,7 @@ internal data class DesktopWorkspaceActions(
     val onOpenFlash: () -> Unit = {}
 )
 
-private enum class WorkspaceTab(val label: String, val title: String, val subtitle: String, val glyph: WorkspaceGlyph) {
+internal enum class WorkspaceTab(val label: String, val title: String, val subtitle: String, val glyph: WorkspaceGlyph) {
     SHARE("Compartir", "Compartir archivos", "Elige archivos y un equipo de tu red.", WorkspaceGlyph.SHARE),
     RECEIVE("Recibir", "Recibir archivos", "Activa la recepción y comparte tu sesión.", WorkspaceGlyph.RECEIVE),
     CHAT("Mensajes", "Mensajes", "Conversa con los equipos de tu sesión.", WorkspaceGlyph.CHAT),
@@ -114,9 +115,10 @@ internal fun DesktopWorkspace(
     chatContent: @Composable () -> Unit,
     activityContent: @Composable (Modifier) -> Unit,
     flashVisible: Boolean = false,
-    flashContent: @Composable () -> Unit = {}
+    flashContent: @Composable () -> Unit = {},
+    initialTab: WorkspaceTab = WorkspaceTab.SHARE
 ) {
-    var selectedTab by remember { mutableStateOf(WorkspaceTab.SHARE) }
+    var selectedTab by remember { mutableStateOf(initialTab) }
     var showLicenses by remember { mutableStateOf(false) }
     if (showLicenses) DesktopLicensesDialog { showLicenses = false }
     val pageScroll = rememberScrollState()
@@ -135,8 +137,9 @@ internal fun DesktopWorkspace(
                         // Flash keeps its existing exit action; normal navigation cannot close it.
                         Box(Modifier.weight(1f).fillMaxWidth()) { flashContent() }
                         StatusBadge(
-                            if (state.receiverPhase == DesktopTaskPhase.RUNNING) "Recepción habitual activa" else "Recepción habitual desactivada",
-                            state.receiverPhase == DesktopTaskPhase.RUNNING
+                            receiverStateLabel(state.receiverPhase, separateFromFlash = true),
+                            state.receiverPhase == DesktopTaskPhase.RUNNING,
+                            error = state.receiverPhase == DesktopTaskPhase.ERROR
                         )
                     } else {
                         WorkspaceHeader(selectedTab, state)
@@ -309,10 +312,9 @@ private fun WorkspaceDeviceStatus(state: DesktopWorkspaceState, modifier: Modifi
             Text(state.deviceName.ifBlank { "Este equipo" }, style = MaterialTheme.typography.body2, color = qetaraInk, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         StatusBadge(
-            if (state.flashActive) {
-                if (state.receiverPhase == DesktopTaskPhase.RUNNING) "Recepción habitual activa" else "Recepción habitual desactivada"
-            } else if (state.receiverPhase == DesktopTaskPhase.RUNNING) "Disponible para recibir" else "Recepción desactivada",
-            state.receiverPhase == DesktopTaskPhase.RUNNING
+            receiverStateLabel(state.receiverPhase, separateFromFlash = state.flashActive),
+            state.receiverPhase == DesktopTaskPhase.RUNNING,
+            error = state.receiverPhase == DesktopTaskPhase.ERROR
         )
     }
 }
@@ -377,10 +379,15 @@ private fun SessionCard(state: DesktopWorkspaceState, actions: DesktopWorkspaceA
         }
         if (state.credentialsReady) {
             Text(
-                if (state.receiverPhase == DesktopTaskPhase.RUNNING) "Recepción activa · " + state.sessionRemaining
-                else "Sesión lista. Activa la recepción para recibir aquí.",
+                when (state.receiverPhase) {
+                    DesktopTaskPhase.RUNNING -> "Recepción activa · " + state.sessionRemaining
+                    DesktopTaskPhase.STARTING -> "Activando recepción…"
+                    DesktopTaskPhase.STOPPING -> "Deteniendo recepción…"
+                    DesktopTaskPhase.ERROR -> state.receiverStatus
+                    DesktopTaskPhase.IDLE -> "Sesión lista. Activa la recepción para recibir aquí."
+                },
                 style = MaterialTheme.typography.body2,
-                color = qetaraTeal
+                color = if (state.receiverPhase == DesktopTaskPhase.ERROR) MaterialTheme.colors.error else qetaraTeal
             )
             if (!state.receiverBusy) {
                 Button(actions.onStartReceiver, enabled = state.receiverIssues.isEmpty(), modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp), shape = RoundedCornerShape(8.dp)) { Text("Activar recepción aquí") }
@@ -401,28 +408,10 @@ private fun SessionCard(state: DesktopWorkspaceState, actions: DesktopWorkspaceA
 
 @Composable
 private fun SendCard(state: DesktopWorkspaceState, actions: DesktopWorkspaceActions) {
+    var allPeersVisible by remember { mutableStateOf(false) }
     WorkspaceCard("Archivos para compartir") {
         DesktopFileDropZone(state.filePath, state.isFileDragActive, actions.onChooseFile, enabled = !state.sendingBusy)
-        if (state.filePaths.isNotEmpty()) {
-            Surface(color = qetaraCanvas, shape = RoundedCornerShape(12.dp), border = BorderStroke(1.dp, qetaraLine)) {
-                Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
-                    state.filePaths.take(3).forEachIndexed { index, path ->
-                        if (index > 0) Divider(color = qetaraLine)
-                        val selectedFile = File(path)
-                        Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            WorkspaceIcon(WorkspaceGlyph.FILE, color = qetaraTeal)
-                            Text(selectedFile.name, Modifier.weight(1f), style = MaterialTheme.typography.body2, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            Text(formatBytes(selectedFile.length()), style = MaterialTheme.typography.caption, color = qetaraMuted)
-                        }
-                    }
-                    if (state.selectedFilesCount > 3) Text("+${state.selectedFilesCount - 3} más", Modifier.padding(bottom = 12.dp), style = MaterialTheme.typography.caption, color = qetaraMuted)
-                }
-            }
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text(if (state.selectedFilesCount == 1) "1 archivo seleccionado" else "${state.selectedFilesCount} archivos seleccionados", Modifier.weight(1f), style = MaterialTheme.typography.caption, color = qetaraMuted)
-                TextButton(actions.onClearFiles, enabled = !state.sendingBusy, modifier = Modifier.heightIn(min = 44.dp)) { Text("Quitar todos") }
-            }
-        }
+        DesktopSelectedFiles(state.filePaths.map(::File), enabled = !state.sendingBusy, onClear = actions.onClearFiles)
         Divider(color = qetaraLine)
         BoxWithConstraints(Modifier.fillMaxWidth()) {
             if (maxWidth >= 340.dp) {
@@ -449,8 +438,15 @@ private fun SendCard(state: DesktopWorkspaceState, actions: DesktopWorkspaceActi
                 }
             }
         } else {
-            state.peers.take(8).forEach { peer ->
-                DesktopLanPeerRow(peer, state.host == peer.ip, { actions.onSelectPeer(peer) })
+            Column(Modifier.selectableGroup(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                desktopVisiblePeers(state.peers, state.host, allPeersVisible).forEach { peer ->
+                    DesktopLanPeerRow(peer, state.host == peer.ip, { actions.onSelectPeer(peer) }, enabled = !state.sendingBusy)
+                }
+            }
+            if (state.peers.size > 8) {
+                TextButton({ allPeersVisible = !allPeersVisible }, modifier = Modifier.heightIn(min = 44.dp)) {
+                    Text(if (allPeersVisible) "Mostrar menos equipos" else "Mostrar todos los equipos (${state.peers.size})")
+                }
             }
         }
         OutlinedTextField(
@@ -464,13 +460,13 @@ private fun SendCard(state: DesktopWorkspaceState, actions: DesktopWorkspaceActi
             state.sendingProgress?.let { LinearProgressIndicator(it, Modifier.fillMaxWidth(), color = qetaraTeal) }
                 ?: LinearProgressIndicator(Modifier.fillMaxWidth(), color = qetaraTeal)
         }
-        Text(
-            if (state.sendingBusy || state.sendingPhase == DesktopTaskPhase.ERROR || state.sendIssues.isEmpty()) state.sendingStatus
-            else state.sendIssues.first(),
-            modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
-            style = MaterialTheme.typography.body2,
-            color = if (state.sendingPhase == DesktopTaskPhase.ERROR) MaterialTheme.colors.error else qetaraMuted
-        )
+        val feedback = desktopSendFeedback(state.sendingPhase, state.sendingStatus, state.sendIssues)
+        Column(Modifier.semantics { liveRegion = LiveRegionMode.Polite }, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(feedback.status, style = MaterialTheme.typography.body2, color = if (state.sendingPhase == DesktopTaskPhase.ERROR) MaterialTheme.colors.error else qetaraMuted)
+            feedback.nextIssue?.let {
+                Text("Antes de volver a intentar: $it", style = MaterialTheme.typography.body2, color = qetaraMuted)
+            }
+        }
         if (state.sendingBusy) {
             OutlinedButton(actions.onCancelSend, enabled = state.sendingPhase != DesktopTaskPhase.STOPPING, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp), shape = RoundedCornerShape(8.dp)) { Text("Cancelar envío") }
         } else {
@@ -489,7 +485,7 @@ private fun SendCard(state: DesktopWorkspaceState, actions: DesktopWorkspaceActi
 private fun ReceiveCard(state: DesktopWorkspaceState, actions: DesktopWorkspaceActions) {
     WorkspaceCard("Recepción en este equipo") {
         Text(
-            if (state.receiverPhase == DesktopTaskPhase.IDLE) "Elige una carpeta y activa la recepción." else state.receiverStatus,
+            state.receiverStatus,
             modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
             style = MaterialTheme.typography.body2,
             color = if (state.receiverPhase == DesktopTaskPhase.ERROR) MaterialTheme.colors.error else qetaraMuted
@@ -585,13 +581,22 @@ private fun RecentTransfers(entries: List<DesktopTransferEntry>, actions: Deskto
 }
 
 @Composable
-private fun StatusBadge(label: String, active: Boolean) {
-    Surface(shape = RoundedCornerShape(50), color = if (active) qetaraMist else qetaraCanvas) {
+private fun StatusBadge(label: String, active: Boolean, error: Boolean = false) {
+    val foreground = if (error) MaterialTheme.colors.error else if (active) qetaraTeal else qetaraMuted
+    Surface(shape = RoundedCornerShape(50), color = if (active) qetaraMist else qetaraCanvas, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }) {
         Row(Modifier.padding(horizontal = 10.dp, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(7.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(6.dp).background(if (active) qetaraTeal else qetaraMuted, RoundedCornerShape(50)))
-            Text(label, style = MaterialTheme.typography.caption, fontWeight = FontWeight.Medium, color = if (active) qetaraTeal else qetaraMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Box(Modifier.size(6.dp).background(foreground, RoundedCornerShape(50)))
+            Text(label, style = MaterialTheme.typography.caption, fontWeight = FontWeight.Medium, color = foreground, maxLines = 2, overflow = TextOverflow.Ellipsis)
         }
     }
+}
+
+private fun receiverStateLabel(phase: DesktopTaskPhase, separateFromFlash: Boolean): String = when (phase) {
+    DesktopTaskPhase.STARTING -> if (separateFromFlash) "Activando recepción habitual…" else "Activando recepción…"
+    DesktopTaskPhase.RUNNING -> if (separateFromFlash) "Recepción habitual activa" else "Disponible para recibir"
+    DesktopTaskPhase.STOPPING -> if (separateFromFlash) "Deteniendo recepción habitual…" else "Deteniendo recepción…"
+    DesktopTaskPhase.ERROR -> if (separateFromFlash) "Error de recepción habitual" else "Error de recepción"
+    DesktopTaskPhase.IDLE -> if (separateFromFlash) "Recepción habitual desactivada" else "Recepción desactivada"
 }
 
 @Composable
@@ -599,7 +604,7 @@ private fun SearchPeersButton(state: DesktopWorkspaceState, actions: DesktopWork
     TextButton(actions.onRefreshPeers, enabled = state.discoveryPhase !in listOf(DesktopTaskPhase.STARTING, DesktopTaskPhase.RUNNING), modifier = Modifier.heightIn(min = 44.dp)) {
         WorkspaceIcon(WorkspaceGlyph.SEARCH, Modifier.size(18.dp), qetaraTeal)
         Spacer(Modifier.width(6.dp))
-        Text(if (state.discoveryPhase == DesktopTaskPhase.RUNNING) "Buscando…" else "Buscar equipos")
+        Text(if (state.discoveryPhase in listOf(DesktopTaskPhase.STARTING, DesktopTaskPhase.RUNNING)) "Buscando…" else "Buscar equipos")
     }
 }
 

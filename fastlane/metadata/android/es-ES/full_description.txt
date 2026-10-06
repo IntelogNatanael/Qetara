@@ -1,0 +1,14 @@
+<p>Qetara comparte archivos y mensajes entre dispositivos Android y un ordenador en la misma red local, sin crear una cuenta. Los dispositivos Android también pueden conectarse mediante Wi-Fi Direct.</p>
+
+<ul>
+<li>Selecciona varios archivos y consulta, cancela o reintenta sus transferencias.</li>
+<li>Abre, comparte y busca los archivos recibidos en tus descargas.</li>
+<li>Envía archivos a Qetara desde el menú Compartir de Android.</li>
+<li>Usa un código de sesión y un PIN para el intercambio habitual y los mensajes.</li>
+<li>Activa Flash para compartir archivos con equipos cercanos, con un código de verificación y confirmación en ambos dispositivos. Flash empieza apagado y caduca a los 30 minutos.</li>
+<li>Elige una apariencia clara u oscura y ajusta el tamaño de lectura.</li>
+</ul>
+
+<p>El contenido de los archivos y los mensajes viajan por una conexión cifrada entre dispositivos. Compara la información de verificación con la persona destinataria. El descubrimiento depende de la red local; algunas redes aíslan los dispositivos o bloquean la búsqueda.</p>
+
+<p>Para compartir con un ordenador necesitas la aplicación Qetara de escritorio. Wi-Fi Direct está disponible entre dispositivos Android compatibles. Qetara no ofrece almacenamiento en la nube ni envíos a dispositivos fuera de tu conexión local.</p>

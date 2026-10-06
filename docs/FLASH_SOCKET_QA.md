@@ -1,6 +1,6 @@
 # Flash: prueba optativa PC y Android
 
-Esta prueba usa el controlador de lotes de escritorio, `FlashOutgoingBatch` de Android y el motor Flash real en ambos procesos. Envía dos archivos por dirección (128 KiB y 512 KiB + 31 bytes), compara los cuatro códigos Noise antes de aprobar y exige igualdad SHA-256 del contenido recibido. Solo crea archivos de prueba en carpetas temporales propias; no abre actividades ni usa descargas existentes.
+Esta prueba usa el controlador de lotes de escritorio, `FlashOutgoingBatch` de Android y el motor Flash real en ambos procesos. Envía dos archivos por dirección (128 KiB y 512 KiB + 31 bytes), compara un código Noise por lote en ambos equipos (dos comparaciones en total) y exige igualdad SHA-256 del contenido recibido. Solo crea archivos de prueba en carpetas temporales propias; no abre actividades ni usa descargas existentes.
 
 Por defecto la prueba cruza sockets TCP reales mediante ADB en un emulador. El modo opcional para un teléfono físico envía los archivos directamente por la red local y usa ADB solo para el control. Ambos modos buscan los pares explícitamente por dirección/puerto; no comprueban descubrimiento UDP, el servicio Android, permisos de notificaciones ni interacción visual. En PC se comprueba que activar pide una búsqueda, que activar de nuevo es idempotente y que la acción de volver a buscar sigue disponible. Solo el modo con teléfono físico aporta evidencia de transferencia por la red local real.
 

@@ -21,7 +21,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.wifidrop.protocol.flash.FlashPeer
 
-/** Presentation only: activation, discovery and per-file approval remain in the service. */
+/** Presentation only: activation, discovery and exact-batch approval remain in the service. */
 @Composable
 internal fun FlashIntroduction(
     label: String,
@@ -47,7 +47,7 @@ internal fun FlashIntroduction(
         FlashCard {
             FlashIntroStep("1", "Activa Flash en ambos equipos")
             FlashIntroStep("2", "Elige el equipo y los archivos")
-            FlashIntroStep("3", "Compara el código y acepta cada archivo")
+            FlashIntroStep("3", "Compara el código y acepta el lote en ambos equipos")
         }
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text("Este equipo", style = MaterialTheme.typography.labelMedium,
@@ -178,7 +178,7 @@ internal fun FlashSendBar(
                     else -> "Solicitar envío"
                 }, textAlign = TextAlign.Center)
             }
-            Text("Compara y acepta el código de cada archivo.",
+            Text("Compara el código y acepta una vez en cada equipo para todo el lote.",
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }

@@ -1,5 +1,18 @@
 # Qetara · Diseño de escritorio
 
+## Referencia activa desde el 5 de octubre de 2026
+
+Usar exclusivamente la cuenta **cchoquenairat@unsa.edu.pe**, equipo **dev-UNSA**.
+El archivo activo es [Qetara · Diseño y experiencia](https://www.figma.com/design/KRV4r4m1p1fSOFZOHOMV0B).
+Contiene referencias editables y revisadas visualmente de la
+[marca clásica](https://www.figma.com/design/KRV4r4m1p1fSOFZOHOMV0B?node-id=2-9) y de la
+[confirmación por lote Flash](https://www.figma.com/design/KRV4r4m1p1fSOFZOHOMV0B?node-id=4-22).
+Alcance, procedencia y límites en [la revisión actual](unsa-2026-10-05/README.md).
+El archivo anterior permanecía vacío; se creó esta referencia desde los recursos
+locales, sin transferir su propiedad ni utilizar la cuenta Gmail.
+
+## Antecedentes
+
 Iteración del 11 de septiembre de 2026, limitada a presentación Compose Desktop.
 
 ## Referencia y límite de Figma

@@ -4,7 +4,7 @@ Qetara permite compartir archivos y conversar entre equipos de una misma red loc
 
 ## Flash opcional
 
-El botón **Flash** abre el envío temporal sin escribir código de sesión ni PIN. Actívalo en ambos equipos, elige uno o varios archivos y el destino y pulsa **Solicitar envío**. Qetara solicita la aprobación y muestra una verificación nueva para cada archivo. Compara los cuatro grupos en ambas pantallas antes de aceptar. **Flash activo** mantiene visible la disponibilidad aunque vuelvas a otro espacio. Cada activación caduca a los 30 minutos; **Desactivar** termina únicamente Flash. La carpeta de recepción se elige antes de activarlo y **Ver en carpeta** permite localizar lo recibido. La [guía de Flash](FLASH.md) incluye el recorrido completo y la alternativa por dirección local.
+El botón **Flash** abre el envío temporal sin escribir código de sesión ni PIN. Actívalo en ambos equipos, elige uno o varios archivos y el destino y solicita el envío. Revisa la lista completa y el tamaño total, compara los cuatro grupos en ambas pantallas y acepta una vez en cada equipo para ese lote. Los archivos se transfieren en orden, con resultados individuales. Cada nuevo lote requiere otra confirmación. **Flash activo** mantiene visible la disponibilidad aunque vuelvas a otro espacio. Cada activación caduca a los 30 minutos; **Desactivar** termina únicamente Flash. La carpeta de recepción se elige antes de activarlo y **Ver en carpeta** permite localizar lo recibido. La [guía de Flash](FLASH.md) incluye el recorrido completo, la compatibilidad y la alternativa por dirección local.
 
 ## Abrir Qetara
 

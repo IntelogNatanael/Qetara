@@ -11,7 +11,7 @@ import java.util.concurrent.atomic.AtomicReference
 
 /**
  * Opt-in, temporary local file exchange. No persistent trust, credentials, automatic acceptance or retries.
- * Both users must compare the complete verification code shown for EACH file before approving it.
+ * Both users compare one verification code for the exact offered selection on one Noise connection.
  * start binds synchronously; all network discovery, hashing and transfers run off the caller's thread.
  */
 class FlashEngine(
@@ -26,6 +26,8 @@ class FlashEngine(
     private var session: Session? = null
 
     private class Operation(var info: FlashOperation, val socket: Socket) {
+        val batchId = info.batchId
+        val fileIds = mutableSetOf(info.id)
         val cancelled = AtomicReference<String?>(null)
         var lastProgressNanos = 0L
         var approval: FlashApproval? = null
@@ -131,26 +133,33 @@ class FlashEngine(
                     val peer = readFlashPeer(input, address).copy(port = port) // Preserve explicit ADB/NAT forwarded endpoint.
                     checkActive(current)
                     rememberPeer(current, peer)
-                } catch (error: Exception) { if (isActive(current)) reportError(null, error) }
+                } catch (error: Exception) { if (isActive(current)) reportError(null, error, discovery = true) }
                 finally { releaseSocket(current, socket); synchronized(lock) { current.queryRunning = false }; notifyState() }
             }
         } catch (error: RejectedExecutionException) { synchronized(lock) { current.queryRunning = false }; reportError(null, FlashFailure("busy")) }
     }
-    fun send(file: File, peer: FlashPeer): String {
+    fun send(file: File, peer: FlashPeer): String = sendBatch(listOf(file), peer)
+
+    /** A bounded, immutable selection; approval never survives this connection or applies to another batch. */
+    fun sendBatch(files: List<File>, peer: FlashPeer): String {
+        val selection = files.toList()
+        require(selection.size in 1..FLASH_MAX_BATCH_FILES) { "invalid_batch" }
         requireFlashAddress(peer.address); require(peer.port in 1..65535)
-        require(file.isFile && file.length() <= config.maxFileBytes) { "invalid_file" }
+        require(selection.all { it.isFile && it.canRead() && it.length() <= config.maxFileBytes }) { "invalid_file" }
         require(peer.expiresAtMs > System.currentTimeMillis()) { "expired" }
         val current = activeSession()
-        val op = Operation(FlashOperation(UUID.randomUUID().toString(), peer, sanitizeFileName(file.name), file.length(), true), Socket())
+        val file = selection.first()
+        val op = Operation(FlashOperation(UUID.randomUUID().toString(), peer, sanitizeFileName(file.name), file.length(), true,
+            fileCount = selection.size), Socket())
         synchronized(lock) {
             checkActive(current); require(peer.id != current.id) { "self_peer" }
             if (current.operations.size >= config.maxOperations) throw FlashFailure("busy")
             registerSocket(current, op.socket); reserveOperation(current, op)
         }
         notifyState()
-        try { current.workers.execute { executeOperation(current, op) { sendFile(current, op, file, peer) } } }
+        try { current.workers.execute { executeOperation(current, op) { sendFiles(current, op, selection, peer) } } }
         catch (error: RejectedExecutionException) { finishOperation(current, op); throw FlashFailure("busy") }
-        return op.info.id
+        return op.batchId
     }
     fun approve(requestId: String, accepted: Boolean): Boolean {
         val applied = synchronized(lock) {
@@ -167,7 +176,7 @@ class FlashEngine(
     }
     fun cancel(operationId: String): Boolean {
         val op = synchronized(lock) {
-            val current = session?.operations?.get(operationId) ?: return false
+            val current = session?.operations?.values?.firstOrNull { operationId in it.fileIds } ?: return false
             current.cancelled.compareAndSet(null, "cancelled")
             current.localDecision.complete(false)
             current.approval = null
@@ -221,13 +230,17 @@ class FlashEngine(
                         socket.soTimeout = config.handshakeTimeoutMs
                         val input = DataInputStream(socket.getInputStream().buffered())
                         val output = DataOutputStream(socket.getOutputStream().buffered())
-                        when (input.flashKind()) {
+                        when (val kind = input.flashKind()) {
                             FLASH_PROBE -> { checkActive(current); output.flashHeader(FLASH_ANNOUNCE); writeFlashPeer(output, ownPeer(current)); output.flush() }
-                            FLASH_TRANSFER -> {
+                            FLASH_TRANSFER, FLASH_BATCH_TRANSFER -> {
                                 val op = Operation(FlashOperation(UUID.randomUUID().toString(), null, "", 0, false), socket)
                                 synchronized(lock) { reserveOperation(current, op) }
                                 notifyState()
-                                executeOperation(current, op) { receiveFile(current, op, input, output) }
+                                executeOperation(current, op) {
+                                    val batch = kind == FLASH_BATCH_TRANSFER
+                                    if (batch) { output.writeInt(FLASH_BATCH_TRANSFER); output.flush() }
+                                    receiveFiles(current, op, input, output, batch)
+                                }
                             }
                             else -> throw FlashFailure("incompatible")
                         }
@@ -244,12 +257,12 @@ class FlashEngine(
     }
     private fun finishOperation(current: Session, op: Operation) {
         releaseSocket(current, op.socket)
-        synchronized(lock) { current.operations.remove(op.info.id); op.approval = null; op.localDecision.complete(false) }
+        synchronized(lock) { current.operations.remove(op.batchId); op.approval = null; op.localDecision.complete(false) }
         notifyState()
     }
-    private fun handshake(current: Session, op: Operation, input: DataInputStream, output: DataOutputStream): FlashChannel {
+    private fun handshake(current: Session, op: Operation, input: DataInputStream, output: DataOutputStream, batch: Boolean = false): FlashChannel {
         val key = synchronized(lock) { checkActive(current, op); current.key.copyOf() }
-        return try { flashHandshake(input, output, op.info.outgoing, key) } finally { key.fill(0) }
+        return try { flashHandshake(input, output, op.info.outgoing, key, batch) } finally { key.fill(0) }
     }
     private fun hello(current: Session, channel: FlashChannel, op: Operation): FlashPeer {
         channel.write { it.writeInt(FLASH_HELLO); writeFlashPeer(it, ownPeer(current)) }
@@ -260,11 +273,11 @@ class FlashEngine(
         require(remote.id != current.id) { "self_peer" }
         return remote
     }
-    private fun confirmBoth(current: Session, op: Operation, channel: FlashChannel, peer: FlashPeer) {
+    private fun confirmBoth(current: Session, op: Operation, channel: FlashChannel, peer: FlashPeer, manifest: List<OfferedFile>) {
         val deadline = minOf(current.expires, System.currentTimeMillis() + config.approvalTimeoutMs)
         val deadlineNanos = minOf(current.deadlineNanos, System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(config.approvalTimeoutMs))
-        val approval = FlashApproval(UUID.randomUUID().toString(), op.info.id, peer, op.info.fileName, op.info.totalBytes,
-            op.info.outgoing, channel.verificationCode, deadline)
+        val approval = FlashApproval(UUID.randomUUID().toString(), op.info.id, peer, op.info.fileName, manifestTotal(manifest),
+            op.info.outgoing, channel.verificationCode, deadline, manifest.map { FlashOfferedFile(it.name, it.bytes) })
         op.socket.soTimeout = (config.approvalTimeoutMs + 1000).toInt()
         // One reader is reserved for the remote decision so rejection/cancel clears a pending local prompt promptly.
         val readerFinished = CountDownLatch(1)
@@ -301,20 +314,80 @@ class FlashEngine(
             notifyState()
         }
     }
-    private fun sendFile(current: Session, op: Operation, file: File, target: FlashPeer) {
-        val hash = sha256File(file) { checkActive(current, op) }
-        require(file.length() == op.info.totalBytes) { "invalid_file" }
+    private data class OfferedFile(val name: String, val bytes: Long, val hash: String)
+
+    private fun manifestTotal(manifest: List<OfferedFile>): Long = manifest.fold(0L) { total, file ->
+        require(file.bytes >= 0 && file.bytes <= Long.MAX_VALUE - total) { "invalid_batch" }
+        total + file.bytes
+    }
+
+    private fun writeOffer(output: DataOutputStream, offered: OfferedFile) {
+        output.writeUTF(offered.name); output.writeLong(offered.bytes); output.writeUTF(offered.hash)
+    }
+
+    private fun readOffer(input: DataInputStream): OfferedFile {
+        val name = sanitizeFileName(input.readUTF())
+        val size = input.readLong(); require(size in 0..config.maxFileBytes) { "invalid_file" }
+        return OfferedFile(name, size, requireValidFileHash(input.readUTF()))
+    }
+
+    private fun selectFile(current: Session, op: Operation, remote: FlashPeer, manifest: List<OfferedFile>, index: Int) {
+        val file = manifest[index]
+        synchronized(lock) {
+            checkActive(current, op)
+            val id = if (index == 0) op.batchId else UUID.randomUUID().toString()
+            op.fileIds.add(id)
+            op.info = FlashOperation(id, remote, file.name, file.bytes, op.info.outgoing, op.batchId, index, manifest.size)
+            op.lastProgressNanos = 0
+        }
+        // File identity changes, but admission/cancellation and authorization remain bound to one batch/socket.
+        notifyState()
+    }
+
+    private fun sendFiles(current: Session, op: Operation, files: List<File>, target: FlashPeer) {
+        val manifest = files.map { file ->
+            checkActive(current, op)
+            val size = file.length()
+            require(file.isFile && size in 0..config.maxFileBytes) { "invalid_file" }
+            val hash = sha256File(file) { checkActive(current, op) }
+            require(file.length() == size) { "invalid_file" }
+            OfferedFile(sanitizeFileName(file.name), size, hash)
+        }
+        manifestTotal(manifest)
+        val batch = files.size > 1
+        val offerBytes = ByteArrayOutputStream().also { bytes ->
+            DataOutputStream(bytes).use { offer ->
+                offer.writeInt(if (batch) FLASH_BATCH_OFFER else FLASH_OFFER)
+                if (batch) offer.writeInt(manifest.size)
+                manifest.forEach { writeOffer(offer, it) }
+            }
+        }.toByteArray()
+        require(offerBytes.size <= FLASH_FRAME_BYTES) { "invalid_batch" }
         op.socket.connect(InetSocketAddress(requireFlashAddress(target.address), target.port), config.handshakeTimeoutMs)
         op.socket.soTimeout = config.handshakeTimeoutMs
         val input = DataInputStream(op.socket.getInputStream().buffered())
         val output = DataOutputStream(op.socket.getOutputStream().buffered())
-        output.flashHeader(FLASH_TRANSFER); output.flush()
-        handshake(current, op, input, output).use { channel ->
+        output.flashHeader(if (batch) FLASH_BATCH_TRANSFER else FLASH_TRANSFER); output.flush()
+        if (batch) {
+            // Legacy receivers close unknown packet kinds. Never fall back to approving files separately.
+            val supported = try { input.readInt() == FLASH_BATCH_TRANSFER } catch (_: IOException) { false }
+            if (!supported) throw FlashFailure("batch_incompatible")
+        }
+        handshake(current, op, input, output, batch).use { channel ->
             val remote = hello(current, channel, op).copy(address = target.address, port = target.port)
             require(remote.id == target.id) { "peer_changed" }
-            synchronized(lock) { op.info = op.info.copy(peer = remote) }
-            channel.write { it.writeInt(FLASH_OFFER); it.writeUTF(op.info.fileName); it.writeLong(op.info.totalBytes); it.writeUTF(hash) }
-            confirmBoth(current, op, channel, remote)
+            selectFile(current, op, remote, manifest, 0)
+            channel.write { it.write(offerBytes) }
+            confirmBoth(current, op, channel, remote, manifest)
+            files.forEachIndexed { index, file ->
+                if (index > 0) selectFile(current, op, remote, manifest, index)
+                sendPayload(current, op, file, channel, remote)
+            }
+        }
+    }
+
+    private fun sendPayload(current: Session, op: Operation, file: File, channel: FlashChannel, remote: FlashPeer) {
+            require(file.isFile && file.length() == op.info.totalBytes) { "invalid_file" }
             var sent = 0L
             val bytes = ByteArray(FLASH_CHUNK_BYTES)
             file.inputStream().use { source ->
@@ -334,18 +407,28 @@ class FlashEngine(
             val ack = channel.read()
             require(ack.readInt() == FLASH_ACK && ack.readBoolean()) { "unconfirmed" }; ack.requireEnd()
             event { listener.onCompleted(FlashCompleted(op.info.id, remote, op.info.fileName, true)) }
-        }
     }
-    private fun receiveFile(current: Session, op: Operation, input: DataInputStream, output: DataOutputStream) {
-        handshake(current, op, input, output).use { channel ->
+    private fun receiveFiles(current: Session, op: Operation, input: DataInputStream, output: DataOutputStream, batch: Boolean) {
+        handshake(current, op, input, output, batch).use { channel ->
             val remote = hello(current, channel, op)
             val offer = channel.read()
-            require(offer.readInt() == FLASH_OFFER) { "invalid_frame" }
-            val name = sanitizeFileName(offer.readUTF())
-            val total = offer.readLong(); require(total in 0..config.maxFileBytes) { "invalid_file" }
-            val expectedHash = requireValidFileHash(offer.readUTF()); offer.requireEnd()
-            synchronized(lock) { op.info = op.info.copy(peer = remote, fileName = name, totalBytes = total) }
-            confirmBoth(current, op, channel, remote)
+            require(offer.readInt() == if (batch) FLASH_BATCH_OFFER else FLASH_OFFER) { "invalid_frame" }
+            val count = if (batch) offer.readInt().also { require(it in 2..FLASH_MAX_BATCH_FILES) { "invalid_batch" } } else 1
+            val manifest = List(count) { readOffer(offer) }
+            offer.requireEnd(); manifestTotal(manifest)
+            selectFile(current, op, remote, manifest, 0)
+            confirmBoth(current, op, channel, remote, manifest)
+            manifest.forEachIndexed { index, file ->
+                if (index > 0) selectFile(current, op, remote, manifest, index)
+                receivePayload(current, op, channel, remote, file)
+            }
+        }
+    }
+
+    private fun receivePayload(current: Session, op: Operation, channel: FlashChannel, remote: FlashPeer, offered: OfferedFile) {
+            val name = offered.name
+            val total = offered.bytes
+            val expectedHash = offered.hash
             checkActive(current, op)
             val directory = receiveDirectory.canonicalFile
             check(directory.mkdirs() || directory.isDirectory) { "storage_unavailable" }
@@ -387,7 +470,6 @@ class FlashEngine(
                 channel.write { it.writeInt(FLASH_ACK); it.writeBoolean(true) }
                 event { listener.onCompleted(FlashCompleted(op.info.id, remote, published.name, false)) }
             } finally { partial.delete() }
-        }
     }
     private fun progress(op: Operation, transferred: Long) {
         val now = System.nanoTime()
@@ -396,21 +478,26 @@ class FlashEngine(
             event { listener.onProgress(FlashProgress(op.info.id, transferred, op.info.totalBytes, op.info.outgoing)) }
         }
     }
-    private fun reportError(operationId: String?, error: Exception) {
-        val code = when (error) {
+    private fun reportError(operationId: String?, error: Exception, discovery: Boolean = false) {
+        val failureCode = when (error) {
             is FlashFailure -> error.code
             is InterruptedException, is CancellationException -> "cancelled"
             is TimeoutException, is SocketTimeoutException -> "timeout"
             is javax.crypto.BadPaddingException -> "integrity_failed"
-            else -> error.message?.takeIf { it in setOf("invalid_file", "invalid_address", "incompatible", "peer_changed", "storage_unavailable", "invalid_frame", "unconfirmed") } ?: "connection_failed"
+            else -> error.message?.takeIf { it in setOf("invalid_file", "invalid_batch", "invalid_address", "incompatible", "peer_changed", "storage_unavailable", "invalid_frame", "unconfirmed") } ?: "connection_failed"
         }
+        // A probe exchanges no file data, even when files are selected or another transfer is active.
+        val code = if (discovery && failureCode !in setOf("busy", "incompatible", "invalid_address")) "discovery_failed" else failureCode
         val message = when (code) {
+            "discovery_failed" -> "No se pudo buscar esa dirección. Comprueba la IP, la red y que Flash esté activo en el otro equipo."
             "cancelled" -> "Transferencia cancelada."
             "rejected" -> "La transferencia no fue aprobada en ambos equipos."
             "expired" -> "Flash terminó. Actívalo de nuevo para compartir."
             "approval_expired" -> "La confirmación caducó. Vuelve a enviar y compara el código en ambos equipos."
             "busy" -> "Flash está ocupado. Termina o cancela la operación actual."
             "invalid_file" -> "El archivo no está disponible o supera el tamaño permitido."
+            "invalid_batch" -> "El lote supera el límite de 128 archivos o el tamaño permitido para sus nombres y datos. Reduce la selección."
+            "batch_incompatible" -> "El otro equipo no admite una confirmación por lote. Actualiza Qetara en ambos equipos."
             "invalid_address" -> "Usa una dirección IPv4 de tu red local."
             "peer_changed" -> "La activación del otro equipo cambió. Vuelve a buscarlo."
             "integrity_failed", "invalid_frame" -> "El archivo no superó la verificación y no se guardó."

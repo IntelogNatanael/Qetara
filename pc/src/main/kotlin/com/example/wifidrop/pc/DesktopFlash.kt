@@ -18,6 +18,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
@@ -64,7 +66,7 @@ internal fun DesktopFlashPanel(
         state.starting -> "Preparando la recepción temporal…"
         !state.session.active -> ""
         transfer != null -> transfer.detail
-        state.sendPending -> "Preparando el siguiente archivo…"
+        state.sendPending -> "Preparando los archivos del lote…"
         state.selectedFiles.isEmpty() -> "Elige archivos para enviar o espera una solicitud."
         selected == null -> "Elige un equipo que tenga Flash activo."
         else -> "Ambos equipos deberán comparar el código antes de transferir."
@@ -78,7 +80,7 @@ internal fun DesktopFlashPanel(
                 else "Activa Flash en ambos equipos, conectados a la misma red local.",
                 style = MaterialTheme.typography.body2, color = qetaraMuted
             )
-            Text("Cada archivo requiere comparar un código y aprobar en ambos equipos.", style = MaterialTheme.typography.body2, color = qetaraMuted)
+            Text("Compara el código y aprueba una vez en cada equipo para todo el lote.", style = MaterialTheme.typography.body2, color = qetaraMuted)
             Divider(color = qetaraLine)
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -97,19 +99,7 @@ internal fun DesktopFlashPanel(
                 if (state.selectedFiles.isNotEmpty()) FlashLabel(state.selectedFiles.size.toString())
             }
             DesktopFileDropZone(state.selectedFile?.absolutePath.orEmpty(), false, onChooseFile, enabled = !state.busy)
-            state.selectedFiles.take(3).forEach { file ->
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(file.name, Modifier.weight(1f), style = MaterialTheme.typography.body2, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(formatBytes(file.length()), style = MaterialTheme.typography.caption, color = qetaraMuted)
-                }
-            }
-            if (state.selectedFiles.size > 3) Text("Y ${state.selectedFiles.size - 3} archivo(s) más", style = MaterialTheme.typography.caption, color = qetaraMuted)
-            if (state.selectedFiles.isNotEmpty()) {
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("${state.selectedFiles.size} archivo(s) preparados", style = MaterialTheme.typography.caption, color = qetaraMuted)
-                    TextButton(controller::clearFiles, enabled = !state.busy) { Text("Quitar todos") }
-                }
-            }
+            DesktopSelectedFiles(state.selectedFiles, enabled = !state.busy, onClear = controller::clearFiles)
         }
     }
     val receiverContent: @Composable () -> Unit = {
@@ -310,61 +300,88 @@ internal fun DesktopFlashApprovalHost(controller: DesktopFlashController) {
 }
 
 @Composable
-private fun DesktopFlashApprovalDialog(approval: FlashApproval, count: Int, now: Long, decide: (Boolean) -> Unit) {
+internal fun DesktopFlashApprovalDialog(approval: FlashApproval, count: Int, now: Long, decide: (Boolean) -> Unit) {
     var compared by remember(approval) { mutableStateOf(false) }
-    val scroll = rememberScrollState()
+    val scroll = key(approval.requestId) { rememberScrollState() }
+    val filesScroll = key(approval.requestId) { rememberScrollState() }
+    val fileCount = approval.files.size
+    val isBatch = fileCount > 1
     val remaining = ((approval.expiresAtMs - now).coerceAtLeast(0) + 999) / 1000
     AlertDialog(
         onDismissRequest = { decide(false) },
         modifier = Modifier.widthIn(max = 620.dp),
         shape = RoundedCornerShape(16.dp), backgroundColor = qetaraCanvasElevated, contentColor = qetaraInk,
-        title = { Text(if (approval.outgoing) "Verifica antes de enviar" else "Solicitud de archivo por Flash", fontWeight = FontWeight.SemiBold) },
+        title = { Text(if (approval.outgoing) "Verifica antes de enviar" else if (isBatch) "Verifica antes de recibir" else "Solicitud de archivo por Flash", fontWeight = FontWeight.SemiBold) },
         text = {
-            Box(Modifier.fillMaxWidth().heightIn(max = 340.dp)) {
+            Box(Modifier.fillMaxWidth().heightIn(max = 420.dp)) {
                 Column(Modifier.verticalScroll(scroll).padding(end = 14.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text((if (approval.outgoing) "Enviar a " else "Recibir de ") + approval.peer.label, fontWeight = FontWeight.SemiBold)
                         Text("${approval.peer.address}:${approval.peer.port}", style = MaterialTheme.typography.caption, color = qetaraMuted)
                     }
                     Surface(color = qetaraCanvas, shape = RoundedCornerShape(8.dp), border = BorderStroke(1.dp, qetaraLine)) {
-                        Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text(approval.fileName, fontWeight = FontWeight.SemiBold)
-                            Text(formatBytes(approval.totalBytes), style = MaterialTheme.typography.body2, color = qetaraMuted)
+                        Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Text("$fileCount ${if (isBatch) "archivos" else "archivo"} · ${formatBytes(approval.totalBytes)} en total",
+                                fontWeight = FontWeight.SemiBold, modifier = Modifier.semantics { heading() })
+                            Box(Modifier.fillMaxWidth().heightIn(max = 144.dp)) {
+                                SelectionContainer {
+                                    Column(Modifier.fillMaxWidth().verticalScroll(filesScroll).padding(end = 14.dp),
+                                        verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        approval.files.forEach { file ->
+                                            Text("${file.fileName} · ${formatBytes(file.totalBytes)}", style = MaterialTheme.typography.body2)
+                                        }
+                                    }
+                                }
+                                if (filesScroll.maxValue > 0) VerticalScrollbar(rememberScrollbarAdapter(filesScroll), Modifier.align(Alignment.CenterEnd).fillMaxHeight())
+                            }
                         }
                     }
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         Text("Compara este código con la otra persona. Debe coincidir completo en ambos equipos.", style = MaterialTheme.typography.body2)
                         Surface(color = qetaraMist, shape = RoundedCornerShape(8.dp), border = BorderStroke(1.dp, qetaraLine)) {
                             Text(
-                                approval.verificationCode, Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 16.dp),
+                                approval.verificationCode, Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 16.dp)
+                                    .semantics { contentDescription = "Verificación: " + approval.verificationCode.toCharArray().joinToString(" ") },
                                 fontFamily = FontFamily.Monospace, fontSize = 28.sp, lineHeight = 36.sp,
                                 fontWeight = FontWeight.Bold, color = qetaraTeal, textAlign = TextAlign.Center
                             )
                         }
                     }
-                    Surface(color = if (compared) qetaraMist else qetaraCanvasElevated, shape = RoundedCornerShape(8.dp), border = BorderStroke(1.dp, if (compared) qetaraTeal else qetaraLine)) {
-                        Row(
-                            Modifier.fillMaxWidth().toggleable(compared, role = Role.Checkbox, onValueChange = { compared = it }).padding(12.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Checkbox(compared, onCheckedChange = null)
-                            Text("Comparé el código completo y coincide.", Modifier.weight(1f), style = MaterialTheme.typography.body2)
-                        }
+                    if (isBatch) {
+                        Text("Se aprueban los $fileCount archivos de este lote. Los próximos envíos requieren otra confirmación.", style = MaterialTheme.typography.body2)
+                        Text("Si no reconoces algún archivo o la verificación no coincide, rechaza la solicitud.", style = MaterialTheme.typography.caption, color = qetaraMuted)
                     }
-                    Text("Solo se aprueba este archivo. Caduca en $remaining s." + if (count > 1) " Hay $count solicitudes pendientes." else "", style = MaterialTheme.typography.caption, color = qetaraMuted)
+                    Text((if (isBatch) "Solicitud válida durante $remaining s." else "Solo se aprueba este archivo. Caduca en $remaining s.") + if (count > 1) " Hay $count solicitudes pendientes." else "", style = MaterialTheme.typography.caption, color = qetaraMuted)
                 }
                 if (scroll.maxValue > 0) VerticalScrollbar(rememberScrollbarAdapter(scroll), Modifier.align(Alignment.CenterEnd).fillMaxHeight())
             }
         },
-        confirmButton = {
-            Button(
-                { decide(true) }, enabled = compared && remaining > 0,
-                shape = RoundedCornerShape(8.dp), modifier = Modifier.heightIn(min = 44.dp),
-                colors = ButtonDefaults.buttonColors(backgroundColor = qetaraTeal, contentColor = Color.White), elevation = ButtonDefaults.elevation(0.dp)
-            ) {
-                Text(if (approval.outgoing) "Coincide · enviar archivo" else "Coincide · aceptar archivo")
+        buttons = {
+            Column(Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, bottom = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Surface(color = if (compared) qetaraMist else qetaraCanvasElevated, shape = RoundedCornerShape(8.dp), border = BorderStroke(1.dp, if (compared) qetaraTeal else qetaraLine)) {
+                    Row(
+                        Modifier.fillMaxWidth().toggleable(compared, role = Role.Checkbox, onValueChange = { compared = it }).padding(12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Checkbox(compared, onCheckedChange = null)
+                        Text("Comparé el código completo y coincide.", Modifier.weight(1f), style = MaterialTheme.typography.body2)
+                    }
+                }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+                    verticalAlignment = Alignment.CenterVertically) {
+                    TextButton({ decide(false) }) { Text("Rechazar") }
+                    Button(
+                        { decide(true) }, enabled = compared && remaining > 0,
+                        shape = RoundedCornerShape(8.dp), modifier = Modifier.heightIn(min = 44.dp),
+                        colors = ButtonDefaults.buttonColors(backgroundColor = qetaraTeal, contentColor = Color.White), elevation = ButtonDefaults.elevation(0.dp)
+                    ) {
+                        Text(if (isBatch) {
+                            if (approval.outgoing) "Coincide: enviar $fileCount archivos" else "Coincide: recibir $fileCount archivos"
+                        } else if (approval.outgoing) "Coincide · enviar archivo" else "Coincide · aceptar archivo")
+                    }
+                }
             }
-        },
-        dismissButton = { TextButton({ decide(false) }) { Text("Rechazar") } }
+        }
     )
 }

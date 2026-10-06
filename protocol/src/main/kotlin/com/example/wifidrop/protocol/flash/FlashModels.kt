@@ -3,13 +3,19 @@ package com.example.wifidrop.protocol.flash
 import java.io.File
 
 const val FLASH_PORT = 8989
+const val FLASH_MAX_BATCH_FILES = 128
 
 /** IDs and labels discovered over UDP are unverified until BOTH users compare the Noise code. */
 data class FlashPeer(val id: String, val label: String, val address: String, val port: Int, val expiresAtMs: Long)
-data class FlashOperation(val id: String, val peer: FlashPeer?, val fileName: String, val totalBytes: Long, val outgoing: Boolean)
+data class FlashOperation(
+    val id: String, val peer: FlashPeer?, val fileName: String, val totalBytes: Long, val outgoing: Boolean,
+    val batchId: String = id, val fileIndex: Int = 0, val fileCount: Int = 1
+)
+data class FlashOfferedFile(val fileName: String, val totalBytes: Long)
 data class FlashApproval(
     val requestId: String, val operationId: String, val peer: FlashPeer, val fileName: String,
-    val totalBytes: Long, val outgoing: Boolean, val verificationCode: String, val expiresAtMs: Long
+    val totalBytes: Long, val outgoing: Boolean, val verificationCode: String, val expiresAtMs: Long,
+    val files: List<FlashOfferedFile> = listOf(FlashOfferedFile(fileName, totalBytes))
 )
 data class FlashState(
     val active: Boolean = false, val expiresAtMs: Long = 0, val localId: String = "", val port: Int = FLASH_PORT,

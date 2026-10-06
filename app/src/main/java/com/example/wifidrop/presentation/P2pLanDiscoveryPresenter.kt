@@ -4,6 +4,7 @@ import android.content.Context
 import com.example.wifidrop.FileTransfer
 import com.example.wifidrop.NetworkUtils
 import com.example.wifidrop.TransferSecurity
+import com.example.wifidrop.WifiHotspotMonitor
 import com.example.wifidrop.WifiLanSnapshot
 import com.example.wifidrop.backend.P2pBackend
 import kotlinx.coroutines.CancellationException
@@ -21,7 +22,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import java.net.Inet4Address
@@ -41,12 +44,16 @@ class P2pLanDiscoveryPresenter(
     private val localDeviceId: String
 ) {
     private val appContext = context.applicationContext
-    private val initialSnapshot = NetworkUtils.currentWifiLanSnapshot(appContext)
+    private val hotspotMonitor = WifiHotspotMonitor.create(appContext)
+    private val initialSnapshot = readSnapshot()
     private val _state = MutableStateFlow(initialSnapshot.toDiscoveryState())
     val state: StateFlow<P2pLanDiscoveryState> = _state.asStateFlow()
 
     private var scanJob: Job? = null
     private var lastLanScannedPrefix: String? = null
+    // Effect restarts can overlap while the previous coroutine finishes cancellation.
+    // Unregister its callback before starting the replacement, without locking manual scans.
+    private val refreshLoopMutex = Mutex()
 
     suspend fun runAutoRefreshLoop(
         autoScanEnabled: Boolean,
@@ -55,33 +62,38 @@ class P2pLanDiscoveryPresenter(
         sessionExpired: Boolean,
         deviceLabelProvider: () -> String,
         onSuggestedTarget: (String) -> Unit
-    ) {
-        while (currentCoroutineContext().isActive) {
-            val snapshot = refreshSnapshot()
-            val prefix = snapshot.ipv4?.substringBeforeLast(".", "")
+    ) = refreshLoopMutex.withLock {
+        hotspotMonitor.start()
+        try {
+            while (currentCoroutineContext().isActive) {
+                val snapshot = refreshSnapshot()
+                val prefix = snapshot.ipv4?.substringBeforeLast(".", "")
 
-            if (!snapshot.connected) {
-                lastLanScannedPrefix = null
+                if (!snapshot.connected) {
+                    lastLanScannedPrefix = null
+                }
+
+                val shouldAutoScan = snapshot.connected &&
+                    autoScanEnabled &&
+                    !prefix.isNullOrBlank() &&
+                    prefix != lastLanScannedPrefix &&
+                    FileTransfer.isValidToken(sessionToken) &&
+                    TransferSecurity.isValidPin(sessionPin) &&
+                    !sessionExpired
+
+                if (shouldAutoScan) {
+                    lastLanScannedPrefix = prefix
+                    startScanInternal(
+                        manual = false,
+                        deviceLabel = deviceLabelProvider(),
+                        onSuggestedTarget = onSuggestedTarget
+                    )
+                }
+
+                delay(2_500)
             }
-
-            val shouldAutoScan = snapshot.connected &&
-                autoScanEnabled &&
-                !prefix.isNullOrBlank() &&
-                prefix != lastLanScannedPrefix &&
-                FileTransfer.isValidToken(sessionToken) &&
-                TransferSecurity.isValidPin(sessionPin) &&
-                !sessionExpired
-
-            if (shouldAutoScan) {
-                lastLanScannedPrefix = prefix
-                startScanInternal(
-                    manual = false,
-                    deviceLabel = deviceLabelProvider(),
-                    onSuggestedTarget = onSuggestedTarget
-                )
-            }
-
-            delay(2_500)
+        } finally {
+            hotspotMonitor.stop()
         }
     }
 
@@ -213,7 +225,7 @@ class P2pLanDiscoveryPresenter(
     }
 
     private suspend fun refreshSnapshot(): WifiLanSnapshot {
-        val snapshot = NetworkUtils.currentWifiLanSnapshot(appContext)
+        val snapshot = withContext(Dispatchers.IO) { readSnapshot() }
         val localAddresses = withContext(Dispatchers.IO) {
             runCatching {
                 NetworkInterface.getNetworkInterfaces()?.toList().orEmpty()
@@ -232,6 +244,12 @@ class P2pLanDiscoveryPresenter(
         }
         return snapshot
     }
+
+    private fun readSnapshot(): WifiLanSnapshot = NetworkUtils.currentWifiLanSnapshot(
+        context = appContext,
+        wifiHotspotInterfaceNames = hotspotMonitor.interfaceNames,
+        excludedInterfaceNames = setOfNotNull(backend.transferState.value.directGroup?.interfaceName)
+    )
 }
 
 private fun WifiLanSnapshot.toDiscoveryState(): P2pLanDiscoveryState {

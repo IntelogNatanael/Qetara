@@ -153,6 +153,45 @@ class DesktopReceiverTest {
     }
 
     @Test
+    fun fourUnauthenticatedClientsRejectTheFifthAndReleaseCapacityAfterClosing() = withReceiver { receiver ->
+        val idleClients = mutableListOf<Socket>()
+        try {
+            repeat(4) { index ->
+                val socket = Socket("127.0.0.1", receiver.port).apply { soTimeout = 3000 }
+                idleClients.add(socket)
+                val output = DataOutputStream(socket.getOutputStream())
+                output.writeInt(PROTOCOL_MAGIC)
+                output.writeInt(PROTOCOL_VERSION)
+                output.writeInt(PACKET_HELLO)
+                output.writeUTF("idle-client-$index")
+                output.writeUTF("Idle client")
+                output.writeUTF("admission-test-$index")
+                output.flush()
+                val input = DataInputStream(socket.getInputStream())
+                assertEquals(PROTOCOL_MAGIC, input.readInt())
+                assertEquals(PROTOCOL_VERSION, input.readInt())
+                assertEquals(PACKET_CHALLENGE, input.readInt())
+                input.readUTF()
+                input.readLong()
+                // Leave the response pending: each admitted worker is now blocked in a real read.
+            }
+            Socket("127.0.0.1", receiver.port).use { fifth ->
+                fifth.soTimeout = 1500
+                val result = runCatching { fifth.getInputStream().read() }
+                assertTrue(
+                    result.getOrNull() == -1 || result.exceptionOrNull() is java.net.SocketException,
+                    "The fifth client must close immediately, without waiting in the worker queue: $result"
+                )
+            }
+            idleClients.forEach { it.close() }
+            sendMessageToPeer("Capacity recovered", DesktopChatScope.DIRECT, receiver.sender.copy(retries = 3))
+            assertEquals("Capacity recovered", receiver.messages.single().message)
+        } finally {
+            idleClients.forEach { it.close() }
+        }
+    }
+
+    @Test
     fun directMessagePreservesParagraphsAndLength() = withReceiver { receiver ->
         val message = ("Párrafo uno.\n\nPárrafo dos con espacios. ".repeat(60)).take(2000).trim()
         sendMessageToPeer(message, DesktopChatScope.DIRECT, receiver.sender)

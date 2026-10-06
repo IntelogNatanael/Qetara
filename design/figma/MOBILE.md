@@ -1,5 +1,9 @@
 # Qetara · Referencia móvil
 
+Desde el 5 de octubre de 2026, usar [Qetara · Diseño y experiencia](https://www.figma.com/design/KRV4r4m1p1fSOFZOHOMV0B)
+en la cuenta `cchoquenairat@unsa.edu.pe`, equipo `dev-UNSA`. La [revisión actual](unsa-2026-10-05/README.md)
+cubre el logo marfil y la confirmación por lote Flash; los temas completos y su evidencia anterior siguen descritos abajo.
+
 Referencia actualizada el 12 de septiembre de 2026. Qetara permite elegir
 **Marfil, Gris azulado u Oscuro**, o **Seguir sistema**. El aleph y el nombre
 siguen sin fondo propio en la cabecera, con tinta adaptada al tema. El alcance
@@ -19,7 +23,7 @@ navegación con texto grande) se documentan por separado en la
 
 ## Referencia y alcance
 
-Figma MCP volvió a responder con el límite de consultas del plan Starter.
+En la revisión histórica del 12 de septiembre, Figma MCP volvió a responder con el límite de consultas del plan Starter.
 El [archivo de referencia](https://www.figma.com/design/FZhnKBdDPJWpPrbxn3AGQQ)
 no contiene marcos: no se declara una revisión ni sincronización con Figma.
 La referencia de esta iteración se conserva localmente en
@@ -91,9 +95,10 @@ sincronizar y enviar comparten el acento de actividad; una cancelación es neutr
 
 El recurso `ic_launcher_foreground` permanece idéntico a HEAD: conserva su
 path, tinta original `#102A43`, viewport 108 × 108, escala uniforme `0.65625`
-y proporción. El launcher mantiene fijo el fondo gris azulado `#E7EFF2`;
-elegir Marfil u Oscuro no cambia el icono instalado. Los diez WEBP de
-compatibilidad corresponden a ese fondo. El splash nativo sigue el modo
+y proporción. El launcher recupera el fondo marfil clásico `#FFF7ED`;
+la apariencia elegida no cambia el icono instalado. Los diez WEBP de
+compatibilidad y el fondo vectorial se recuperaron byte a byte de `d7be5c5^`,
+antes del cambio a gris azulado. El splash nativo sigue el modo
 claro u oscuro de Android, no la preferencia manual de Qetara: antes de
 cargar Compose puede diferir del tema elegido dentro de la aplicación.
 Conserva su geometría propia y adapta la tinta al modo oscuro del sistema.

@@ -41,3 +41,9 @@ Para 0 bytes, el helper se invoca después de DONE y SHA-256 correctos: la reser
 ## Runtime y procedencia
 
 La distribución de escritorio usa Eclipse Temurin 21.0.12.1+1 aislado de la instalación Java del usuario. Se verificó el ZIP oficial por SHA-256 y se compararon las 70 DLL y 50 avisos legales del runtime generado con ese ZIP. Los fuentes oficiales completos, scripts de construcción del commit correspondiente, licencias y evidencia se entregan en el paquete hermano `Qetara-third-party-source`. La comparación no afirma que la imagen de módulos transformada por jlink sea idéntica a la imagen completa del JDK, ni que se haya reproducido el binario desde cero. Las firmas OpenPGP se conservaron y no se verificaron en esta sesión.
+
+## Revisión adicional del receptor de PC: 23 de septiembre de 2026
+
+Una reproducción con sockets loopback confirmó que el límite de cuatro trabajadores no limitaba la admisión: tras cuatro conexiones detenidas en el reto de autenticación, una quinta permanecía en la cola. Su timeout de lectura todavía no había comenzado. El receptor ahora reserva uno de cuatro cupos antes de encolar cada socket y lo libera al terminar o al rechazar el trabajo. `DesktopReceiverTest.fourUnauthenticatedClientsRejectTheFifthAndReleaseCapacityAfterClosing` comprueba el rechazo del quinto cliente y un mensaje real después de liberar los cupos. Los resultados de ejecución se registran en la validación de la entrega.
+
+La revisión también conectó el cierre y vencimiento del receptor a la comprobación SHA-256 de parciales y recibos completados. El cálculo comprueba la vigencia entre bloques, conserva el archivo ante cancelación y no espera a terminar de leer un archivo grande para advertir el cierre. Esto no modifica el formato del protocolo ni la política de aprobación de Android o Flash.

@@ -1,9 +1,11 @@
 package com.example.wifidrop
 import android.content.Intent
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material.icons.rounded.ArrowDownward
 import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.Search
@@ -14,6 +16,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.Role
@@ -87,6 +90,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -114,6 +120,8 @@ internal fun P2pMessagesTab(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val focusManager = LocalFocusManager.current
+    val searchFocusRequester = remember { FocusRequester() }
     val listState = rememberLazyListState()
     val chatCoroutineScope = rememberCoroutineScope()
     var searchVisible by rememberSaveable(activeChannel) { mutableStateOf(false) }
@@ -125,6 +133,12 @@ internal fun P2pMessagesTab(
     var composerMoreExpanded by rememberSaveable { mutableStateOf(false) }
     var confirmClearChat by rememberSaveable { mutableStateOf(false) }
     var pendingDeleteMessageId by rememberSaveable { mutableStateOf<String?>(null) }
+    val closeSearch = {
+        focusManager.clearFocus()
+        messageQuery = ""
+        searchVisible = false
+    }
+    BackHandler(enabled = searchVisible, onBack = closeSearch)
     val emptyScrollState = rememberScrollState()
     val queuePendingCount = state.sendQueue.count {
         it.status == SendQueueStatus.QUEUED ||
@@ -274,8 +288,6 @@ internal fun P2pMessagesTab(
             "Cuando haya otro equipo en el canal podrás enviarle archivos."
         isGlobalChat && state.selectedFilesCount > 0 ->
             "Se publicará una descarga para ${if (state.globalChatPeerCount == 1) "1 equipo" else "${state.globalChatPeerCount} equipos"} del canal."
-        !isGlobalChat && directChatMode == ConnectionMode.WIFI_DIRECT && state.chatDirectTargetIps.isEmpty() -> "Elige a quién enviar."
-        !isGlobalChat && !directChannelReady -> if (directChatMode == ConnectionMode.LAN) "Elige un equipo." else "Deja un equipo listo."
         else -> null
     }
     val chatStarterTitle = when {
@@ -386,6 +398,9 @@ internal fun P2pMessagesTab(
     }
     LaunchedEffect(atLatestMessage) { if (atLatestMessage) newMessagesCount = 0 }
     LaunchedEffect(messageQuery, activeChannel) { listState.scrollToItem(0) }
+    LaunchedEffect(searchVisible) {
+        if (searchVisible) searchFocusRequester.requestFocus()
+    }
 
     ElevatedCard(
         modifier = modifier
@@ -412,7 +427,34 @@ internal fun P2pMessagesTab(
             modifier = Modifier.fillMaxSize().padding(if (keyboardVisible) 8.dp else 16.dp),
             verticalArrangement = Arrangement.spacedBy(if (keyboardVisible) 8.dp else 16.dp)
         ) {
-            if (!keyboardVisible) {
+            // Keep this field in the same composition slot when the keyboard opens.
+            // The regular header is collapsed for both message writing and search.
+            if (searchVisible) {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    OutlinedTextField(
+                        value = messageQuery,
+                        onValueChange = { messageQuery = it.take(160) },
+                        modifier = Modifier.fillMaxWidth().focusRequester(searchFocusRequester),
+                        singleLine = true,
+                        label = { Text("Buscar texto o equipo") },
+                        leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
+                        trailingIcon = {
+                            IconButton(onClick = closeSearch, modifier = Modifier.size(48.dp)) {
+                                Icon(Icons.Rounded.Close, contentDescription = "Cerrar búsqueda")
+                            }
+                        },
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                        keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() }),
+                        shape = RoundedCornerShape(16.dp)
+                    )
+                    Text(
+                        "${recentMessages.size} ${if (recentMessages.size == 1) "mensaje encontrado" else "mensajes encontrados"}",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            if (!keyboardVisible && !searchVisible) {
             Column(
                 modifier = Modifier.fillMaxWidth().heightIn(max = headerMaxHeight).verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -444,7 +486,7 @@ internal fun P2pMessagesTab(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     if (filteredMessages.isNotEmpty()) {
-                        IconButton(onClick = { searchVisible = !searchVisible; if (!searchVisible) messageQuery = "" }, modifier = Modifier.size(48.dp)) {
+                        IconButton(onClick = { composerMoreExpanded = false; searchVisible = true }, modifier = Modifier.size(48.dp)) {
                             Icon(Icons.Rounded.Search, contentDescription = "Buscar en mensajes guardados")
                         }
                     }
@@ -464,23 +506,6 @@ internal fun P2pMessagesTab(
                         }
                     }
                 }
-            }
-
-            if (searchVisible) {
-                OutlinedTextField(
-                    value = messageQuery,
-                    onValueChange = { messageQuery = it.take(160) },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    label = { Text("Buscar texto o equipo") },
-                    leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
-                    trailingIcon = {
-                        IconButton(onClick = { messageQuery = ""; searchVisible = false }, modifier = Modifier.size(48.dp)) {
-                            Icon(Icons.Rounded.Close, contentDescription = "Cerrar búsqueda")
-                        }
-                    },
-                    shape = RoundedCornerShape(16.dp)
-                )
             }
 
             if (!isGlobalChat) {
@@ -577,7 +602,7 @@ internal fun P2pMessagesTab(
                         }
                     }
 
-                    if (channelHelperText != null) {
+                    if (channelHelperText != null && !showDirectSetupCard) {
                         Text(
                             channelHelperText,
                             style = MaterialTheme.typography.bodySmall,
@@ -735,7 +760,7 @@ internal fun P2pMessagesTab(
             }
 
             }
-            } else if (!compactImeViewport) {
+            } else if (!compactImeViewport && !searchVisible) {
                 Text(
                     if (isGlobalChat) channelTitle else directTargetLabel ?: chatHeaderTitle,
                     style = MaterialTheme.typography.labelLarge,
@@ -780,7 +805,10 @@ internal fun P2pMessagesTab(
                 }
                 }
             } else if (messageQuery.isNotBlank()) {
-                Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                Box(
+                    Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()),
+                    contentAlignment = Alignment.Center
+                ) {
                     EmptyStateBlock(
                         title = "No encontramos ese mensaje",
                         body = "Prueba otra palabra o busca por el nombre del equipo.",
@@ -850,7 +878,7 @@ internal fun P2pMessagesTab(
                 }
             }
 
-            if (!showDirectSetupCard && !showChannelJoinPrompt) {
+            if (!searchVisible && !showDirectSetupCard && !showChannelJoinPrompt) {
                 ChatComposerPanel(
                     draft = state.chatDraft,
                     maxHeight = composerMaxHeight,

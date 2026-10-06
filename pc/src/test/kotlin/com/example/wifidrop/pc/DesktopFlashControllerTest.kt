@@ -73,41 +73,31 @@ class DesktopFlashControllerTest {
     }
 
     @Test
-    fun completionBeforeSendReturnsRemovesTheFileAndDoesNotUnlockTheNextSubmission() {
+    fun completionBeforeSendReturnsKeepsEveryReceiptAndUsesOneSubmission() {
         Fixture().use { fixture ->
             val first = temporary.newFile("first.txt")
             val second = temporary.newFile("second.txt")
-            val releaseFirst = CountDownLatch(1)
-            val releaseSecond = CountDownLatch(1)
-            val secondEntered = CountDownLatch(1)
+            val releaseReturn = CountDownLatch(1)
             fixture.transport.onSend = { id, file ->
-                if (file == first) {
-                    fixture.transport.announce(id, file)
-                    fixture.transport.complete(id, file)
-                    fixture.transport.empty()
-                    assertTrue(releaseFirst.await(5, TimeUnit.SECONDS))
-                } else {
-                    secondEntered.countDown()
-                    assertTrue(releaseSecond.await(5, TimeUnit.SECONDS))
-                    fixture.transport.announce(id, file)
-                }
+                fixture.transport.announce(id, file)
+                fixture.transport.complete(id, file)
+                assertTrue(releaseReturn.await(5, TimeUnit.SECONDS))
             }
             try {
                 fixture.send(first, second)
                 fixture.await { selectedFiles == listOf(second) && sendPending }
-                releaseFirst.countDown()
-                assertTrue(secondEntered.await(5, TimeUnit.SECONDS))
-                assertTrue(fixture.state().sendPending, "The late first send result must not unlock the second send")
-                releaseSecond.countDown()
                 fixture.await { transfers.any { it.id == "out-2" && it.file == second } }
                 fixture.transport.complete("out-2", second)
                 fixture.transport.empty()
                 fixture.await { !busy }
                 assertTrue(fixture.state().selectedFiles.isEmpty())
                 assertEquals(listOf(first, second), fixture.transport.sent.toList())
+                assertEquals(listOf(listOf(first, second)), fixture.transport.batches.toList())
+                releaseReturn.countDown()
+                onEdt { }
+                assertFalse(fixture.state().busy)
             } finally {
-                releaseFirst.countDown()
-                releaseSecond.countDown()
+                releaseReturn.countDown()
             }
         }
     }
@@ -120,6 +110,7 @@ class DesktopFlashControllerTest {
             fixture.send(first, second)
             fixture.await { transfers.any { it.id == "out-1" && it.file == first } }
             onEdt { fixture.controller.cancel("out-1") }
+            fixture.await { fixture.transport.cancelCalls.get() == 1 }
             fixture.transport.complete("out-1", first)
             fixture.transport.empty()
             fixture.await { !busy }
@@ -138,7 +129,6 @@ class DesktopFlashControllerTest {
             fixture.send(first, second, third)
             fixture.await { transfers.any { it.id == "out-1" && it.file == first } }
             fixture.transport.complete("out-1", first)
-            fixture.transport.empty()
             fixture.await { transfers.any { it.id == "out-2" && it.file == second } }
             fixture.transport.fail("out-2")
             fixture.transport.empty()
@@ -147,15 +137,14 @@ class DesktopFlashControllerTest {
             assertEquals(listOf(first, second), fixture.transport.sent.toList())
 
             onEdt { fixture.controller.send() }
-            fixture.await { transfers.any { it.id == "out-3" && it.file == second } }
+            fixture.await { transfers.any { it.id == "out-4" && it.file == second } }
             // A late error from the previous attempt must not tear down the retry.
             fixture.transport.fail("out-2")
             onEdt { }
             assertTrue(fixture.state().batchSending)
-            fixture.transport.complete("out-3", second)
-            fixture.transport.empty()
-            fixture.await { transfers.any { it.id == "out-4" && it.file == third } }
-            fixture.transport.complete("out-4", third)
+            fixture.transport.complete("out-4", second)
+            fixture.await { transfers.any { it.id == "out-5" && it.file == third } }
+            fixture.transport.complete("out-5", third)
             fixture.transport.empty()
             fixture.await { !busy }
             assertTrue(fixture.state().selectedFiles.isEmpty())
@@ -263,9 +252,14 @@ class DesktopFlashControllerTest {
     private class FakeTransport(val listener: FlashListener) : DesktopFlashTransport {
         val peer = FlashPeer("peer", "Test peer", "127.0.0.1", 8989, Long.MAX_VALUE)
         val sent = CopyOnWriteArrayList<File>()
+        val batches = CopyOnWriteArrayList<List<File>>()
+        private data class Batch(val files: List<File>, val ids: List<String>, var cancelled: Boolean = false)
+        private val operationBatches = java.util.concurrent.ConcurrentHashMap<String, Batch>()
+        private val sequence = AtomicInteger()
         val startCalls = AtomicInteger()
         val stopCalls = AtomicInteger()
         val discoverCalls = AtomicInteger()
+        val cancelCalls = AtomicInteger()
         var onStart: (() -> Unit)? = null
         var onSend: ((String, File) -> Unit)? = null
 
@@ -275,22 +269,42 @@ class DesktopFlashControllerTest {
             listener.onState(FlashState(active = true))
         }
         override fun stop() { stopCalls.incrementAndGet() }
-        override fun send(file: File, peer: FlashPeer): String {
+        override fun sendBatch(files: List<File>, peer: FlashPeer): String {
+            batches += files.toList()
+            val batch = Batch(files, files.map { "out-${sequence.incrementAndGet()}" })
+            batch.ids.forEach { operationBatches[it] = batch }
+            val file = files.first()
             sent += file
-            val id = "out-${sent.size}"
+            val id = batch.ids.first()
             onSend?.invoke(id, file) ?: announce(id, file)
             return id
         }
 
-        fun announce(id: String, file: File, outgoing: Boolean = true) = listener.onState(
-            FlashState(active = true, peers = listOf(peer), operations = listOf(FlashOperation(id, peer, file.name, file.length(), outgoing)))
-        )
+        fun announce(id: String, file: File, outgoing: Boolean = true) {
+            val batch = operationBatches[id]
+            listener.onState(FlashState(active = true, peers = listOf(peer), operations = listOf(
+                FlashOperation(id, peer, file.name, file.length(), outgoing,
+                    batchId = batch?.ids?.first() ?: id, fileIndex = batch?.ids?.indexOf(id) ?: 0,
+                    fileCount = batch?.files?.size ?: 1))))
+        }
 
         fun empty() = listener.onState(FlashState(active = true, peers = listOf(peer)))
-        fun complete(id: String, file: File, outgoing: Boolean = true) = listener.onCompleted(FlashCompleted(id, peer, file.name, outgoing))
+        fun complete(id: String, file: File, outgoing: Boolean = true) {
+            listener.onCompleted(FlashCompleted(id, peer, file.name, outgoing))
+            val batch = operationBatches[id] ?: return
+            val next = batch.ids.indexOf(id) + 1
+            if (outgoing && !batch.cancelled && next < batch.files.size) {
+                sent += batch.files[next]
+                announce(batch.ids[next], batch.files[next])
+            }
+        }
         fun fail(id: String?) = listener.onError(FlashError(id, "connection_failed", "Connection failed"))
         override fun approve(requestId: String, accepted: Boolean) = true
-        override fun cancel(operationId: String) = false
+        override fun cancel(operationId: String): Boolean {
+            operationBatches[operationId]?.cancelled = true
+            cancelCalls.incrementAndGet()
+            return true
+        }
         override fun discover() {
             discoverCalls.incrementAndGet()
             empty()

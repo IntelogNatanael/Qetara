@@ -41,6 +41,14 @@ class FlashAndroidPolicyTest {
         assertNull(resolveSelectedFlashPeer(peer, listOf(peer), 5_000))
     }
 
+    @Test fun discoveryFailureDoesNotImplyATransferAndUnconfirmedDeliveryKeepsItsWarning() {
+        val discovery = flashErrorCopy("discovery_failed")
+        assertTrue(discovery.contains("buscar esa dirección"))
+        assertFalse(discovery.contains("transferencia") || discovery.contains("archivo"))
+        val unconfirmed = flashErrorCopy("unconfirmed")
+        assertTrue(unconfirmed.contains("Comprueba en el otro equipo si el archivo llegó antes de volver a enviarlo"))
+    }
+
     @Test fun approvalRequiresCurrentRequestActiveSessionAndUnexpiredDeadline() {
         assertTrue(canAnswerFlashApproval(true, "request-A", listOf(request), 1_999))
         assertFalse(canAnswerFlashApproval(true, "request-A", listOf(request), 2_000))
@@ -75,5 +83,11 @@ class FlashAndroidPolicyTest {
         val cancelled = recordFlashFailure(listOf(failure), "operation-A", "foto.png", "Cancelado", true)
         assertEquals(1, cancelled.size)
         assertEquals(FlashResultKind.CANCELLED, cancelled.single().kind)
+    }
+
+    @Test fun cancellationBetweenBatchFilesCannotReplaceAConfirmedDelivery() {
+        val delivered = FlashAndroidResult("operation-A", "first.txt", FlashResultKind.DELIVERED, "Confirmado")
+        assertEquals(listOf(delivered), recordFlashFailure(listOf(delivered), "operation-A", "first.txt", "Cancelado", true))
+        assertEquals(listOf(delivered), recordFlashFailure(listOf(delivered), "operation-A", "first.txt", "Conexión interrumpida", false))
     }
 }

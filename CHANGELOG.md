@@ -1,5 +1,17 @@
 # Cambios en Qetara
 
+## 1.4.2 — 6 de octubre de 2026
+
+- Android 16 reconoce su propia zona Wi-Fi como red disponible, utilizando las interfaces que informa el sistema. Se conserva el reconocimiento de Wi-Fi cliente cuando celular o VPN son la red predeterminada.
+- Una búsqueda Flash fallida indica revisar dirección, red y disponibilidad del otro equipo. Ya no utiliza el mensaje de una entrega sin confirmar cuando aún no se envió ningún archivo.
+- Paquetes Android y Windows instalados localmente, con continuidad de firma Android y de preferencias e identidad PC. El alcance de las pruebas y los hallazgos pendientes están en la [revisión de UX](docs/UX_REVIEW-2026-10-05.md).
+
+## 1.4.1 — candidata local, 5 de octubre de 2026
+
+- Flash permite comparar y aprobar una vez por equipo todos los archivos de un lote; los lotes posteriores requieren otra aprobación. El diálogo muestra los archivos y el tamaño total.
+- Se restaura la marca clásica con fondo marfil `#FFF7ED` y símbolo azul marino `#102A43`, conservando la geometría y el tema elegido para la aplicación.
+- Se establece la referencia editable de Figma en la cuenta UNSA y el equipo `dev-UNSA`. Véase la [validación de lotes](docs/FLASH_BATCH_REVIEW-2026-10-05.md).
+
 ## 1.4.0 — candidata, pendiente de publicación
 
 - Android adopta el identificador `io.github.intelognatanael.qetara`. Se instala como una aplicación nueva junto a las versiones privadas anteriores; sus preferencias, emparejamientos e historial no se importan automáticamente. Conserva los archivos que necesites antes de desinstalar la anterior.

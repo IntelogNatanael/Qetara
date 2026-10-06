@@ -12,12 +12,14 @@ internal const val FLASH_PROBE = 1
 internal const val FLASH_TRANSFER = 2
 internal const val FLASH_DISCOVER = 3
 internal const val FLASH_ANNOUNCE = 4
+internal const val FLASH_BATCH_TRANSFER = 5
 internal const val FLASH_HELLO = 10
 internal const val FLASH_OFFER = 11
 internal const val FLASH_DECISION = 12
 internal const val FLASH_CHUNK = 13
 internal const val FLASH_DONE = 14
 internal const val FLASH_ACK = 15
+internal const val FLASH_BATCH_OFFER = 16
 internal const val FLASH_CHUNK_BYTES = 48 * 1024
 internal const val FLASH_FRAME_BYTES = 50 * 1024
 
@@ -66,11 +68,11 @@ internal class FlashChannel(
     override fun close() { sender.destroy(); receiver.destroy() }
 }
 
-internal fun flashHandshake(input: DataInputStream, output: DataOutputStream, initiator: Boolean, privateKey: ByteArray): FlashChannel {
+internal fun flashHandshake(input: DataInputStream, output: DataOutputStream, initiator: Boolean, privateKey: ByteArray, batch: Boolean = false): FlashChannel {
     val handshake = HandshakeState(NOISE_PROTOCOL_NO_PSK, if (initiator) HandshakeState.INITIATOR else HandshakeState.RESPONDER)
     try {
         handshake.localKeyPair.setPrivateKey(privateKey, 0)
-        val prologue = "Qetara/Flash/v1/BOTH_CONFIRM_EVERY_FILE".toByteArray(Charsets.US_ASCII)
+        val prologue = (if (batch) "Qetara/Flash/v1/BOTH_CONFIRM_EXACT_BATCH" else "Qetara/Flash/v1/BOTH_CONFIRM_EVERY_FILE").toByteArray(Charsets.US_ASCII)
         handshake.setPrologue(prologue, 0, prologue.size)
         handshake.start()
         val buffer = ByteArray(4096)

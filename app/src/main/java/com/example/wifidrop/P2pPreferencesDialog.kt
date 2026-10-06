@@ -19,6 +19,11 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlin.math.roundToInt
@@ -67,6 +72,7 @@ internal fun QetaraPreferencesDialog(
                                     )
                                     Text(
                                         "Escala de la aplicación: ${(state.fontScale * 100).roundToInt()}%",
+                                        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -79,28 +85,34 @@ internal fun QetaraPreferencesDialog(
                                                 onFontScaleChange((state.fontScale - 0.05f).coerceAtLeast(0.85f))
                                             },
                                             enabled = state.fontScale > 0.85f,
-                                            modifier = Modifier.heightIn(min = 48.dp),
+                                            modifier = Modifier.heightIn(min = 48.dp).semantics {
+                                                contentDescription = "Reducir tamaño del texto"
+                                            },
                                             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
                                         ) {
-                                            Text("A-")
+                                            Text("A-", modifier = Modifier.clearAndSetSemantics { })
                                         }
                                         OutlinedButton(
                                             onClick = { onFontScaleChange(1.0f) },
                                             enabled = kotlin.math.abs(state.fontScale - 1.0f) > 0.01f,
-                                            modifier = Modifier.heightIn(min = 48.dp),
+                                            modifier = Modifier.heightIn(min = 48.dp).semantics {
+                                                contentDescription = "Restablecer tamaño del texto al 100 %"
+                                            },
                                             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
                                         ) {
-                                            Text("Normal")
+                                            Text("Normal", modifier = Modifier.clearAndSetSemantics { })
                                         }
                                         OutlinedButton(
                                             onClick = {
                                                 onFontScaleChange((state.fontScale + 0.05f).coerceAtMost(1.25f))
                                             },
                                             enabled = state.fontScale < 1.25f,
-                                            modifier = Modifier.heightIn(min = 48.dp),
+                                            modifier = Modifier.heightIn(min = 48.dp).semantics {
+                                                contentDescription = "Aumentar tamaño del texto"
+                                            },
                                             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
                                         ) {
-                                            Text("A+")
+                                            Text("A+", modifier = Modifier.clearAndSetSemantics { })
                                         }
                                     }
                                     PreferenceToggleRow(

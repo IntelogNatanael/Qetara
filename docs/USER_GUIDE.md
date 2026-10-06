@@ -9,7 +9,7 @@ Qetara comparte archivos y mensajes directamente entre tus equipos, sin crear un
 
 ## Compartir puntualmente con Flash
 
-Abre **Flash** en ambos equipos y actívalo. Elige uno o varios archivos y el destinatario y pulsa **Solicitar envío**. Qetara procesa la cola de uno en uno: compara los cuatro grupos de verificación y acepta cada archivo en los dos dispositivos. Flash está apagado al iniciar el proceso y termina a los 30 minutos o al desactivarlo. La sesión habitual se controla por separado. Consulta [Flash](FLASH.md) para recibir, cancelar y abrir lo recibido.
+Abre **Flash** en ambos equipos y actívalo. Elige uno o varios archivos y el destinatario y solicita el envío. Revisa la lista y el tamaño total, compara los cuatro grupos de verificación y acepta una vez en cada dispositivo para ese lote. Qetara transfiere los archivos de uno en uno y confirma sus resultados por separado. La aprobación termina con ese lote; el siguiente requiere otra confirmación. Flash está apagado al iniciar el proceso y termina a los 30 minutos o al desactivarlo. La sesión habitual se controla por separado. Consulta [Flash](FLASH.md) para recibir, cancelar y abrir lo recibido.
 
 ## Primer intercambio habitual Android ↔ PC
 

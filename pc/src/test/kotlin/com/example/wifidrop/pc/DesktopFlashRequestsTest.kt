@@ -1,6 +1,7 @@
 package com.example.wifidrop.pc
 
 import com.example.wifidrop.protocol.flash.FlashApproval
+import com.example.wifidrop.protocol.flash.FlashOfferedFile
 import com.example.wifidrop.protocol.flash.FlashPeer
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -27,6 +28,37 @@ class DesktopFlashRequestsTest {
         val shown = approval()
         requests.update(token, listOf(shown.copy(verificationCode = "9999 9999 9999 9999", totalBytes = 900L)))
         assertFalse(requests.decide(token, shown))
+    }
+
+    @Test
+    fun changingAnotherFileInTheBatchRequiresANewDecisionEvenWithTheSameTotal() {
+        val requests = DesktopFlashRequests { 100L }
+        val token = requests.begin()
+        val shown = approval().copy(totalBytes = 256L, files = listOf(
+            FlashOfferedFile("fixture.bin", 128L), FlashOfferedFile("second.bin", 128L)
+        ))
+        requests.update(token, listOf(shown))
+        val replacement = shown.copy(files = listOf(
+            FlashOfferedFile("fixture.bin", 128L), FlashOfferedFile("different.bin", 128L)
+        ))
+        requests.update(token, listOf(replacement))
+        assertFalse(requests.decide(token, shown))
+        assertTrue(requests.decide(token, replacement))
+    }
+
+    @Test
+    fun changingBatchOrderRequiresANewDecision() {
+        val requests = DesktopFlashRequests { 100L }
+        val token = requests.begin()
+        val first = FlashOfferedFile("fixture.bin", 128L)
+        val second = FlashOfferedFile("second.bin", 128L)
+        val third = FlashOfferedFile("third.bin", 128L)
+        val shown = approval().copy(totalBytes = 384L, files = listOf(first, second, third))
+        requests.update(token, listOf(shown))
+        val replacement = shown.copy(files = listOf(first, third, second))
+        requests.update(token, listOf(replacement))
+        assertFalse(requests.decide(token, shown))
+        assertTrue(requests.decide(token, replacement))
     }
 
     @Test

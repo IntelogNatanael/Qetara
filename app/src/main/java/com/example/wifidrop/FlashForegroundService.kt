@@ -34,7 +34,8 @@ import java.util.concurrent.ConcurrentHashMap
 
 /** Separate, opt-in receiver. No normal-session settings, identities or grants are reused. */
 class FlashForegroundService : Service() {
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    // Always enqueue engine callbacks: a synchronous send callback must not overtake earlier IO callbacks.
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private val fence = FlashAndroidSessionFence()
     private var engine: FlashEngine? = null
     private var startupJob: Job? = null
@@ -136,6 +137,7 @@ class FlashForegroundService : Service() {
         override fun onState(state: FlashState) {
             state.operations.forEach { operationNames[it.id] = it.fileName }
             post(activation) {
+                state.operations.forEach(outgoingBatch::observe)
                 FlashAndroidRuntime.update { old ->
                     old.copy(engine = state, progress = old.progress.filterKeys { id -> state.operations.any { it.id == id } })
                 }
@@ -144,7 +146,7 @@ class FlashForegroundService : Service() {
                 }
                 refreshNotification()
                 if (state.operations.isEmpty()) {
-                    pumpOutgoingBatch()
+                    outgoingBatch.idle()
                 }
             }
         }
@@ -207,7 +209,6 @@ class FlashForegroundService : Service() {
                     selectedFiles = old.selectedFiles.filterNot { it == sentFile }
                 ) }
                 sentFile?.let { file -> scope.launch(Dispatchers.IO) { file.delete(); file.parentFile?.delete() } }
-                pumpOutgoingBatch()
             }
             operationNames.remove(completed.operationId)
             refreshNotification()
@@ -340,6 +341,10 @@ class FlashForegroundService : Service() {
         if (!state.active || state.importing || outgoingBatch.active || state.engine?.operations?.isNotEmpty() == true) return
         val peer = resolveSelectedFlashPeer(state.selectedPeer, currentEngine.snapshot().peers, System.currentTimeMillis())
         val files = state.selectedFiles
+        if (files.size > FLASH_MAX_BATCH_FILES) {
+            FlashAndroidRuntime.update { it.copy(status = "Puedes enviar hasta $FLASH_MAX_BATCH_FILES archivos por lote. Reduce la selección.") }
+            return
+        }
         if (peer == null || files.isEmpty()) {
             FlashAndroidRuntime.update { it.copy(status = "Vuelve a elegir un equipo disponible y al menos un archivo.") }
             return
@@ -348,33 +353,18 @@ class FlashForegroundService : Service() {
             FlashAndroidRuntime.update { it.copy(status = "Uno de los archivos ya no está disponible o no se puede leer. Revisa la selección.") }
             return
         }
-        if (!outgoingBatch.start(files, peer)) return
+        if (!outgoingBatch.start(files)) return
         FlashAndroidRuntime.update { it.copy(status = if (files.size == 1) {
             "Preparando el envío. Compara la verificación en ambos equipos."
         } else {
-            "Preparando ${files.size} envíos. Cada archivo tendrá su propia verificación."
+            "Preparando ${files.size} archivos. Una verificación autorizará este lote."
         }) }
-        pumpOutgoingBatch()
-    }
-
-    private fun pumpOutgoingBatch() {
-        val state = FlashAndroidRuntime.state.value
-        val currentEngine = engine ?: return
-        if (!state.active || state.importing || currentEngine.snapshot().operations.isNotEmpty()) return
-        val request = outgoingBatch.next() ?: return
-        val file = request.file
-        val peer = resolveSelectedFlashPeer(request.peer, currentEngine.snapshot().peers, System.currentTimeMillis())
-        if (peer == null || !isReadableFlashFile(file)) {
-            resetOutgoingBatch()
-            FlashAndroidRuntime.update { it.copy(status = "El equipo o uno de los archivos ya no está disponible. Revisa la selección.") }
-            return
-        }
-        runCatching { currentEngine.send(file, peer) }
+        runCatching { currentEngine.sendBatch(files, peer) }
             .onSuccess { id ->
                 outgoingBatch.started(id)
-                operationNames[id] = file.name
-                FlashAndroidRuntime.update { it.copy(status = if (request.total > 1) {
-                    "Archivo ${request.position} de ${request.total}: compara la verificación en ambos equipos."
+                operationNames[id] = files.first().name
+                FlashAndroidRuntime.update { it.copy(status = if (files.size > 1) {
+                    "Lote de ${files.size} archivos: compara la verificación en ambos equipos."
                 } else {
                     "Solicitando conexión. Compara la verificación en ambos equipos."
                 }) }
@@ -466,7 +456,7 @@ class FlashForegroundService : Service() {
         val stop = PendingIntent.getService(this, 9101, Intent(this, FlashForegroundService::class.java).setAction(ACTION_STOP), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         val state = FlashAndroidRuntime.state.value
         val text = when {
-            state.engine?.approvals?.isNotEmpty() == true -> "Compara la verificación y decide sobre el archivo."
+            state.engine?.approvals?.isNotEmpty() == true -> "Compara la verificación y decide sobre el envío."
             state.engine?.operations?.isNotEmpty() == true -> "Transferencia en curso. Abre Flash para ver el progreso."
             else -> "Disponible temporalmente. Abre Flash o desactívalo."
         }
@@ -555,12 +545,15 @@ private fun localAddresses(): List<String> = runCatching {
 }.getOrDefault(emptyList())
 
 internal fun flashErrorCopy(code: String): String = when (code) {
+    "discovery_failed" -> "No se pudo buscar esa dirección. Comprueba la IP, la red y que Flash esté activo en el otro equipo."
     "cancelled" -> "Transferencia cancelada. Puedes volver a intentarlo cuando quieras."
     "rejected" -> "La solicitud fue rechazada o la verificación no coincidió. No se envió el archivo."
     "expired" -> "La solicitud o sesión expiró. Activa Flash y vuelve a intentar."
     "approval_expired" -> "La confirmación caducó. Vuelve a solicitar el envío desde el equipo emisor y compara el nuevo código en ambos equipos."
     "busy" -> "El otro equipo ya está atendiendo una transferencia. Espera y vuelve a intentar."
     "invalid_file" -> "No se puede enviar ese archivo. Comprueba que esté disponible y haya espacio."
+    "invalid_batch" -> "El lote supera el límite de 128 archivos o el tamaño permitido para sus nombres y datos. Reduce la selección."
+    "batch_incompatible" -> "El otro equipo no admite una confirmación por lote. Actualiza Qetara en ambos equipos."
     "peer_changed" -> "La sesión de Flash del otro equipo ya no coincide con la que elegiste. Búscalo de nuevo y vuelve a seleccionarlo."
     "invalid_address" -> "La dirección no es válida. Escribe la IP local que aparece en Flash del otro equipo."
     "storage_unavailable" -> "No se pudo preparar la carpeta para recibir el archivo. Revisa que el almacenamiento de este equipo esté disponible y tenga espacio."

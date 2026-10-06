@@ -1,0 +1,4 @@
+Android 16 reconoce la zona Wi-Fi del propio dispositivo como red local disponible.
+Si falla la búsqueda Flash, se indica revisar la dirección, la red y el otro equipo.
+Flash permite aprobar una vez por equipo cada lote, con vista de sus archivos y tamaño total.
+Vuelve el icono clásico marfil y azul marino, conservando la apariencia elegida para la aplicación.

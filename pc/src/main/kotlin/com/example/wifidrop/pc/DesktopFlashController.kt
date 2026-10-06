@@ -6,7 +6,6 @@ import androidx.compose.runtime.setValue
 import com.example.wifidrop.protocol.flash.*
 import java.io.File
 import java.net.BindException
-import java.util.ArrayDeque
 import java.util.concurrent.Executors
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
@@ -58,11 +57,10 @@ internal class DesktopFlashController(
     private val progressBuffer = DesktopFlashProgressBuffer()
     private val progressTimer = javax.swing.Timer(100) { flushProgress() }
     private val knownOperations = ConcurrentHashMap<Pair<Long, String>, FlashOperation>()
-    private val pendingOutgoingFiles = ArrayDeque<File>()
-    private var pendingOutgoingPeer: FlashPeer? = null
+    private var outgoingFiles = emptyList<File>()
+    private var activeOutgoingBatchId: String? = null
     private var outgoingBatchTotal = 0
     private var outgoingBatchCompleted = 0
-    private var activeOutgoingFile: File? = null
     private var activeOutgoingOperationId: String? = null
     private var outgoingSubmission = 0L
     private val commands = Executors.newSingleThreadExecutor { task ->
@@ -197,67 +195,42 @@ internal class DesktopFlashController(
         val current = state
         val files = current.selectedFiles
         if (files.isEmpty()) return
+        if (files.size > FLASH_MAX_BATCH_FILES) {
+            state = state.copy(status = "Puedes enviar hasta $FLASH_MAX_BATCH_FILES archivos por lote. Reduce la selección.", error = true)
+            return
+        }
         val peer = current.selectedPeer ?: return
         if (!current.session.active || current.busy || peer.expiresAtMs <= System.currentTimeMillis()) return
         if (files.any { !it.isFile || !it.canRead() }) {
             state = state.copy(status = "Uno de los archivos ya no está disponible. Revisa la selección.", error = true)
             return
         }
-        pendingOutgoingFiles.clear()
-        pendingOutgoingFiles.addAll(files)
-        pendingOutgoingPeer = peer
+        outgoingFiles = files.toList()
         outgoingBatchTotal = files.size
         outgoingBatchCompleted = 0
         state = state.copy(
-            batchSending = true,
+            batchSending = true, sendPending = true,
             status = if (files.size == 1) "Preparando el archivo. Después compara el código en ambos equipos."
-            else "Preparando ${files.size} envíos. Cada archivo tendrá su propia verificación.",
+            else "Preparando ${files.size} archivos. Una verificación autorizará este lote.",
             error = false
         )
-        pumpOutgoingBatch()
-    }
-
-    private fun pumpOutgoingBatch() {
-        if (closed.get() || !state.session.active || activeOutgoingFile != null || state.sendPending || state.session.operations.isNotEmpty() ||
-            state.transfers.any { it.busy }) return
-        val file = pendingOutgoingFiles.pollFirst() ?: return
-        val expectedPeer = pendingOutgoingPeer
-        val peer = state.session.peers.firstOrNull {
-            expectedPeer != null && it.id == expectedPeer.id && it.address == expectedPeer.address &&
-                it.port == expectedPeer.port && it.expiresAtMs > System.currentTimeMillis()
-        }
-        if (peer == null || !file.isFile || !file.canRead()) {
-            resetOutgoingBatch()
-            state = state.copy(batchSending = false, sendPending = false,
-                status = "El equipo o uno de los archivos ya no está disponible. Revisa la selección.", error = true)
-            return
-        }
         val token = generation
-        activeOutgoingFile = file
         activeOutgoingOperationId = null
+        activeOutgoingBatchId = null
         val submission = ++outgoingSubmission
-        val position = outgoingBatchCompleted + 1
-        state = state.copy(sendPending = true, status = if (outgoingBatchTotal > 1) {
-            "Preparando archivo $position de $outgoingBatchTotal. Después compara el código."
-        } else {
-            "Preparando el archivo. Después compara el código en ambos equipos."
-        })
         commands.execute {
             if (!requests.isCurrent(token)) return@execute
             try {
-                val operation = checkNotNull(engine).send(file, peer)
+                val batchId = checkNotNull(engine).sendBatch(files, peer)
                 dispatch(token) {
-                    // A terminal callback can run before send() returns, and may already start the next file.
-                    if (submission != outgoingSubmission || activeOutgoingFile == null) return@dispatch
-                    activeOutgoingOperationId = operation
-                    val previous = state.transfers.firstOrNull { it.id == operation }
-                    upsert(previous?.copy(file = file)
-                        ?: DesktopFlashTransfer(operation, file.name, peer.label, file.length(), true, file = file))
+                    // All callbacks, including completion, can arrive before sendBatch() returns.
+                    if (submission != outgoingSubmission || outgoingFiles.isEmpty()) return@dispatch
+                    activeOutgoingBatchId = batchId
                     state = state.copy(sendPending = false)
                 }
             } catch (_: Exception) {
                 dispatch(token) {
-                    if (submission != outgoingSubmission || activeOutgoingFile == null) return@dispatch
+                    if (submission != outgoingSubmission || outgoingFiles.isEmpty()) return@dispatch
                     state.transfers.firstOrNull { it.id == activeOutgoingOperationId && it.busy }?.let {
                         upsert(it.copy(phase = DesktopFlashPhase.FAILED, detail = "No se pudo preparar el envío.", cancelling = false))
                     }
@@ -271,11 +244,10 @@ internal class DesktopFlashController(
     }
 
     private fun resetOutgoingBatch() {
-        pendingOutgoingFiles.clear()
-        pendingOutgoingPeer = null
+        outgoingFiles = emptyList()
+        activeOutgoingBatchId = null
         outgoingBatchTotal = 0
         outgoingBatchCompleted = 0
-        activeOutgoingFile = null
         activeOutgoingOperationId = null
         outgoingSubmission++
     }
@@ -300,14 +272,11 @@ internal class DesktopFlashController(
     fun cancel(operationId: String) {
         if (operationId == activeOutgoingOperationId) {
             // Stop the batch now even if an already queued receipt wins the transport cancellation race.
-            pendingOutgoingFiles.clear()
-            pendingOutgoingPeer = null
-            outgoingBatchTotal = 0
-            outgoingBatchCompleted = 0
             state = state.copy(batchSending = false)
         }
         state.transfers.firstOrNull { it.id == operationId }?.let { upsert(it.copy(cancelling = true, detail = "Cancelando…")) }
-        command("No se pudo cancelar esta operación. Comprueba su resultado antes de repetir.") { it.cancel(operationId) }
+        val batchId = if (operationId == activeOutgoingOperationId) activeOutgoingBatchId ?: operationId else operationId
+        command("No se pudo cancelar esta operación. Comprueba su resultado antes de repetir.") { it.cancel(batchId) }
     }
 
     fun showFolder(file: File = state.directory) {
@@ -353,10 +322,11 @@ internal class DesktopFlashController(
         val approvals = requests.update(token, latest.approvals)
         latest.operations.forEach { operation ->
             val previous = state.transfers.firstOrNull { it.id == operation.id }
-            val sourceFile = if (operation.outgoing && activeOutgoingFile != null &&
-                (activeOutgoingOperationId == operation.id || (activeOutgoingOperationId == null && previous == null))) {
+            val sourceFile = if (operation.outgoing && outgoingFiles.isNotEmpty() &&
+                (activeOutgoingBatchId == operation.batchId || activeOutgoingBatchId == null)) {
+                activeOutgoingBatchId = operation.batchId
                 activeOutgoingOperationId = operation.id
-                activeOutgoingFile
+                outgoingFiles.getOrNull(operation.fileIndex)
             } else null
             if (previous == null) {
                 upsert(DesktopFlashTransfer(operation.id, operation.fileName, operation.peer?.label.orEmpty(), operation.totalBytes, operation.outgoing, file = sourceFile))
@@ -384,7 +354,10 @@ internal class DesktopFlashController(
                 if (it.busy) it.copy(phase = DesktopFlashPhase.CANCELLED, detail = "La activación de Flash terminó.", cancelling = false) else it
             })
         }
-        if (latest.operations.isEmpty() && pendingOutgoingFiles.isNotEmpty()) pumpOutgoingBatch()
+        if (latest.operations.isEmpty() && activeOutgoingBatchId != null && !state.sendPending) {
+            resetOutgoingBatch()
+            state = state.copy(sendPending = false, batchSending = false)
+        }
     }
 
     private fun listener(token: Long) = object : FlashListener {
@@ -422,15 +395,13 @@ internal class DesktopFlashController(
                     ?: DesktopFlashTransfer(completed.operationId, completed.fileName, completed.peer.label, known.totalBytes, completed.outgoing)
                 upsert(previous.copy(phase = DesktopFlashPhase.COMPLETE, transferredBytes = previous.totalBytes, detail = if (completed.outgoing) "Recepción confirmada por el otro equipo." else "Archivo recibido y verificado.", cancelling = false))
                 if (requests.isCurrent(token)) {
-                    val outgoingResult = completed.outgoing && completed.operationId == activeOutgoingOperationId
+                    val outgoingResult = completed.outgoing && known.batchId == activeOutgoingBatchId
+                    val completedFile = if (outgoingResult) outgoingFiles.getOrNull(known.fileIndex) else previous.file
                     if (outgoingResult) {
                         outgoingBatchCompleted += 1
-                        activeOutgoingFile = null
-                        activeOutgoingOperationId = null
                     }
-                    val remaining = pendingOutgoingFiles.size
+                    val remaining = (outgoingBatchTotal - outgoingBatchCompleted).coerceAtLeast(0)
                     val total = outgoingBatchTotal
-                    val completedFile = previous.file
                     if (outgoingResult && remaining == 0) resetOutgoingBatch()
                     state = state.copy(
                         selectedFiles = if (completed.outgoing) state.selectedFiles.filterNot { it == completedFile } else state.selectedFiles,
@@ -441,10 +412,9 @@ internal class DesktopFlashController(
                             else -> "Archivo enviado. El otro equipo confirmó la recepción."
                         },
                         error = false,
-                        sendPending = if (outgoingResult) false else state.sendPending,
-                        batchSending = if (outgoingResult) pendingOutgoingFiles.isNotEmpty() else state.batchSending
+                        sendPending = if (outgoingResult && remaining == 0) false else state.sendPending,
+                        batchSending = if (outgoingResult) remaining > 0 && state.batchSending else state.batchSending
                     )
-                    if (outgoingResult && remaining > 0) pumpOutgoingBatch()
                 }
             }
         }

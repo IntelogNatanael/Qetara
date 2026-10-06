@@ -17,7 +17,7 @@ Consulta la [guía de uso](docs/USER_GUIDE.md) para conectar equipos, recuperar 
 
 ### Compartir con Flash
 
-**Flash es opcional y empieza apagado.** Actívalo en Android y PC para compartir archivos por la misma red local sin crear ni escribir código de sesión o PIN. Elige uno o varios archivos y el equipo; Qetara solicitará y verificará cada envío por separado. Compara la verificación que aparece en ambas pantallas y acepta el envío en los dos dispositivos. Puedes seguir el progreso, cancelar y abrir lo recibido. La activación termina a los 30 minutos o cuando la desactives.
+**Flash es opcional y empieza apagado.** Actívalo en Android y PC para compartir archivos por la misma red local sin crear ni escribir código de sesión o PIN. Elige uno o varios archivos y el equipo; revisa la lista y el tamaño total, compara la verificación de ambas pantallas y acepta una vez en cada dispositivo para ese lote. Los archivos se transfieren en orden y conservan resultados individuales. Cada nuevo lote requiere otra confirmación. Puedes seguir el progreso, cancelar y abrir lo recibido. La activación termina a los 30 minutos o cuando la desactives.
 
 Flash tiene una sesión temporal independiente; la conexión habitual, los mensajes y los controles avanzados siguen disponibles. Consulta [la guía de Flash](docs/FLASH.md), incluidos los pasos cuando la red impide descubrir equipos.
 

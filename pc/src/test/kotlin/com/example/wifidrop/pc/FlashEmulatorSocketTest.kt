@@ -31,7 +31,7 @@ class FlashEmulatorSocketTest {
                 object : DesktopFlashTransport {
                     override fun start() { engine.start() }
                     override fun stop() = engine.stop()
-                    override fun send(file: File, peer: FlashPeer) = engine.send(file, peer)
+                    override fun sendBatch(files: List<File>, peer: FlashPeer) = engine.sendBatch(files, peer)
                     override fun approve(requestId: String, accepted: Boolean) = engine.approve(requestId, accepted)
                     override fun cancel(operationId: String) = engine.cancel(operationId)
                     override fun discover() { discoveryCalls.incrementAndGet(); engine.discover() }
@@ -70,8 +70,9 @@ class FlashEmulatorSocketTest {
                     val approval = local.session.approvals.singleOrNull() ?: return
                     val other = remote.approvals.singleOrNull { it.fileName == approval.fileName } ?: return
                     assertEquals(approval.verificationCode, other.code)
-                    assertTrue(comparedOperations.add(approval.operationId), "Each file must have a distinct operation")
-                    assertTrue(comparedAndroidRequests.add(other.id), "Each file must have a distinct approval request")
+                    assertEquals(2, approval.files.size)
+                    assertTrue(comparedOperations.add(approval.operationId), "Each batch must have a distinct operation")
+                    assertTrue(comparedAndroidRequests.add(other.id), "Each batch must have a distinct approval request")
                     android.approve(other, approval.verificationCode)
                     edt { controller.decide(approval, true) }
                 }
@@ -91,10 +92,10 @@ class FlashEmulatorSocketTest {
                 val actualAndroid = edt { controller.state.transfers.filter { !it.outgoing }.map { checkNotNull(it.file) } }
                     .associate { it.name to sha256File(it) }
                 assertEquals(expectedAndroid, actualAndroid)
-                assertEquals(4, comparedOperations.size)
-                assertEquals(4, comparedAndroidRequests.size)
+                assertEquals(2, comparedOperations.size)
+                assertEquals(2, comparedAndroidRequests.size)
                 assertEquals(4, edt { controller.state.transfers.count { it.phase == DesktopFlashPhase.COMPLETE } })
-                println("PASS real PC <-> Android TCP; two files each direction; codes matched for four distinct operations")
+                println("PASS real PC <-> Android TCP; two files each direction; one code comparison per batch")
                 println("TRANSPORT ${if (androidHost == "127.0.0.1") "ADB_FORWARDED" else "LAN_TCP"} android=$androidHost control=ADB")
                 println("HOST ${System.getProperty("os.name")} JAVA ${System.getProperty("java.runtime.version")}")
                 (expectedWindows + actualAndroid).forEach { (name, hash) -> println("SHA256 $name $hash") }

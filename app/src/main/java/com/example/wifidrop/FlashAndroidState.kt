@@ -77,10 +77,11 @@ internal fun canAnswerFlashApproval(
     active: Boolean, requestId: String, approvals: List<FlashApproval>, nowMs: Long
 ): Boolean = active && approvals.any { it.requestId == requestId && it.expiresAtMs > nowMs }
 
-/** An ACK failure after publication cannot turn a verified received file into a failed receipt. */
+/** A later batch failure cannot undo a verified local receipt or a confirmed remote delivery. */
 internal fun recordFlashFailure(
     results: List<FlashAndroidResult>, operationId: String, fileName: String, message: String, cancelled: Boolean
 ): List<FlashAndroidResult> {
+    if (results.any { it.id == operationId && it.kind == FlashResultKind.DELIVERED }) return results
     val received = results.firstOrNull { it.id == operationId && it.kind == FlashResultKind.RECEIVED }
     if (received != null) return results.map {
         if (it.id == operationId) it.copy(confirmationIssue = true,

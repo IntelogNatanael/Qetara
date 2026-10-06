@@ -1,0 +1,4 @@
+Android 16 recognizes the device's own Wi-Fi hotspot as an available local network.
+Flash search failures explain how to check the address, network and other device.
+Flash supports one approval per device for a batch, with a preview of its files and total size.
+The classic ivory and navy launcher icon returns while preserving your chosen app appearance.

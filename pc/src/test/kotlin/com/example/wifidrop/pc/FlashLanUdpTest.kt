@@ -38,7 +38,7 @@ class FlashLanUdpTest {
                         explicitQueries.incrementAndGet()
                         error("Explicit TCP discovery is forbidden in UDP QA")
                     }
-                    override fun send(file: File, peer: FlashPeer): String = error("UDP QA does not transfer files")
+                    override fun sendBatch(files: List<File>, peer: FlashPeer): String = error("UDP QA does not transfer files")
                     override fun approve(requestId: String, accepted: Boolean): Boolean = error("UDP QA does not approve files")
                     override fun cancel(operationId: String) = engine.cancel(operationId)
                 }

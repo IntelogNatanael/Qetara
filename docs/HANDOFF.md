@@ -2,13 +2,13 @@
 
 Esta guía permite continuar el desarrollo sin depender de la conversación que originó la entrega. Los comandos se ejecutan desde la raíz del repositorio.
 
-## Candidata pública en preparación
+## Versión actual en desarrollo
 
-El código prepara **1.4.0, código Android 7**, con identificador `io.github.intelognatanael.qetara`. Se instala como aplicación nueva respecto de las entregas privadas anteriores. La decisión de identidad, continuidad de firma y migración está en [Identidad Android](ANDROID_IDENTITY.md). La versión se define en `gradle.properties` para todos los módulos.
+La candidata local actual es **1.4.2, código Android 9**, instalada en Windows y en el teléfono físico durante la [revisión de UX del 5 de octubre](UX_REVIEW-2026-10-05.md). Incluye detección de la zona Wi-Fi hospedada en Android 16 y un mensaje específico para errores de búsqueda Flash. Conserva la aprobación de todo el lote una vez por equipo y el icono marfil de la [fase 1.4.1](FLASH_BATCH_REVIEW-2026-10-05.md). Se preservaron la identidad y las preferencias de PC y la firma Android. El identificador sigue siendo `io.github.intelognatanael.qetara`; la decisión de identidad y migración está en [Identidad Android](ANDROID_IDENTITY.md). La versión se define en `gradle.properties` para todos los módulos.
 
 La publicación pública y la solicitud a F-Droid son pasos separados de esta preparación. Consulta [Preparación de publicación](PUBLICATION_READINESS.md) para las comprobaciones y los límites pendientes.
 
-La candidata comprobada procede de `588a92f2617815b5744eeb91a1da463c5c685f90`. Ya se validaron el APK final en emulador y teléfono, lotes Flash por Wi-Fi, la instalación MSI y la receta F-Droid con herramientas locales. UDP físico aprobó la repetición sin cambios del arnés; se conserva el timeout del primer intento. El [informe 1.4.0](VALIDATION-1.4.0.md) enlaza hashes y resultados completos. Después se revisaron la [interfaz de escritorio](DESKTOP_DESIGN_REVIEW-2026-09-11.md), la [interfaz móvil](MOBILE_DESIGN_REVIEW-2026-09-11.md), sus [colores](MOBILE_COLOR_REVIEW-2026-09-11.md) y la [marca adaptable](../design/figma/mobile-brand-adaptive/README.md). Estos cambios de diseño son posteriores a los binarios de la candidata. Siguen pendientes el recorrido visual completo de envío y cancelación y el nuevo paquete de entrega; no se ha publicado ni obtenido aceptación oficial de F-Droid.
+La candidata histórica 1.4.0 comprobada procede de `588a92f2617815b5744eeb91a1da463c5c685f90`. Ya se validaron el APK final en emulador y teléfono, lotes Flash por Wi-Fi, la instalación MSI y la receta F-Droid con herramientas locales. UDP físico aprobó la repetición sin cambios del arnés; se conserva el timeout del primer intento. El [informe 1.4.0](VALIDATION-1.4.0.md) enlaza hashes y resultados completos. Después se revisaron la [interfaz de escritorio](DESKTOP_DESIGN_REVIEW-2026-09-11.md), la [interfaz móvil](MOBILE_DESIGN_REVIEW-2026-09-11.md), sus [colores](MOBILE_COLOR_REVIEW-2026-09-11.md) y la [marca adaptable](../design/figma/mobile-brand-adaptive/README.md). Estos cambios de diseño son posteriores a los binarios de la candidata. Siguen pendientes el recorrido visual completo de envío y cancelación y el nuevo paquete de entrega; no se ha publicado ni obtenido aceptación oficial de F-Droid.
 
 ## Entrega anterior de referencia
 
@@ -18,7 +18,7 @@ La candidata comprobada procede de `588a92f2617815b5744eeb91a1da463c5c685f90`. Y
 - El repositorio [IntelogNatanael/Qetara](https://github.com/IntelogNatanael/Qetara) es privado: el compañero necesita permiso de acceso. El código conserva su [licencia MIT](../LICENSE).
 - Los instaladores anteriores mantienen sus versiones originales; no contienen el desarrollo posterior descrito a continuación.
 
-Lee primero [CONTRIBUTING](../CONTRIBUTING.md), [arquitectura](../ARCHITECTURE.md), [principios de experiencia](EXPERIENCE.md) y [seguridad](../SECURITY.md). Trabaja en una rama propia y conserva los cambios del usuario. Antes de modificar interfaz, revisa [AGENTS.md](../AGENTS.md): la referencia actual es Figma. Su cuota MCP impidió guardar las maquetas de esta iteración; las capturas y los tokens se conservan en [design/figma](../design/figma/README.md), con el alcance de las comprobaciones descrito en cada informe.
+Lee primero [CONTRIBUTING](../CONTRIBUTING.md), [arquitectura](../ARCHITECTURE.md), [principios de experiencia](EXPERIENCE.md) y [seguridad](../SECURITY.md). Trabaja en una rama propia y conserva los cambios del usuario. Antes de modificar interfaz, revisa [AGENTS.md](../AGENTS.md): usar exclusivamente Figma con `cchoquenairat@unsa.edu.pe`, equipo `dev-UNSA`. La [referencia activa](../design/figma/unsa-2026-10-05/README.md) ya contiene marca y confirmación de lotes editables y revisadas; el archivo antiguo vacío y sus límites pertenecen a las revisiones históricas.
 
 ## Desarrollo posterior a la entrega
 

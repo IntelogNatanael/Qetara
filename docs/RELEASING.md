@@ -1,6 +1,8 @@
 # Preparar una distribución
 
-La versión se define una sola vez en `gradle.properties`: `qetaraVersion` para todos los módulos y `qetaraVersionCode` para Android. La candidata pública es 1.4.0, código 7. Las actualizaciones posteriores deben incrementar el código y mantener el identificador y la clave de firma.
+La versión se define una sola vez en `gradle.properties`: `qetaraVersion` para todos los módulos y `qetaraVersionCode` para Android. La candidata en preparación es 1.4.2, código 9. Las actualizaciones posteriores deben incrementar el código y mantener el identificador y la clave de firma.
+
+Los informes de 1.4.0/código 7 y las comprobaciones locales de 1.4.1/código 8 son antecedentes de sus respectivas revisiones. Sus hashes y resultados no acreditan una compilación nueva de 1.4.2. Registra el commit completo de la candidata y vincula cada comprobación y artefacto nuevo a ese commit. Publicar las fuentes, publicar un APK firmado y presentar la receta a F-Droid son acciones separadas.
 
 Desde 1.4.0 el identificador Android es `io.github.intelognatanael.qetara`, basado en la cuenta de GitHub del proyecto. Es una aplicación nueva respecto de `com.example.wifidrop`; puede coexistir con la anterior y no importa sus datos privados. El `namespace` Kotlin conserva `com.example.wifidrop`: identifica las clases internas, no la aplicación instalada. Las autoridades de FileProvider se derivan del identificador de instalación.
 
@@ -76,8 +78,8 @@ Para firmar el APK del clon limpio, configura las cuatro variables después de t
 
 ```powershell
 $buildTools = Join-Path $env:ANDROID_HOME 'build-tools\36.0.0'
-$unsigned = '<ruta del Qetara-1.4.0-unsigned.apk del clon limpio>'
-$signed = '<ruta nueva para Qetara-1.4.0-signed.apk>'
+$unsigned = '<ruta del Qetara-1.4.2-unsigned.apk del clon limpio>'
+$signed = '<ruta nueva para Qetara-1.4.2-signed.apk>'
 if (Test-Path -LiteralPath $signed) { throw 'La salida firmada ya existe.' }
 & (Join-Path $buildTools 'zipalign.exe') -c -P 16 4 $unsigned
 if ($LASTEXITCODE -ne 0) { throw 'El APK sin firma no conserva la alineacion esperada.' }

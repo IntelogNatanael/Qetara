@@ -20,6 +20,35 @@ internal data class DesktopTransferEntry(
 internal fun mergeDesktopFileSelections(existing: List<File>, added: List<File>): List<File> =
     (existing + added).distinctBy { it.absoluteFile.normalize() }
 
+/** Keep the chosen destination visible when a discovered list is collapsed. */
+internal fun desktopVisiblePeers(
+    peers: List<DesktopLanPeer>,
+    selectedIp: String,
+    expanded: Boolean
+): List<DesktopLanPeer> {
+    if (expanded || peers.size <= 8) return peers
+    val visible = peers.take(8)
+    val selected = peers.firstOrNull { it.ip == selectedIp } ?: return visible
+    return if (selected in visible) visible else visible.take(7) + selected
+}
+
+internal data class DesktopSendFeedback(val status: String, val nextIssue: String? = null)
+
+/** A previous failure must not hide the current reason why retry is disabled. */
+internal fun desktopSendFeedback(
+    phase: DesktopTaskPhase,
+    status: String,
+    issues: List<String>
+): DesktopSendFeedback {
+    val busy = phase in listOf(DesktopTaskPhase.STARTING, DesktopTaskPhase.RUNNING, DesktopTaskPhase.STOPPING)
+    val nextIssue = issues.firstOrNull()
+    return when {
+        busy -> DesktopSendFeedback(status)
+        phase == DesktopTaskPhase.ERROR -> DesktopSendFeedback(status, nextIssue?.takeUnless { it == status })
+        else -> DesktopSendFeedback(nextIssue ?: status)
+    }
+}
+
 internal class DesktopTransferCancellation {
     private val cancelled = AtomicBoolean(false)
     private val socket = AtomicReference<Socket?>(null)

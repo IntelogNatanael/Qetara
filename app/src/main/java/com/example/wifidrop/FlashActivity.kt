@@ -18,6 +18,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
@@ -479,6 +480,10 @@ private fun FlashScreen(activity: FlashActivity, onBack: () -> Unit) {
 
 @Composable
 private fun FlashApprovalDialog(approval: FlashApproval, nowMs: Long, onAnswer: (Boolean) -> Unit) {
+    val scroll = key(approval.requestId) { rememberScrollState() }
+    val filesScroll = key(approval.requestId) { rememberScrollState() }
+    val fileCount = approval.files.size
+    val isBatch = fileCount > 1
     AlertDialog(
         onDismissRequest = { onAnswer(false) },
         shape = RoundedCornerShape(20.dp),
@@ -487,16 +492,25 @@ private fun FlashApprovalDialog(approval: FlashApproval, nowMs: Long, onAnswer: 
         textContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
         title = { Text(if (approval.outgoing) "Verifica antes de enviar" else "Verifica antes de recibir", fontWeight = FontWeight.SemiBold) },
         text = {
-            Column(Modifier.heightIn(max = 420.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            Column(Modifier.heightIn(max = 420.dp).verticalScroll(scroll), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text("Equipo: ${approval.peer.label}", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
                     Text(approval.peer.address, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 Surface(color = MaterialTheme.colorScheme.surfaceContainer,
                     contentColor = MaterialTheme.colorScheme.onSurface, shape = RoundedCornerShape(16.dp)) {
-                    Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text(approval.fileName, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
-                        Text(flashFileSize(approval.totalBytes), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Text("$fileCount ${if (isBatch) "archivos" else "archivo"} · ${flashFileSize(approval.totalBytes)} en total",
+                            style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.semantics { heading() })
+                        SelectionContainer {
+                            Column(Modifier.fillMaxWidth().heightIn(max = 144.dp).verticalScroll(filesScroll),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                approval.files.forEach { file ->
+                                    Text("${file.fileName} · ${flashFileSize(file.totalBytes)}", style = MaterialTheme.typography.bodyMedium)
+                                }
+                            }
+                        }
                     }
                 }
                 Text("Compara estos cuatro grupos en los dos equipos. Deben coincidir exactamente.", style = MaterialTheme.typography.bodyMedium)
@@ -507,7 +521,10 @@ private fun FlashApprovalDialog(approval: FlashApproval, nowMs: Long, onAnswer: 
                         color = MaterialTheme.colorScheme.onPrimaryContainer,
                         modifier = Modifier.fillMaxWidth().padding(16.dp).semantics { contentDescription = "Verificación: " + approval.verificationCode.toCharArray().joinToString(" ") })
                 }
-                Text("Si no reconoces el archivo o la verificación no coincide, rechaza la solicitud.", style = MaterialTheme.typography.bodySmall,
+                if (isBatch) Text("Se aprueban los $fileCount archivos de este lote. Los próximos envíos requieren otra confirmación.",
+                    style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
+                Text(if (isBatch) "Si no reconoces algún archivo o la verificación no coincide, rechaza la solicitud."
+                    else "Si no reconoces el archivo o la verificación no coincide, rechaza la solicitud.", style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text("Solicitud válida durante ${flashRemaining(approval.expiresAtMs, nowMs)}", style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -516,7 +533,9 @@ private fun FlashApprovalDialog(approval: FlashApproval, nowMs: Long, onAnswer: 
         confirmButton = {
             Button(onClick = { onAnswer(true) }, enabled = approval.expiresAtMs > nowMs,
                 modifier = Modifier.heightIn(min = 48.dp), shape = RoundedCornerShape(16.dp)) {
-                Text(if (approval.outgoing) "Coincide: enviar" else "Coincide: recibir archivo")
+                Text(if (isBatch) {
+                    if (approval.outgoing) "Coincide: enviar $fileCount archivos" else "Coincide: recibir $fileCount archivos"
+                } else if (approval.outgoing) "Coincide: enviar" else "Coincide: recibir archivo")
             }
         },
         dismissButton = { TextButton(onClick = { onAnswer(false) }, modifier = Modifier.heightIn(min = 48.dp)) { Text("Rechazar") } }

@@ -1,0 +1,81 @@
+{
+  "date": "2026-10-05",
+  "desktop_source": "DesktopDesignPreview flash-approvals, production Compose dialog",
+  "android_source": "FlashActivity with synthetic process state, Pixel 8 API 36",
+  "synthetic_data": true,
+  "transfer_evidence": false,
+  "visual_review": "PASS within documented scope",
+  "capture_count": 14,
+  "files": [
+    {
+      "file": "android-flash-approval-receive-128-list-end.png",
+      "bytes": 172127,
+      "sha256": "6a36405fe3ea48b6673b8625b1364133217352193ca41f71c843639f5a685a5d"
+    },
+    {
+      "file": "android-flash-approval-receive-128-top.png",
+      "bytes": 164452,
+      "sha256": "5faf4b52d1633b8e2e5e9083963206c9d44b25b69f6f6998d0353bcdc449930d"
+    },
+    {
+      "file": "android-flash-approval-receive-3-top.png",
+      "bytes": 170165,
+      "sha256": "a3c10836434e24e2c1deb363b45e19224d61df1e69375b463c0d4fc835147fdc"
+    },
+    {
+      "file": "android-flash-approval-send-128-list-end.png",
+      "bytes": 171332,
+      "sha256": "7dd1e78622d247ea2fde72c519a62a597b46654433f17715b3d5047f9260bbe4"
+    },
+    {
+      "file": "android-flash-approval-send-128-top.png",
+      "bytes": 164532,
+      "sha256": "7328ada1d34189176cf55ad857fa5a1d8a788aaf69f7929ef1c79004b0f9d717"
+    },
+    {
+      "file": "android-flash-approval-send-3-top.png",
+      "bytes": 170112,
+      "sha256": "00dceea8d73c441127be64d5bfe1d92fbbc03fb8f2993877ec256da798f0ec21"
+    },
+    {
+      "file": "desktop-flash-approval-many-1160x800.png",
+      "bytes": 97639,
+      "sha256": "d237913496673e3611a001c6b05896112de944018a56c8074f55c94867f8e7d4"
+    },
+    {
+      "file": "desktop-flash-approval-many-800x620.png",
+      "bytes": 68002,
+      "sha256": "745225db5fe9fdd7cb0b99c069c8ba5a83caf84f54237488ecfbb69e013fa333"
+    },
+    {
+      "file": "desktop-flash-approval-receive-1160x800.png",
+      "bytes": 91213,
+      "sha256": "13298b59991a39d56463b364d2bee369d3533ff47f0590795a1315480f323015"
+    },
+    {
+      "file": "desktop-flash-approval-receive-800x620.png",
+      "bytes": 61738,
+      "sha256": "d0adaecc5255143740dfbeea6cf3865ab4b615c3163cb53d8c24172b14d2bca3"
+    },
+    {
+      "file": "desktop-flash-approval-send-1160x800.png",
+      "bytes": 91170,
+      "sha256": "3c49e60c641fe96948d2ec1ae1ccd2e53a528e0cd524823bf4423de050faac84"
+    },
+    {
+      "file": "desktop-flash-approval-send-800x620.png",
+      "bytes": 61864,
+      "sha256": "a1480455fc7db66f37220077de10675b1288cc7b0fa4d405f207b1e5774eb15f"
+    },
+    {
+      "file": "desktop-flash-approval-single-1160x800.png",
+      "bytes": 83133,
+      "sha256": "b91af88cac235441ca007260cb9f18f47594853f9ce39de0a6ba4c974a604feb"
+    },
+    {
+      "file": "desktop-flash-approval-single-800x620.png",
+      "bytes": 51385,
+      "sha256": "5757122c8177bf48a7a8c0e4c05b3a345a9a1b6f67058fb98f1a0c7dca60bc74"
+    }
+  ]
+}

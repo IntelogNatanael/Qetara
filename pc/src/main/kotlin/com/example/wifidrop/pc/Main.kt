@@ -64,7 +64,6 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.vector.PathParser
-import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
@@ -75,7 +74,6 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -137,7 +135,6 @@ import com.example.wifidrop.protocol.toHexLower
 import kr.jclab.noise.protocol.CipherState
 import kr.jclab.noise.protocol.HandshakeState
 import kr.jclab.noise.protocol.Noise
-import org.jetbrains.skia.Image
 import java.awt.Desktop
 import java.awt.datatransfer.DataFlavor
 import java.awt.Toolkit
@@ -199,9 +196,6 @@ internal val qetaraMist = Color(0xFFEAF4F3)
 internal val qetaraLine = Color(0xFFDDE5E5)
 internal val qetaraMuted = Color(0xFF536672)
 private const val DEVELOPER_GITHUB_URL = "https://github.com/IntelogNatanael"
-private const val githubLogoViewportSize = 98f
-private const val githubLogoPathData =
-    "M41.4395 69.3848C28.8066 67.8535 19.9062 58.7617 19.9062 46.9902C19.9062 42.2051 21.6289 37.0371 24.5 33.5918C23.2559 30.4336 23.4473 23.7344 24.8828 20.959C28.7109 20.4805 33.8789 22.4902 36.9414 25.2656C40.5781 24.1172 44.4062 23.543 49.0957 23.543C53.7852 23.543 57.6133 24.1172 61.0586 25.1699C64.0254 22.4902 69.2891 20.4805 73.1172 20.959C74.457 23.543 74.6484 30.2422 73.4043 33.4961C76.4668 37.1328 78.0937 42.0137 78.0937 46.9902C78.0937 58.7617 69.1934 67.6621 56.3691 69.2891C59.623 71.3945 61.8242 75.9883 61.8242 81.252L61.8242 91.2051C61.8242 94.0762 64.2168 95.7031 67.0879 94.5547C84.4102 87.9512 98 70.6289 98 49.1914C98 22.1074 75.9883 0 48.9043 0C21.8203 0 0 22.1074 0 49.1914C0 70.4375 13.4941 88.0469 31.6777 94.6504C34.2617 95.6074 36.75 93.8848 36.75 91.3008L36.75 83.6445C35.4102 84.2188 33.6875 84.6016 32.1562 84.6016C25.8398 84.6016 22.1074 81.1563 19.4277 74.7441C18.375 72.1602 17.2266 70.6289 15.0254 70.3418C13.877 70.2461 13.4941 69.7676 13.4941 69.1934C13.4941 68.0449 15.4082 67.1836 17.3223 67.1836C20.0977 67.1836 22.4902 68.9063 24.9785 72.4473C26.8926 75.2227 28.9023 76.4668 31.2949 76.4668C33.6875 76.4668 35.2187 75.6055 37.4199 73.4043C39.0469 71.7773 40.291 70.3418 41.4395 69.3848Z"
 internal val qetaraDesktopColors: Colors = lightColors(
     primary = qetaraTeal,
     primaryVariant = qetaraInkDeep,
@@ -421,6 +415,7 @@ internal class PcReceiverServer(
 ) {
     private val expiresAtMs = System.currentTimeMillis() + config.sessionDurationMs
     private val clients = ConcurrentHashMap.newKeySet<Socket>()
+    private val clientSlots = java.util.concurrent.Semaphore(4)
     private val fileReceiveLock = Any()
     private val completedTransfers = CompletedTransferReceipts(config.outputDir)
     private val messageReceipts = ReceivedMessageReceipts(config.outputDir)
@@ -448,14 +443,21 @@ internal class PcReceiverServer(
                         val socket = server.accept()
                         configureSocket(socket)
                         socket.soTimeout = 10_000
+                        // Bound admission, including queued clients: their read timeout starts only
+                        // once a worker runs, so a worker pool alone does not bound idle sockets.
+                        if (!clientSlots.tryAcquire()) {
+                            socket.close()
+                            continue
+                        }
                         clients.add(socket)
                         try {
                             workers.execute {
                                 try { socket.use(::handleClient) }
-                                finally { clients.remove(socket) }
+                                finally { clients.remove(socket); clientSlots.release() }
                             }
                         } catch (_: java.util.concurrent.RejectedExecutionException) {
                             clients.remove(socket)
+                            clientSlots.release()
                             socket.close()
                         }
                     } catch (_: SocketTimeoutException) {
@@ -642,7 +644,7 @@ internal class PcReceiverServer(
         val total = metaFrame.readLong()
         require(total >= 0L) { "tamaño inválido para archivo" }
         val expectedHash = requireValidFileHash(metaFrame.readUTF())
-        completedTransfers.find(remotePeerId, attemptId, incomingName, total, expectedHash)?.let { saved ->
+        completedTransfers.find(remotePeerId, attemptId, incomingName, total, expectedHash, ::checkReceiveActive)?.let { saved ->
             writeResumeOffset(channel, total)
             require(channel.readFrameInput().readInt() == SECURE_FRAME_FILE_DONE) { "Confirmación de reintento inválida" }
             return saved
@@ -664,6 +666,7 @@ internal class PcReceiverServer(
         FileOutputStream(partial, received > 0L).use { fos ->
             val out = BufferedOutputStream(fos)
             while (true) {
+                checkReceiveActive()
                 val frame = channel.readFrameInput()
                 when (frame.readInt()) {
                     SECURE_FRAME_FILE_CHUNK -> {
@@ -694,20 +697,24 @@ internal class PcReceiverServer(
             throw EOFException("transferencia incompleta para $incomingName: $received/$total")
         }
 
-        val actualHash = sha256OfFile(partial)
+        val actualHash = com.example.wifidrop.protocol.sha256File(partial, ::checkReceiveActive)
         if (actualHash != expectedHash) {
             partial.delete()
             throw SecurityException("integridad SHA-256 inválida para $incomingName")
         }
 
-        val target = completedTransfers.publishVerified(partial, remotePeerId, attemptId, incomingName, total, expectedHash) {
-            if (!running.get() || System.currentTimeMillis() >= expiresAtMs) {
-                throw java.util.concurrent.CancellationException("La recepción se detuvo antes de publicar el archivo")
-            }
-        }
+        val target = completedTransfers.publishVerified(
+            partial, remotePeerId, attemptId, incomingName, total, expectedHash, ::checkReceiveActive
+        )
         logProgress(incomingName, received, total, remoteLabel, remoteIp, force = true)
         onFileReceived(target, remoteLabel)
         return target
+    }
+
+    private fun checkReceiveActive() {
+        if (!running.get() || System.currentTimeMillis() >= expiresAtMs) {
+            throw java.util.concurrent.CancellationException("La recepción se detuvo antes de publicar el archivo")
+        }
     }
 
     private fun logProgress(
@@ -1641,7 +1648,7 @@ private fun runDesktopGui(cli: CliArgs) {
 
 
         var receiverPhase by remember { mutableStateOf(DesktopTaskPhase.IDLE) }
-        var receiverStatus by remember { mutableStateOf("Listo para recibir desde otro equipo.") }
+        var receiverStatus by remember { mutableStateOf("Elige una carpeta y activa la recepción.") }
         var sendingPhase by remember { mutableStateOf(DesktopTaskPhase.IDLE) }
         var sendingStatus by remember { mutableStateOf("Listo para enviar a otro equipo.") }
         var messagePhase by remember { mutableStateOf(DesktopTaskPhase.IDLE) }
@@ -3039,52 +3046,6 @@ private fun openDeveloperGithub() {
 }
 
 @Composable
-private fun DesktopBrandFooter(
-    onOpenGithub: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val footerColor = qetaraMuted
-    val githubIcon = remember {
-        val resource = Thread.currentThread().contextClassLoader
-            .getResourceAsStream("ic_github_invertocat_white.png")
-            ?: error("Missing desktop resource: ic_github_invertocat_white.png")
-        val image = resource.use { Image.makeFromEncoded(it.readBytes()) }
-        BitmapPainter(image.toComposeImageBitmap())
-    }
-    Row(
-        modifier = modifier
-            .height(24.dp)
-            .padding(horizontal = 2.dp),
-        horizontalArrangement = Arrangement.End,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Row(
-            modifier = Modifier
-                .pointerHoverIcon(PointerIcon.Hand)
-                .clickable(onClick = onOpenGithub)
-                .padding(horizontal = 2.dp, vertical = 2.dp),
-            horizontalArrangement = Arrangement.spacedBy(5.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                painter = githubIcon,
-                contentDescription = null,
-                modifier = Modifier.size(14.dp),
-                tint = footerColor
-            )
-            Text(
-                "By Intelog Natanael",
-                style = MaterialTheme.typography.body2,
-                fontWeight = FontWeight.SemiBold,
-                color = footerColor,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-    }
-}
-
-@Composable
 private fun DesktopChatFloatingSheet(
     scope: DesktopChatScope,
     lanPeers: List<DesktopLanPeer>,
@@ -3549,7 +3510,8 @@ internal fun DesktopLanPeerRow(
     selected: Boolean,
     onClick: (() -> Unit)?,
     compact: Boolean = false,
-    unreadCount: Int = 0
+    unreadCount: Int = 0,
+    enabled: Boolean = true
 ) {
     val foreground = if (selected) qetaraTeal else qetaraInk
     val background = if (selected) qetaraMist else qetaraCanvasElevated
@@ -3557,7 +3519,10 @@ internal fun DesktopLanPeerRow(
         modifier = Modifier
             .fillMaxWidth()
             .height(if (compact) 44.dp else 60.dp)
-            .then(if (onClick != null) Modifier.pointerHoverIcon(PointerIcon.Hand).selectable(selected = selected, role = Role.RadioButton, onClick = onClick) else Modifier),
+            .then(if (onClick != null) {
+                Modifier.selectable(selected = selected, enabled = enabled, role = Role.RadioButton, onClick = onClick)
+                    .then(if (enabled) Modifier.pointerHoverIcon(PointerIcon.Hand) else Modifier)
+            } else Modifier),
         shape = qetaraPanelShape,
         color = background,
         border = BorderStroke(1.dp, if (selected) qetaraTeal.copy(alpha = .5f) else qetaraLine),
@@ -4063,25 +4028,6 @@ private fun Modifier.qetaraDashedBorder(color: Color): Modifier = drawWithConten
             pathEffect = PathEffect.dashPathEffect(floatArrayOf(dash, gap), 0f)
         )
     )
-}
-
-@Composable
-private fun GithubMark(
-    modifier: Modifier = Modifier,
-    color: Color = qetaraInk
-) {
-    val githubPath = remember { PathParser().parsePathString(githubLogoPathData).toPath() }
-    Canvas(modifier = modifier) {
-        val scale = size.minDimension / githubLogoViewportSize
-        val left = (size.width - githubLogoViewportSize * scale) / 2f
-        val top = (size.height - githubLogoViewportSize * scale) / 2f
-        withTransform({
-            translate(left, top)
-            scale(scale, scale, pivot = Offset.Zero)
-        }) {
-            drawPath(githubPath, color)
-        }
-    }
 }
 
 @Composable
