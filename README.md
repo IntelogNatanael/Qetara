@@ -4,7 +4,7 @@ Comparte archivos y mensajes entre tus dispositivos, sin cuentas.
 
 Qetara conecta Android y PC por tu red local. Entre dispositivos Android también admite Wi-Fi Direct. El código está disponible bajo la [licencia MIT](LICENSE).
 
-Las fuentes actuales están en [`v1.4.2`](https://github.com/IntelogNatanael/Qetara/tree/v1.4.2), código Android 9. La [validación de esta versión](docs/VALIDATION-1.4.2.md) documenta las pruebas, compilaciones limpias y reproducibilidad. El APK firmado 1.4.2 aún no está publicado y la [receta F-Droid](fdroid/README.md) está preparada para revisión; la aplicación todavía no está incluida en su catálogo.
+Descarga el [APK Android 1.4.2](https://github.com/IntelogNatanael/Qetara/releases/download/v1.4.2/Qetara-1.4.2.apk), código 9, desde la [entrega publicada](https://github.com/IntelogNatanael/Qetara/releases/tag/v1.4.2). Las fuentes están en [`v1.4.2`](https://github.com/IntelogNatanael/Qetara/tree/v1.4.2). La [validación](docs/VALIDATION-1.4.2.md) documenta pruebas, compilaciones limpias y reproducibilidad. La [receta F-Droid](fdroid/README.md) incluye el APK firmado y está preparada para revisión; la aplicación todavía no está incluida en su catálogo.
 
 ## Empezar
 

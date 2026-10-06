@@ -3,21 +3,11 @@ Categories:
   - File Transfer
   - Messaging
 License: MIT
+AuthorName: IntelogNatanael
 SourceCode: https://github.com/IntelogNatanael/Qetara
 IssueTracker: https://github.com/IntelogNatanael/Qetara/issues
 
 AutoName: Qetara
-Summary: Share files and messages between devices on your local network
-Description: |-
-  Share files and messages between Android devices and a desktop computer on
-  the same local network, without an account. Android devices can also connect
-  using Wi-Fi Direct.
-
-  Select multiple files, track each transfer, cancel pending files and open
-  received downloads. Android's share menu can send files to Qetara.
-
-  The optional Flash mode offers nearby file sharing with confirmation on both
-  devices. It starts disabled and expires after 30 minutes.
 
 RepoType: git
 Repo: https://github.com/IntelogNatanael/Qetara.git
@@ -29,22 +19,27 @@ Builds:
     subdir: app
     gradle:
       - yes
+    binary: https://github.com/IntelogNatanael/Qetara/releases/download/v1.4.2/Qetara-1.4.2.apk
 
 AllowedAPKSigningKeys: 5f5cdbfb03c1f62f7dc42aee12a5ea4a347b767ccfc268eb450ca69c98ba7a3b
 
 MaintainerNotes: |-
   Candidate recipe for 1.4.2 (versionCode 9), prepared on 2026-10-06.
-  Not submitted to F-Droid. Local validation is recorded in fdroid/README.md
-  and the release reports; historical 1.4.0 results do not cover this build.
-  Verify anonymous HTTPS access to the pinned source commit before inclusion.
-  No developer-signed APK has been published for this recipe. A real versioned
-  binary URL is still required for the intended developer-signature workflow;
-  it is not a general inclusion requirement. Do not invent a Binaries URL.
+  Local validation is recorded in fdroid/README.md and docs/VALIDATION-1.4.2.md.
+  Source tag v1.4.2 and the pinned commit are publicly accessible. The binary
+  URL refers to the developer-signed APK published in the same GitHub release.
+  Summary, description and changelog are provided by upstream Fastlane metadata
+  in English and Spanish at the pinned commit.
 
   Build exactly the pinned commit with JDK 21, Android platform 36 revision 2
   and Build Tools 36.0.0. Use a clean checkout to exclude incremental build
   state. Preserve the upstream ART profile and VCS info. Recheck independent
   unsigned builds and public-signature copying for this exact source commit.
+
+  Updates are manual during initial inclusion. Version name and code live in
+  gradle.properties; a future tag-based update policy must configure
+  UpdateCheckData for qetaraVersion and qetaraVersionCode, exclude RC tags and
+  only announce versions after their developer-signed APK has been published.
 
 AutoUpdateMode: None
 UpdateCheckMode: None

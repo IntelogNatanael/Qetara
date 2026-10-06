@@ -157,10 +157,33 @@ sin helpers, cabeceras de autenticación ni prompts. La etiqueta anotada
 Una consulta HTTP anónima independiente confirmó después que la receta de
 `main` declara versión `1.4.2`, código `9` y el commit validado.
 
-Esta fase prepara y publica fuentes. El APK firmado de este informe permanece
-local; todavía falta publicar su URL versionada y añadir `binary`/`Binaries`
-para el flujo de firma del desarrollador elegido. La inclusión en el catálogo
-requiere presentar la receta y superar la revisión y build oficiales.
+El mismo APK firmado de este informe se publicó en la entrega
+[`v1.4.2`](https://github.com/IntelogNatanael/Qetara/releases/tag/v1.4.2), el
+6 de octubre de 2026 a las 15:03:39 UTC, como
+[`Qetara-1.4.2.apk`](https://github.com/IntelogNatanael/Qetara/releases/download/v1.4.2/Qetara-1.4.2.apk),
+junto con `SHA256SUMS.txt`. La receta incorpora esa URL exacta en `binary` y
+conserva `AllowedAPKSigningKeys`; no se volvió a firmar ni compilar el archivo.
+
+Una descarga HTTPS anónima desde Linux obtuvo HTTP 200 y confirmó los
+14 884 743 bytes y el SHA-256 `841c166787e4cace65c059fe0e8deb8713ba82daa1100c32e300cf11780fe82b`.
+Se comprobaron de nuevo el paquete, versión 1.4.2/código 9, commit VCS,
+certificado, firmas v2/v3 y alineación de 16 KiB. apksigcopier reprodujo el APK
+descargado desde el APK sin firma del ensayo F-Droid ya documentado. También
+pasó `fdroidserver.common.verify_apks`, la función real de comparación usada
+por build/publish en fdroidserver 2.4.5, sin modificar la herramienta. La huella
+obtenida por `common.apk_signer_fingerprint` coincide con la permitida.
+
+La receta final pasó otra vez `readmeta`, `rewritemeta` y lint, todos con código
+0, sin diferencias de normalización. SHA-256 del YAML comprobado:
+`f064c2dffb78b2ce4291c36e01be048602da00574a04e0720d0291d5fcd11ebb`.
+No se ejecutó el CLI `fdroid publish`, que además requiere claves para firmar
+el índice. La comparación sobre el APK público reutilizó la build independiente
+del commit exacto; no se afirma una build nueva ni una ejecución oficial.
+
+La solicitud de inclusión está preparada pero aún no enviada: requiere una
+cuenta GitLab autenticada para crear el fork y la merge request a
+`fdroid/fdroiddata`. No existe todavía una URL de solicitud ni una pipeline
+oficial; la aceptación sigue pendiente de su revisión y build.
 
 La [revisión de UX del 5 de octubre](UX_REVIEW-2026-10-05.md) documenta las
 pruebas físicas anteriores y sus límites. No se repitieron en esta fase y sus

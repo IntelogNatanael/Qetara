@@ -2,8 +2,9 @@
 
 `metadata/io.github.intelognatanael.qetara.yml` describe la candidata Android
 1.4.2/código 9 del commit `c960afafbef5ad463e22127e979408e7a3c4d3af`.
-Es una propuesta para revisión; no ha sido enviada a F-Droid y no contiene
-una URL de APK publicado.
+Es una propuesta para revisión; no ha sido enviada a F-Droid. Su campo `binary`
+apunta al [APK firmado publicado](https://github.com/IntelogNatanael/Qetara/releases/download/v1.4.2/Qetara-1.4.2.apk)
+y `AllowedAPKSigningKeys` conserva el certificado de distribución existente.
 
 **Estado del 6 de octubre de 2026:** las fuentes son públicas bajo la etiqueta
 `v1.4.2`; un clon HTTPS sin credenciales verificó el commit y la versión. La
@@ -78,11 +79,23 @@ la comprobación HTTPS posterior no repitió la build. El YAML conserva la URL
 HTTPS del repositorio. Las sustituciones locales de ensayos quedan fuera de la
 receta pública.
 
-La candidata firmada tampoco tiene todavía una URL pública versionada.
-Para distribuir con la clave del desarrollador, debe añadirse esa URL real
-mediante `binary` o `Binaries` y repetirse su verificación. La huella
-`AllowedAPKSigningKeys` ya está fijada. No se ha inventado una dirección de
-descarga ni se ha declarado que el APK esté publicado.
+El APK firmado se publicó el 6 de octubre de 2026 en la entrega
+[`v1.4.2`](https://github.com/IntelogNatanael/Qetara/releases/tag/v1.4.2), junto a
+`SHA256SUMS.txt`. La receta usa la URL versionada real mediante `binary` y
+mantiene `AllowedAPKSigningKeys`. El archivo publicado tiene SHA-256
+`841c166787e4cace65c059fe0e8deb8713ba82daa1100c32e300cf11780fe82b` y 14 884 743
+bytes. Los resultados sobre la descarga pública se registran en
+[VALIDATION-1.4.2](../docs/VALIDATION-1.4.2.md).
+
+La ficha utiliza los resúmenes y descripciones Fastlane del commit fijado,
+en inglés y español; la receta no los duplica ni anula mediante `Summary` o
+`Description`. `AuthorName` identifica el pseudónimo público del mantenedor.
+El envío previsto es una merge request a `fdroid/fdroiddata`; aún no existe
+una solicitud presentada ni una pipeline oficial. Presentarla requiere una
+cuenta GitLab autenticada. La plantilla y la receta están preparadas para ese
+paso, conservando las actualizaciones manuales durante la primera inclusión.
+El [paquete de envío preparado](SUBMISSION-1.4.2.md) contiene los pasos, enlaces
+y texto en inglés para la solicitud, con las comprobaciones externas pendientes.
 
 La URL del APK y la reproducción de su firma corresponden a la opción elegida
 de conservar la clave del desarrollador. F-Droid también admite compilaciones
