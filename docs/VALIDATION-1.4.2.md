@@ -11,8 +11,11 @@ movió la etiqueta ni se cambiaron las fuentes de la aplicación validada.
 
 Estado de cierre: compilaciones, pruebas, escáneres y reproducción de firma
 completados. GitHub confirma el repositorio público y la etiqueta `v1.4.2`
-identifica el commit indicado. No constituye una solicitud ni aceptación de
-F-Droid. La verificación de acceso anónimo se registra al final del informe.
+identifica el commit indicado. La solicitud a F-Droid se presentó el 6 de
+octubre en la [MR !51433](https://gitlab.com/fdroid/fdroiddata/-/merge_requests/51433);
+la CI de GitLab está bloqueada por verificación de identidad y la inclusión
+no está aceptada. La verificación de acceso anónimo y el estado del envío se
+registran al final del informe.
 
 ## Compilación limpia y reproducibilidad
 
@@ -180,10 +183,30 @@ No se ejecutó el CLI `fdroid publish`, que además requiere claves para firmar
 el índice. La comparación sobre el APK público reutilizó la build independiente
 del commit exacto; no se afirma una build nueva ni una ejecución oficial.
 
-La solicitud de inclusión está preparada pero aún no enviada: requiere una
-cuenta GitLab autenticada para crear el fork y la merge request a
-`fdroid/fdroiddata`. No existe todavía una URL de solicitud ni una pipeline
-oficial; la aceptación sigue pendiente de su revisión y build.
+La solicitud se presentó el 6 de octubre de 2026 a las 15:54:26 UTC como
+[New app: Qetara — MR !51433](https://gitlab.com/fdroid/fdroiddata/-/merge_requests/51433).
+Se verificó abierta, sin borrador ni conflictos, con squash y un único YAML
+nuevo en el diff. Su origen es el fork público `carlos5alentino/fdroiddata`,
+rama `codex/qetara-1.4.2`, commit de metadata
+`dd93e7e3e3da545e11fb1df90b451aaa47ac4ed5`, hacia `fdroid/fdroiddata:master`.
+El YAML remoto conserva los 1 790 bytes LF y el SHA-256 validado arriba.
+No se modificaron las fuentes fijadas, la etiqueta ni el APK.
+
+La comprobación `audit-release.ps1 -RequireCurrentRecipe` se repitió a las
+15:57 UTC: código 0, sin cambios en entradas Android/PC respecto de las fuentes
+etiquetadas, receta 1.4.2/9 consistente y URL `binary` configurada. No fue una
+nueva compilación.
+
+Las pipelines [del push](https://gitlab.com/carlos5alentino/fdroiddata/-/pipelines/2918607293)
+y [de la MR](https://gitlab.com/carlos5alentino/fdroiddata/-/pipelines/2918632569)
+figuran como `failed`. En ambas, GitLab exige «Verify your identity to run
+this pipeline», una verificación adicional a la del registro. La API de la
+pipeline de la MR confirmó `jobs: []`, `yaml_errors: null` y `started_at: null`;
+el intento de push tampoco tenía jobs ni errores YAML. El bloqueo ocurrió
+antes de ejecutar la CI y no produjo resultados de build o pruebas.
+La descripción de la MR solicita a los mantenedores ejecutarla en el proyecto
+principal. La compilación, revisión, aceptación e inclusión oficiales siguen
+pendientes; los resultados locales anteriores conservan su alcance.
 
 La [revisión de UX del 5 de octubre](UX_REVIEW-2026-10-05.md) documenta las
 pruebas físicas anteriores y sus límites. No se repitieron en esta fase y sus

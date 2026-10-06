@@ -2,7 +2,9 @@
 
 `metadata/io.github.intelognatanael.qetara.yml` describe la candidata Android
 1.4.2/código 9 del commit `c960afafbef5ad463e22127e979408e7a3c4d3af`.
-Es una propuesta para revisión; no ha sido enviada a F-Droid. Su campo `binary`
+Se presentó el 6 de octubre de 2026 en la
+[MR !51433 de fdroiddata](https://gitlab.com/fdroid/fdroiddata/-/merge_requests/51433),
+abierta y pendiente de revisión e inclusión. Su campo `binary`
 apunta al [APK firmado publicado](https://github.com/IntelogNatanael/Qetara/releases/download/v1.4.2/Qetara-1.4.2.apk)
 y `AllowedAPKSigningKeys` conserva el certificado de distribución existente.
 
@@ -15,6 +17,11 @@ de firma sobre las dos reconstrucciones también coincide byte a byte con la
 candidata firmada. Las evidencias nuevas y sus límites están en
 [VALIDATION-1.4.2](../docs/VALIDATION-1.4.2.md). Los resultados locales no
 equivalen a aceptación de F-Droid.
+
+La [pipeline de la MR](https://gitlab.com/carlos5alentino/fdroiddata/-/pipelines/2918632569)
+está bloqueada por la verificación adicional de identidad de GitLab, igual
+que el intento de push; no hay una build oficial aprobada. La propia MR
+solicita a los mantenedores ejecutar la CI en el proyecto principal.
 
 **Alcance histórico:** la candidata 1.4.0/código 7, del commit
 `588a92f2617815b5744eeb91a1da463c5c685f90`, se preparó el 11 de septiembre
@@ -69,7 +76,7 @@ esta revisión de la evidencia histórica. Las categorías `Connectivity`,
 [configuración oficial de fdroiddata](https://gitlab.com/fdroid/fdroiddata/-/raw/master/config/categories.yml),
 consultada el 6 de octubre de 2026.
 
-## Antes de solicitar inclusión
+## Publicación y solicitud de inclusión
 
 El acceso público por Git HTTPS al commit fijado ya se comprobó el 6 de octubre
 de 2026 mediante un clon Linux sin credenciales. El repositorio era privado al
@@ -90,12 +97,16 @@ bytes. Los resultados sobre la descarga pública se registran en
 La ficha utiliza los resúmenes y descripciones Fastlane del commit fijado,
 en inglés y español; la receta no los duplica ni anula mediante `Summary` o
 `Description`. `AuthorName` identifica el pseudónimo público del mantenedor.
-El envío previsto es una merge request a `fdroid/fdroiddata`; aún no existe
-una solicitud presentada ni una pipeline oficial. Presentarla requiere una
-cuenta GitLab autenticada. La plantilla y la receta están preparadas para ese
-paso, conservando las actualizaciones manuales durante la primera inclusión.
-El [paquete de envío preparado](SUBMISSION-1.4.2.md) contiene los pasos, enlaces
-y texto en inglés para la solicitud, con las comprobaciones externas pendientes.
+La [MR !51433](https://gitlab.com/fdroid/fdroiddata/-/merge_requests/51433)
+procede del fork público `carlos5alentino/fdroiddata`, rama
+`codex/qetara-1.4.2`, y propone sólo el YAML validado, sin cambiar el commit de
+fuentes, la etiqueta ni el APK. La CI está bloqueada antes de ejecutar jobs
+por el aviso de GitLab «Verify your identity to run this pipeline»; su estado
+`failed` no acredita un fallo de compilación de la aplicación. Se conservan
+las actualizaciones manuales durante la primera inclusión.
+El [registro de envío](SUBMISSION-1.4.2.md) recoge el enlace, la comprobación
+del diff y la solicitud de ayuda con CI. La revisión y publicación en F-Droid
+siguen pendientes.
 
 La URL del APK y la reproducción de su firma corresponden a la opción elegida
 de conservar la clave del desarrollador. F-Droid también admite compilaciones

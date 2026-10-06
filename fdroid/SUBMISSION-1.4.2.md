@@ -1,38 +1,49 @@
-# Envío preparado: Qetara 1.4.2
+# Solicitud presentada: Qetara 1.4.2
 
 Estado del 6 de octubre de 2026: APK y fuentes publicados, receta validada;
-solicitud a F-Droid **todavía no enviada**. Falta una cuenta GitLab autenticada
-para crear el fork, ejecutar o solicitar su pipeline y abrir la merge request.
+solicitud presentada como [**New app: Qetara — MR !51433**](https://gitlab.com/fdroid/fdroiddata/-/merge_requests/51433),
+creada a las 15:54:26 UTC. Está abierta, sin borrador ni conflictos. La CI de
+GitLab está bloqueada por verificación adicional de identidad; la compilación,
+revisión e inclusión oficiales en F-Droid siguen pendientes.
 
 La [receta final](metadata/io.github.intelognatanael.qetara.yml) es el único
-archivo que debe incorporarse a fdroiddata, bajo
-`metadata/io.github.intelognatanael.qetara.yml`. No hay que copiar los informes,
-binarios ni la ficha Fastlane a ese repositorio.
+archivo añadido en el diff de la MR, bajo
+`metadata/io.github.intelognatanael.qetara.yml`. Se comprobó que sus 1 790 bytes,
+con finales LF, coinciden con la receta validada: SHA-256
+`f064c2dffb78b2ce4291c36e01be048602da00574a04e0720d0291d5fcd11ebb`.
+Los informes, binarios y ficha Fastlane permanecen fuera de ese diff.
 
-## Pasos de envío
+## Envío y siguiente paso
 
-1. Iniciar sesión en GitLab y crear un fork público de
-   [fdroid/fdroiddata](https://gitlab.com/fdroid/fdroiddata).
-2. Crear una rama no protegida `codex/qetara-1.4.2`, añadir la receta con finales
-   de línea LF y comprobar que el diff sólo contiene ese archivo.
-3. Ejecutar la pipeline del fork y resolver sus observaciones. Si el servicio
-   impide usar sus runners, indicarlo en la solicitud para que los mantenedores
-   puedan activar la CI de F-Droid. Su plantilla indica que no se debe aportar
-   teléfono ni tarjeta solamente para habilitar esa CI.
-4. Abrir la merge request hacia `fdroid/fdroiddata:master`, con título
-   **New app: Qetara** y la plantilla oficial **App inclusion**. Usar el texto
-   preparado abajo y marcar sólo las comprobaciones realmente completadas.
-5. Registrar su URL y atender la revisión. La validación local y la CI de
-   GitHub no sustituyen la pipeline ni la aceptación de F-Droid.
+La MR procede del fork público
+[`carlos5alentino/fdroiddata`](https://gitlab.com/carlos5alentino/fdroiddata),
+rama no protegida `codex/qetara-1.4.2`, commit
+`dd93e7e3e3da545e11fb1df90b451aaa47ac4ed5`, hacia `fdroid/fdroiddata:master`.
+Está configurada con squash. Ese commit contiene la propuesta de metadata;
+el commit de fuentes Android fijado por la receta no cambió.
+
+Los intentos de pipeline [del push](https://gitlab.com/carlos5alentino/fdroiddata/-/pipelines/2918607293)
+y [de la MR](https://gitlab.com/carlos5alentino/fdroiddata/-/pipelines/2918632569)
+figuran como `failed`. La interfaz muestra «Verify your identity to run this
+pipeline» y aclara que esa verificación es adicional a la del registro.
+La API de la pipeline de la MR confirmó `jobs: []`, `yaml_errors: null` y
+`started_at: null`; el intento de push tampoco tenía jobs ni errores YAML.
+Este bloqueo no aporta resultados de compilación o pruebas de la receta.
+
+La descripción de la MR ya solicita a los mantenedores ejecutar la CI en el
+proyecto principal, siguiendo la plantilla oficial, que indica no aportar
+teléfono ni tarjeta sólo para habilitar esa CI. Queda atender la ejecución y
+la revisión, resolver observaciones y registrar sus resultados. La validación
+local y la CI de GitHub no sustituyen la CI ni la aceptación de F-Droid.
 
 Las [instrucciones de contribución](https://gitlab.com/fdroid/fdroiddata/-/blob/master/CONTRIBUTING.md)
 y la [plantilla oficial](https://gitlab.com/fdroid/fdroiddata/-/blob/master/.gitlab/merge_request_templates/App%20inclusion.md)
 se revisaron en la versión `6d78762a154be40aa7847f0b8a15e2728338d489`.
 Las búsquedas públicas del nombre y el identificador en MR, issues de
-fdroiddata y RFP, en todos los estados, no encontraron coincidencias. Debe
-revisarse de nuevo antes de enviar si ha transcurrido tiempo.
+fdroiddata y RFP, en todos los estados, no encontraron solicitudes previas
+antes de crear esta MR. El seguimiento continúa en !51433.
 
-## Texto preparado para la solicitud
+## Resumen técnico para la revisión
 
 Add Qetara 1.4.2 (versionCode 9), application ID
 `io.github.intelognatanael.qetara`.
@@ -61,8 +72,10 @@ certificate and alignment checks, apksigcopier and the actual
 normalization and lint passed. No scanner bypass or ART/VCS removal was used.
 
 The environment used JDK 21, Gradle 9.1.0, Android platform 36 revision 2 and
-Build Tools 36.0.0. These are local results; the F-Droid pipeline and review
-remain pending. See the [complete validation report](https://github.com/IntelogNatanael/Qetara/blob/main/docs/VALIDATION-1.4.2.md)
+Build Tools 36.0.0. These are local results. GitLab's pipelines are blocked by
+additional identity verification; maintainer assistance has been requested
+in [MR !51433](https://gitlab.com/fdroid/fdroiddata/-/merge_requests/51433).
+The F-Droid build and review remain pending. See the [complete validation report](https://github.com/IntelogNatanael/Qetara/blob/main/docs/VALIDATION-1.4.2.md)
 for build hashes, tests, license review and known UX/connectivity limitations.
 The full `fdroid publish` CLI was not run; it also requires index-signing keys.
 
@@ -80,10 +93,12 @@ proposal contains only version 1.4.2/9 and one universal APK of 14,884,743 bytes
 
 ## Comprobaciones que siguen abiertas
 
-El fork, su diff y pipeline, la URL de MR y la revisión oficial todavía no
-existen. No deben darse por aprobados en la plantilla. El informe de UX conserva
-hallazgos pendientes, por lo que los resultados locales no se presentan como
-una certificación exhaustiva de todos los criterios funcionales de inclusión.
+El fork, la rama, el diff y la MR se comprobaron al presentar la solicitud.
+Las casillas de CI e informes siguen pendientes: ningún intento bloqueado se
+presenta como una ejecución aprobada. También faltan la revisión, aceptación
+y publicación en el catálogo de F-Droid. El informe de UX conserva hallazgos
+pendientes, por lo que los resultados locales no se presentan como una
+certificación exhaustiva de todos los criterios funcionales de inclusión.
 
 Las capturas y el icono de ficha mejorarán su presentación, pero la
 [documentación de metadata](https://f-droid.org/en/docs/All_About_Descriptions_Graphics_and_Screenshots/)
