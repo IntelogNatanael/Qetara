@@ -18,10 +18,25 @@ candidata firmada. Las evidencias nuevas y sus límites están en
 [VALIDATION-1.4.2](../docs/VALIDATION-1.4.2.md). Los resultados locales no
 equivalen a aceptación de F-Droid.
 
-La [pipeline de la MR](https://gitlab.com/carlos5alentino/fdroiddata/-/pipelines/2918632569)
-está bloqueada por la verificación adicional de identidad de GitLab, igual
-que el intento de push; no hay una build oficial aprobada. La propia MR
-solicita a los mantenedores ejecutar la CI en el proyecto principal.
+La verificación de identidad de GitLab ya quedó resuelta. La
+[pipeline 2918682556](https://gitlab.com/carlos5alentino/fdroiddata/-/pipelines/2918682556)
+ejecutó la configuración de fdroiddata en el fork, con runners de GitLab:
+ocho de nueve jobs aprobaron, incluidos `fdroid build` y `check apk`. La build
+reconstruyó el código 9 del commit fijado y verificó su coincidencia con el APK
+público y el certificado permitido. Sólo falló `fdroid rewritemeta`, por el
+salto de línea de la URL `binary`. La receta actual reproduce exactamente el
+artefacto canónico de CI. La [pipeline de la corrección](https://gitlab.com/carlos5alentino/fdroiddata/-/pipelines/2919175178)
+terminó con los nueve jobs obligatorios aprobados, incluidos
+[build y comparación con el APK público](https://gitlab.com/carlos5alentino/fdroiddata/-/jobs/16979192163),
+[rewritemeta](https://gitlab.com/carlos5alentino/fdroiddata/-/jobs/16979192167) y
+[escáner del APK](https://gitlab.com/carlos5alentino/fdroiddata/-/jobs/16979192171).
+Esta CI de contribución no equivale a una build de producción ni a la
+publicación en el catálogo.
+
+La MR sigue abierta, `waiting-on-response`, tras la
+[petición de linsui de explicar la diferenciación funcional](https://gitlab.com/fdroid/fdroiddata/-/merge_requests/51433#note_3965121841).
+El borrador local de respuesta espera revisión del usuario y no está publicado.
+La solicitud no está rechazada ni cerrada.
 
 **Alcance histórico:** la candidata 1.4.0/código 7, del commit
 `588a92f2617815b5744eeb91a1da463c5c685f90`, se preparó el 11 de septiembre
@@ -99,14 +114,17 @@ en inglés y español; la receta no los duplica ni anula mediante `Summary` o
 `Description`. `AuthorName` identifica el pseudónimo público del mantenedor.
 La [MR !51433](https://gitlab.com/fdroid/fdroiddata/-/merge_requests/51433)
 procede del fork público `carlos5alentino/fdroiddata`, rama
-`codex/qetara-1.4.2`, y propone sólo el YAML validado, sin cambiar el commit de
-fuentes, la etiqueta ni el APK. La CI está bloqueada antes de ejecutar jobs
-por el aviso de GitLab «Verify your identity to run this pipeline»; su estado
-`failed` no acredita un fallo de compilación de la aplicación. Se conservan
-las actualizaciones manuales durante la primera inclusión.
-El [registro de envío](SUBMISSION-1.4.2.md) recoge el enlace, la comprobación
-del diff y la solicitud de ayuda con CI. La revisión y publicación en F-Droid
-siguen pendientes.
+`codex/qetara-1.4.2`, ahora en `b7f7f882612613a94d55dd589c946da69ea78d9b`, y
+propone sólo el YAML, sin cambiar el commit de fuentes, la etiqueta ni el APK.
+El YAML canónico tiene 1 797 bytes LF y SHA-256
+`5377907e627663ebfe9991e4e9db3371516e18d88f75056dc34c15a0848e1657`.
+El único cambio respecto del envío inicial coloca la URL escalar en la línea
+siguiente a `binary:`, con el espacio final generado por el serializador de CI;
+no es una lista ni cambia la URL. Se conservan las actualizaciones manuales
+durante la primera inclusión.
+El [registro de envío](SUBMISSION-1.4.2.md) conserva los primeros intentos de CI
+bloqueados, la ejecución posterior y la corrección de formato. La revisión y
+publicación en F-Droid siguen pendientes.
 
 La URL del APK y la reproducción de su firma corresponden a la opción elegida
 de conservar la clave del desarrollador. F-Droid también admite compilaciones

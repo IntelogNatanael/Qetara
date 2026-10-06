@@ -13,9 +13,14 @@ Estado de cierre: compilaciones, pruebas, escáneres y reproducción de firma
 completados. GitHub confirma el repositorio público y la etiqueta `v1.4.2`
 identifica el commit indicado. La solicitud a F-Droid se presentó el 6 de
 octubre en la [MR !51433](https://gitlab.com/fdroid/fdroiddata/-/merge_requests/51433);
-la CI de GitLab está bloqueada por verificación de identidad y la inclusión
-no está aceptada. La verificación de acceso anónimo y el estado del envío se
-registran al final del informe.
+la verificación de identidad de GitLab ya quedó resuelta. La primera CI que
+ejecutó jobs aprobó ocho de nueve, incluidos build y comprobación del APK;
+falló sólo la normalización de la URL de metadata. La nueva pipeline tras
+incorporar el YAML canónico terminó con los nueve jobs obligatorios aprobados.
+La MR sigue abierta,
+`waiting-on-response`, pendiente de explicar la diferenciación funcional;
+la inclusión no está aceptada. La verificación de acceso anónimo y el estado
+del envío se registran al final del informe.
 
 ## Compilación limpia y reproducibilidad
 
@@ -56,7 +61,7 @@ con apksigner y la comprobación de alineación de 16 KiB con zipalign.
 
 ## Pruebas y F-Droid
 
-| Comprobación | Resultado de esta ejecución |
+| Comprobación | Resultado del ensayo local |
 | --- | --- |
 | Coherencia de fuentes/receta | `audit-release.ps1 -RequireCurrentRecipe`: código 0, sin entradas Android/build distintas del commit fijado. |
 | `fdroid readmeta` | Código 0. |
@@ -176,8 +181,9 @@ pasó `fdroidserver.common.verify_apks`, la función real de comparación usada
 por build/publish en fdroidserver 2.4.5, sin modificar la herramienta. La huella
 obtenida por `common.apk_signer_fingerprint` coincide con la permitida.
 
-La receta final pasó otra vez `readmeta`, `rewritemeta` y lint, todos con código
-0, sin diferencias de normalización. SHA-256 del YAML comprobado:
+La receta preparada para el envío pasó otra vez `readmeta`, `rewritemeta` y lint
+en el entorno local, todos con código 0, sin diferencias de normalización.
+SHA-256 del YAML comprobado:
 `f064c2dffb78b2ce4291c36e01be048602da00574a04e0720d0291d5fcd11ebb`.
 No se ejecutó el CLI `fdroid publish`, que además requiere claves para firmar
 el índice. La comparación sobre el APK público reutilizó la build independiente
@@ -189,7 +195,7 @@ Se verificó abierta, sin borrador ni conflictos, con squash y un único YAML
 nuevo en el diff. Su origen es el fork público `carlos5alentino/fdroiddata`,
 rama `codex/qetara-1.4.2`, commit de metadata
 `dd93e7e3e3da545e11fb1df90b451aaa47ac4ed5`, hacia `fdroid/fdroiddata:master`.
-El YAML remoto conserva los 1 790 bytes LF y el SHA-256 validado arriba.
+El YAML remoto inicial conservaba los 1 790 bytes LF y el SHA-256 validado arriba.
 No se modificaron las fuentes fijadas, la etiqueta ni el APK.
 
 La comprobación `audit-release.ps1 -RequireCurrentRecipe` se repitió a las
@@ -199,14 +205,98 @@ nueva compilación.
 
 Las pipelines [del push](https://gitlab.com/carlos5alentino/fdroiddata/-/pipelines/2918607293)
 y [de la MR](https://gitlab.com/carlos5alentino/fdroiddata/-/pipelines/2918632569)
-figuran como `failed`. En ambas, GitLab exige «Verify your identity to run
+quedaron como `failed`. En ambas, GitLab exigía «Verify your identity to run
 this pipeline», una verificación adicional a la del registro. La API de la
 pipeline de la MR confirmó `jobs: []`, `yaml_errors: null` y `started_at: null`;
 el intento de push tampoco tenía jobs ni errores YAML. El bloqueo ocurrió
 antes de ejecutar la CI y no produjo resultados de build o pruebas.
-La descripción de la MR solicita a los mantenedores ejecutarla en el proyecto
-principal. La compilación, revisión, aceptación e inclusión oficiales siguen
-pendientes; los resultados locales anteriores conservan su alcance.
+La descripción inicial de la MR solicitó ayuda a los mantenedores para ejecutar
+la CI en el proyecto principal. Ese bloqueo de identidad ya está resuelto;
+los intentos sin jobs conservan su estado histórico.
+
+La [pipeline 2918682556](https://gitlab.com/carlos5alentino/fdroiddata/-/pipelines/2918682556)
+ejecutó la configuración de fdroiddata en el fork, con runners de GitLab, y
+terminó con ocho de nueve jobs aprobados, incluidos `fdroid build` y `check apk`.
+El [job de build 16975390342](https://gitlab.com/carlos5alentino/fdroiddata/-/jobs/16975390342)
+registró `Building io.github.intelognatanael.qetara:9`, obtuvo las fuentes de
+`c960afafbef5ad463e22127e979408e7a3c4d3af` y completó la compilación. Después
+registró `successfully verified`, la comparación satisfactoria del binario
+construido con el APK público de referencia y el certificado permitido
+`5f5cdbfb03c1f62f7dc42aee12a5ea4a347b767ccfc268eb450ca69c98ba7a3b`.
+El log se conserva en
+`.local/publication-2026-10-06/submission/gitlab/build-16975390342.log`.
+Estos resultados pertenecen a la CI de contribución; no son una build de
+producción ni una publicación en el catálogo de F-Droid.
+
+El [job `check apk` 16975390351](https://gitlab.com/carlos5alentino/fdroiddata/-/jobs/16975390351)
+examinó los tres archivos DEX con firmas SUSS y dexdump 36.0.0, comprobó bloques
+de firma adicionales y registró la validación del APK. Su log
+`apk-16975390351.log`, en la misma carpeta de evidencia, también conserva
+advertencias: permisos de `config.yml` en el entorno de CI y una tabla de
+recursos específicos de Androguard que, ante API 36, recurrió a su nivel
+máximo 28. La compilación emitió además advertencias de APIs obsoletas y sobre
+una biblioteca nativa que no pudo reducir con stripping. El resultado aprobado
+no equivale a cero advertencias ni a una verificación exhaustiva de todas las
+funciones de Android 36.
+
+El único fallo fue [rewritemeta](https://gitlab.com/carlos5alentino/fdroiddata/-/jobs/16975390347):
+el serializador ruamel.yaml de CI coloca la URL escalar en la línea siguiente a `binary:`
+y conserva un espacio al final de esa clave. No convierte la URL en una lista
+ni cambia su valor. Se descargó el YAML canónico del artefacto del job y se
+incorporó sin alterar sus bytes a la receta local y a la rama de la MR,
+commit `b7f7f882612613a94d55dd589c946da69ea78d9b`. Tiene 1 797 bytes, finales LF
+y SHA-256 `5377907e627663ebfe9991e4e9db3371516e18d88f75056dc34c15a0848e1657`.
+Este es el hash actual de la receta; el anterior identifica el ensayo y envío
+iniciales. No se cambiaron las fuentes fijadas, la etiqueta ni el APK.
+La [pipeline 2919175178](https://gitlab.com/carlos5alentino/fdroiddata/-/pipelines/2919175178)
+de la corrección terminó en `success`, sobre el commit de metadata
+`b7f7f882612613a94d55dd589c946da69ea78d9b`, con `updated_at`
+`2026-10-06T18:55:37.091Z`. Sus nueve jobs obligatorios aprobaron:
+
+| Job | Resultado |
+| --- | --- |
+| [fdroid build · 16979192163](https://gitlab.com/carlos5alentino/fdroiddata/-/jobs/16979192163) | `success` |
+| [checkupdates · 16979192164](https://gitlab.com/carlos5alentino/fdroiddata/-/jobs/16979192164) | `success` |
+| [git redirect · 16979192165](https://gitlab.com/carlos5alentino/fdroiddata/-/jobs/16979192165) | `success` |
+| [fdroid lint · 16979192166](https://gitlab.com/carlos5alentino/fdroiddata/-/jobs/16979192166) | `success` |
+| [fdroid rewritemeta · 16979192167](https://gitlab.com/carlos5alentino/fdroiddata/-/jobs/16979192167) | `success` |
+| [tools check scripts · 16979192168](https://gitlab.com/carlos5alentino/fdroiddata/-/jobs/16979192168) | `success` |
+| [schema validation · 16979192169](https://gitlab.com/carlos5alentino/fdroiddata/-/jobs/16979192169) | `success` |
+| [check source code · 16979192170](https://gitlab.com/carlos5alentino/fdroiddata/-/jobs/16979192170) | `success` |
+| [check apk · 16979192171](https://gitlab.com/carlos5alentino/fdroiddata/-/jobs/16979192171) | `success` |
+
+La nueva build registró de nuevo `Building io.github.intelognatanael.qetara:9`
+y el commit de fuentes `c960afafbef5ad463e22127e979408e7a3c4d3af`. Gradle
+terminó con `BUILD SUCCESSFUL in 4m 19s`; a las 18:52:33 UTC se registraron la
+verificación satisfactoria, la comparación del binario construido con el APK
+público y el certificado permitido ya documentado. El log
+`build-16979192163.log` se conserva en la misma carpeta de evidencia de GitLab.
+
+El nuevo escáner de APK examinó `classes.dex`, `classes2.dex` y `classes3.dex`
+con dexdump 36.0.0 y firmas SUSS, comprobó los bloques de firma adicionales
+y registró `APK file was successfully validated!` y `Job succeeded`.
+El log `apk-16979192171.log` conserva las advertencias de permisos de
+`config.yml` y del recurso de Androguard a su tabla API 28 ante API 36, además
+de `SyntaxWarning` por secuencias de escape en la herramienta Python clint.
+La aprobación de los nueve jobs no se presenta como ausencia de advertencias,
+aceptación editorial ni publicación en el catálogo de F-Droid.
+
+La comprobación local `audit-release.ps1 -RequireCurrentRecipe` se repitió a
+las 18:59:46 UTC: resultado aprobado, versión 1.4.2/código 9, `binary_url`
+configurada, ningún cambio en entradas Android o PC respecto del commit fijado
+y `findings: []`. El hash de la receta local siguió coincidiendo exactamente
+con el artefacto canónico de CI. Esta comprobación de coherencia no volvió a
+compilar ni a ejecutar las auditorías previas.
+
+La MR permanece abierta, con la etiqueta `waiting-on-response` tras el
+[comentario de linsui](https://gitlab.com/fdroid/fdroiddata/-/merge_requests/51433#note_3965121841),
+que pide justificar las funciones o mejoras que la distinguen de aplicaciones
+existentes y plantea contribuir a ellas. No se ha rechazado ni cerrado la
+solicitud. El borrador local
+`.local/publication-2026-10-06/submission/gitlab/reply-linsui-draft.txt`
+no está publicado: espera revisión del usuario. La revisión, aceptación e
+inclusión siguen pendientes; las auditorías locales anteriores conservan su
+alcance y no se presentan como repetidas por esta CI.
 
 La [revisión de UX del 5 de octubre](UX_REVIEW-2026-10-05.md) documenta las
 pruebas físicas anteriores y sus límites. No se repitieron en esta fase y sus

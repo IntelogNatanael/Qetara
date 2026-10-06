@@ -19,7 +19,8 @@ Builds:
     subdir: app
     gradle:
       - yes
-    binary: https://github.com/IntelogNatanael/Qetara/releases/download/v1.4.2/Qetara-1.4.2.apk
+    binary: 
+      https://github.com/IntelogNatanael/Qetara/releases/download/v1.4.2/Qetara-1.4.2.apk
 
 AllowedAPKSigningKeys: 5f5cdbfb03c1f62f7dc42aee12a5ea4a347b767ccfc268eb450ca69c98ba7a3b
 
