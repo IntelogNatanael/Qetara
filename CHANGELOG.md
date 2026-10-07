@@ -1,6 +1,6 @@
 # Cambios en Qetara
 
-## 1.4.3 — candidata, 7 de octubre de 2026
+## 1.4.3 — publicada, 2026-10-07
 
 - Android activa R8 y la reducción de recursos en la variante release, conservando el identificador y la clave de distribución. Se reduce el tamaño del paquete sin cambiar intencionadamente los flujos de uso ni el protocolo.
 - La entrega se prepara para atender la revisión de F-Droid. Su compilación, ejecución y reproducibilidad se acreditan sobre el nuevo commit; los resultados de 1.4.2 conservan su alcance histórico.

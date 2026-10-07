@@ -11,38 +11,19 @@ AutoName: Qetara
 
 RepoType: git
 Repo: https://github.com/IntelogNatanael/Qetara.git
+Binaries: https://github.com/IntelogNatanael/Qetara/releases/download/v%v/Qetara-%v.apk
 
 Builds:
-  - versionName: 1.4.2
-    versionCode: 9
-    commit: c960afafbef5ad463e22127e979408e7a3c4d3af
+  - versionName: 1.4.3
+    versionCode: 10
+    commit: ee4c0aea8110f4ff8d11aa701cd93e1c7b3a3489
     subdir: app
     gradle:
       - yes
-    binary: 
-      https://github.com/IntelogNatanael/Qetara/releases/download/v1.4.2/Qetara-1.4.2.apk
 
 AllowedAPKSigningKeys: 5f5cdbfb03c1f62f7dc42aee12a5ea4a347b767ccfc268eb450ca69c98ba7a3b
 
-MaintainerNotes: |-
-  Candidate recipe for 1.4.2 (versionCode 9), prepared on 2026-10-06.
-  Local validation is recorded in fdroid/README.md and docs/VALIDATION-1.4.2.md.
-  Source tag v1.4.2 and the pinned commit are publicly accessible. The binary
-  URL refers to the developer-signed APK published in the same GitHub release.
-  Summary, description and changelog are provided by upstream Fastlane metadata
-  in English and Spanish at the pinned commit.
-
-  Build exactly the pinned commit with JDK 21, Android platform 36 revision 2
-  and Build Tools 36.0.0. Use a clean checkout to exclude incremental build
-  state. Preserve the upstream ART profile and VCS info. Recheck independent
-  unsigned builds and public-signature copying for this exact source commit.
-
-  Updates are manual during initial inclusion. Version name and code live in
-  gradle.properties; a future tag-based update policy must configure
-  UpdateCheckData for qetaraVersion and qetaraVersionCode, exclude RC tags and
-  only announce versions after their developer-signed APK has been published.
-
 AutoUpdateMode: None
 UpdateCheckMode: None
-CurrentVersion: 1.4.2
-CurrentVersionCode: 9
+CurrentVersion: 1.4.3
+CurrentVersionCode: 10

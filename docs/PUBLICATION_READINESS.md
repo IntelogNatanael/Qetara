@@ -1,9 +1,22 @@
 # Preparación de la publicación pública
 
-La revisión actual de **1.4.2/código 9**, del 6 de octubre de 2026, se registra
-en [Validación 1.4.2](VALIDATION-1.4.2.md). El resto de este documento conserva
-la evidencia histórica de 1.4.0; sus resultados, recursos y estado de
-publicación no describen automáticamente la versión actual.
+La versión actual es **1.4.3/código 10**, con validación local completada al
+7 de octubre de 2026: [Validación 1.4.3](VALIDATION-1.4.3.md). Windows, Linux
+y el ensayo F-Droid produjeron APK sin firma y `mapping.txt` idénticos; las
+reconstrucciones Linux/F-Droid también reproducen el APK firmado byte a byte. El APK firmado aprobó 15 comprobaciones físicas de contratos
+y un lote de cinco archivos por la interfaz real, con apertura de un archivo;
+el transporte ADB/USB y loopback no acredita LAN ni Wi-Fi Direct. Metadata,
+escáneres y build F-Droid aprobaron localmente; los diez avisos sobre TTF y
+permisos DrvFs están revisados y conservados. La
+[release estable 1.4.3](https://github.com/IntelogNatanael/Qetara/releases/tag/v1.4.3),
+sus fuentes/etiqueta, APK firmado y sumas ya se publicaron el 7 de octubre.
+La comprobación anónima pública y la reproducción del APK descargado aprobaron;
+la CI GitHub del tag completó 4/4 jobs sobre el commit final. La actualización
+de la MR y su nueva CI F-Droid siguen pendientes; no se afirma inclusión.
+
+[Validación 1.4.2](VALIDATION-1.4.2.md) conserva la publicación y las pruebas
+del 6 de octubre. El resto de este documento es **histórico de 1.4.0**: sus
+resultados, recursos y estado de publicación no describen la versión actual.
 
 Qetara 1.4.0, código Android 7. Preparación del 11 de septiembre de 2026; código de la candidata fijado en `588a92f2617815b5744eeb91a1da463c5c685f90`. Este documento registra resultados y condiciones de publicación; no anuncia una release pública ni la aceptación de F-Droid.
 

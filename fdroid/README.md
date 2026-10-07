@@ -1,7 +1,32 @@
 # Preparación de F-Droid
 
-`metadata/io.github.intelognatanael.qetara.yml` describe la candidata Android
-1.4.2/código 9 del commit `c960afafbef5ad463e22127e979408e7a3c4d3af`.
+**Estado al 7 de octubre de 2026:** la receta local propone **1.4.3/código 10**,
+commit `ee4c0aea8110f4ff8d11aa701cd93e1c7b3a3489`, con R8, `Binaries` global y
+sin `MaintainerNotes`. Su metadata pasó lectura, normalización estable y lint.
+Las builds Windows, Linux y F-Droid produjeron APK sin firma y `mapping.txt`
+idénticos. El ensayo local fdroidserver 2.4.5 aprobó build y escáneres; sus
+diez advertencias TTF por permisos DrvFs se revisaron contra los blobs Git.
+La copia de firma sobre Linux/F-Droid reproduce el APK firmado exacto. El
+APK optimizado aprobó 15 comprobaciones de contratos y el lote por interfaz
+real, con alcance de transporte ADB/USB y loopback. La
+[release estable GitHub 1.4.3](https://github.com/IntelogNatanael/Qetara/releases/tag/v1.4.3),
+fuentes/etiqueta, APK y sumas se publicaron el 7 de octubre. La comprobación
+anónima pública y la reproducción del APK descargado aprobaron; también la
+[CI GitHub del tag, 4/4 jobs](https://github.com/IntelogNatanael/Qetara/actions/runs/37698052755).
+La MR !51433 no está actualizada a 1.4.3. La consulta API del 7 de octubre,
+22:46 UTC, conserva el commit `b7f7f882612613a94d55dd589c946da69ea78d9b` y la
+pipeline `2919175178` de 1.4.2; su nueva CI de contribución F-Droid sigue pendiente.
+La [validación de 1.4.3](../docs/VALIDATION-1.4.3.md) separa cada resultado y
+pendiente. La URL derivada de `Binaries` apunta a la release ya publicada;
+su comprobación desde descarga pública se registra separadamente.
+
+## Historial de la publicación 1.4.2
+
+Los párrafos siguientes conservan el estado del 6 de octubre de 2026; sus
+hashes y pipelines no acreditan la candidata 1.4.3.
+
+La receta presentada originalmente describía Android 1.4.2/código 9 del commit
+`c960afafbef5ad463e22127e979408e7a3c4d3af`.
 Se presentó el 6 de octubre de 2026 en la
 [MR !51433 de fdroiddata](https://gitlab.com/fdroid/fdroiddata/-/merge_requests/51433),
 abierta y pendiente de revisión e inclusión. Su campo `binary`
@@ -24,7 +49,7 @@ ejecutó la configuración de fdroiddata en el fork, con runners de GitLab:
 ocho de nueve jobs aprobaron, incluidos `fdroid build` y `check apk`. La build
 reconstruyó el código 9 del commit fijado y verificó su coincidencia con el APK
 público y el certificado permitido. Sólo falló `fdroid rewritemeta`, por el
-salto de línea de la URL `binary`. La receta actual reproduce exactamente el
+salto de línea de la URL `binary`. La receta corregida de 1.4.2 reproducía exactamente el
 artefacto canónico de CI. La [pipeline de la corrección](https://gitlab.com/carlos5alentino/fdroiddata/-/pipelines/2919175178)
 terminó con los nueve jobs obligatorios aprobados, incluidos
 [build y comparación con el APK público](https://gitlab.com/carlos5alentino/fdroiddata/-/jobs/16979192163),
@@ -33,10 +58,12 @@ terminó con los nueve jobs obligatorios aprobados, incluidos
 Esta CI de contribución no equivale a una build de producción ni a la
 publicación en el catálogo.
 
-La MR sigue abierta, `waiting-on-response`, tras la
+El 6 de octubre la MR seguía abierta tras la
 [petición de linsui de explicar la diferenciación funcional](https://gitlab.com/fdroid/fdroiddata/-/merge_requests/51433#note_3965121841).
-El borrador local de respuesta espera revisión del usuario y no está publicado.
-La solicitud no está rechazada ni cerrada.
+La respuesta enviada por el usuario por correo quedó reflejada en el
+[comentario de GitLab del 6 de octubre, 15:02 de Lima](https://gitlab.com/fdroid/fdroiddata/-/merge_requests/51433#note_3965764686).
+La entrega se confirmó en `reply-delivery-confirmed.json`; no se publicó un
+comentario duplicado. La solicitud permanecía abierta y pendiente de revisión.
 
 **Alcance histórico:** la candidata 1.4.0/código 7, del commit
 `588a92f2617815b5744eeb91a1da463c5c685f90`, se preparó el 11 de septiembre
@@ -74,15 +101,15 @@ fdroiddata que incluya su configuración oficial de categorías. Ejecuta:
 fdroid readmeta
 fdroid rewritemeta io.github.intelognatanael.qetara
 fdroid lint --force-yamllint io.github.intelognatanael.qetara
-fdroid scanner --refresh --json --exit-code io.github.intelognatanael.qetara:9
-fdroid build --test --no-tarball --scan-binary --stop io.github.intelognatanael.qetara:9
+fdroid scanner --refresh --json --exit-code io.github.intelognatanael.qetara:10
+fdroid build --test --no-tarball --scan-binary --stop io.github.intelognatanael.qetara:10
 ```
 
 Los comandos de escáner y build preparan y limpian su propio checkout de trabajo.
 No deben apuntar al directorio donde desarrollas la aplicación. `--test` mantiene
 la salida en el área de prueba; no se utilizan `--force` ni `--skip-scan`.
 
-El [informe de 1.4.2/9](../docs/VALIDATION-1.4.2.md) registra el commit,
+El [informe de 1.4.3/10](../docs/VALIDATION-1.4.3.md) registra el commit,
 las versiones de herramientas, las adaptaciones del entorno y los hashes
 nuevos. El [estado de publicación](../docs/PUBLICATION_READINESS.md) distingue
 esta revisión de la evidencia histórica. Las categorías `Connectivity`,
@@ -91,7 +118,7 @@ esta revisión de la evidencia histórica. Las categorías `Connectivity`,
 [configuración oficial de fdroiddata](https://gitlab.com/fdroid/fdroiddata/-/raw/master/config/categories.yml),
 consultada el 6 de octubre de 2026.
 
-## Publicación y solicitud de inclusión
+## Historial de publicación y solicitud de inclusión de 1.4.2
 
 El acceso público por Git HTTPS al commit fijado ya se comprobó el 6 de octubre
 de 2026 mediante un clon Linux sin credenciales. El repositorio era privado al
@@ -153,7 +180,7 @@ y no se ha adoptado aquí esa alternativa.
 La ficha editable está en `fastlane/metadata/android/en-US` y
 `fastlane/metadata/android/es-ES`, con nombre, resumen y descripción. Las capturas
 y el icono de tienda deben corresponder a la candidata final y conservar la
-geometría de la marca. Las notas del código 9 están en `changelogs/9.txt` de ambos
+geometría de la marca. Las notas actuales están en `changelogs/10.txt`; se conservan las históricas del código 9 en `changelogs/9.txt` de ambos
 idiomas. Las capturas y el icono de tienda siguen pendientes; no se presentan
 capturas históricas como imágenes del APK nuevo.
 
