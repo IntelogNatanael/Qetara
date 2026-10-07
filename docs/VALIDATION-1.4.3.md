@@ -1,14 +1,15 @@
 # Validación de Qetara 1.4.3 / código 10
 
 Estado al 7 de octubre de 2026: **publicada en GitHub; validación local,
-comprobación pública y CI GitHub aprobadas. Actualización de F-Droid pendiente**. Este informe corresponde exclusivamente al commit
+comprobación pública y CI GitHub/F-Droid aprobadas; MR F-Droid actualizada**. Las fuentes de los artefactos auditados corresponden al commit
 `ee4c0aea8110f4ff8d11aa701cd93e1c7b3a3489`. Ese commit se publicó en `main`
 y con la etiqueta anotada `v1.4.3`. La
 [release GitHub 1.4.3](https://github.com/IntelogNatanael/Qetara/releases/tag/v1.4.3)
 se publicó el `2026-10-07T22:44:30Z`, como release estable, con el APK firmado
 y `SHA256SUMS.txt`. La descarga anónima y la reproducción desde el APK público también aprobaron. La
-[MR !51433](https://gitlab.com/fdroid/fdroiddata/-/merge_requests/51433) no se
-considera actualizada ni aceptada por estos resultados locales.
+[MR !51433](https://gitlab.com/fdroid/fdroiddata/-/merge_requests/51433) ya
+propone esta versión y su CI de contribución aprobó los nueve jobs obligatorios.
+La revisión del mantenedor y la inclusión en el catálogo siguen pendientes.
 
 ## Alcance de las fuentes
 
@@ -39,7 +40,8 @@ No se añaden reglas globales que desactiven las optimizaciones.
 | Publicación GitHub | PASS | Fuentes `main`, etiqueta anotada `v1.4.3` y release estable publicados; APK firmado y `SHA256SUMS.txt` disponibles. |
 | Comprobación desde URLs públicas | PASS | HTTP 200 sin credenciales; commit/etiqueta y propiedades públicos, APK, sumas, versión, VCS y certificado correctos. Ambas reconstrucciones reproducen el APK público. |
 | CI GitHub del tag `v1.4.3` | PASS, 4/4 jobs | Commit exacto: Android y desktop macOS/Ubuntu/Windows; build, tests y lint Android, y autopruebas desktop aprobados. |
-| Actualización de la MR y CI de contribución F-Droid | PENDIENTE | Consulta API del 7 de octubre, 22:46 UTC: la MR !51433 conserva su commit/CI de 1.4.2; no se afirma inclusión en F-Droid. |
+| Actualización de la MR F-Droid | PASS | Commit de metadata `45acfb7b4cda9da3026615d9534cbeb437dd5e65`; receta pública de 715 bytes idéntica a la validada y diff limitado al YAML de Qetara. |
+| CI de contribución F-Droid | PASS, 9/9 jobs | Pipeline `2924351724` sobre el commit de metadata fijado: build con R8, comparación con el APK público, firma, escáneres y comprobaciones de metadata aprobados; sin `allow_failure`. |
 
 Las builds limpias usan Gradle 9.1.0, AGP 9.0.0, JDK 21, SDK 36 y Build Tools
 36.0.0. Ejecutan `minifyReleaseWithR8` y conservan sus salidas de diagnóstico.
@@ -178,6 +180,55 @@ equivale a CI o aceptación oficial de F-Droid.
 | `linux/public-attempt-2/public-apk-validation-summary.json` | `7de64b745657e6c679683e2bdd5cb14a019d1e3aac959825198efca4d09a118d` |
 | `github-tag-ci.json` | `6de63c3931cf336946a2237a4adf2c195a2c74d5b61207b1c400f03b997f1004` |
 
+## Actualización de la MR F-Droid
+
+La MR !51433 y su descripción ya corresponden a 1.4.3/código 10. El
+[commit de metadata](https://gitlab.com/carlos5alentino/fdroiddata/-/commit/45acfb7b4cda9da3026615d9534cbeb437dd5e65)
+es `45acfb7b4cda9da3026615d9534cbeb437dd5e65`, posterior al envío 1.4.2.
+Los diffs del commit y de la MR sólo incluyen
+`metadata/io.github.intelognatanael.qetara.yml`. Sus 715 bytes y SHA-256
+coinciden con la receta canónica registrada arriba; se comprobó la autoría UNSA.
+El pin de fuentes y el APK publicados siguen siendo los mismos de esta entrega.
+
+La [pipeline de contribución 2924351724](https://gitlab.com/carlos5alentino/fdroiddata/-/pipelines/2924351724)
+terminó **PASS, 9/9 jobs obligatorios**, sin `allow_failure`, sobre ese commit
+de metadata. Finalizó el `2026-10-07T23:06:22.352Z` en 6 min 29 s. Aprobaron
+build, checkupdates, redirecciones Git, lint, rewritemeta, scripts, esquema,
+fuentes y APK. Este resultado sustituye el estado en curso de las primeras
+observaciones, que se conservan como evidencia histórica.
+
+El [job de build](https://gitlab.com/carlos5alentino/fdroiddata/-/jobs/17015490814)
+reconstruyó el código 10 desde `ee4c0aea8110f4ff8d11aa701cd93e1c7b3a3489`
+y ejecutó `minifyReleaseWithR8`. Descargó el APK 1.4.3 de la URL pública,
+copió su firma a la reconstrucción y aprobó la comparación con la referencia;
+ambos verificaron firmas v2/v3 y el certificado permitido registrado arriba.
+
+El [job de APK](https://gitlab.com/carlos5alentino/fdroiddata/-/jobs/17015490822)
+aprobó el escáner DEX con datos SUSS actualizados y la comprobación de bloques
+adicionales de firma. Detectó el marcador R8 9.0.32, modo `release`/`full`,
+API mínima 24. El conjunto de informes Code Quality conserva 22 entradas:
+18 informativas y cuatro menores, frente a 17 informativas y cinco menores
+en 1.4.2. El aviso «APK has no R8 Marker» se sustituye por la información del
+marcador; los cuatro avisos menores sobre permisos son idénticos a los de
+1.4.2, sin hallazgos nuevos de permisos. Los registros conservan advertencias
+de las herramientas sobre configuración de CI y el recurso de Androguard
+al mapa de API 28 al no disponer del de API 36; no se presentan como errores
+de la aplicación ni se ocultan por el resultado aprobado.
+
+Los logs y artefactos revisados se conservan en
+`.local/fdroid-r8-2026-10-07/submission/ci-2924351724/`; las observaciones
+públicas de la metadata y del estado inicial están en
+`submission/ci-observation-20261007T230042088Z/`, bajo la misma raíz local.
+
+| Evidencia de la CI F-Droid | SHA-256 |
+| --- | --- |
+| `job-17015490814.log` | `b991dd0fbea8a8023febdecc66509756031076a69f249bbca701b80d0e183b58` |
+| `job-17015490822.log` | `4ce80b6a60fc4ae337c6e148579d2099368ad671175c912e3192e59504a0f95c` |
+| `job-17015490822-codequality.json` | `b406a69cf3cda8b5f9c721329f5aa63b106bbe9bb87293cbbbe6c7042fb609cb` |
+
+La CI de contribución aprobada no equivale a una build de producción de
+F-Droid, revisión favorable del mantenedor o publicación en el catálogo.
+
 ## Ensayo F-Droid y evidencia local
 
 La receta propuesta fija 1.4.3/10 y el commit completo, usa `Binaries` global
@@ -239,8 +290,11 @@ La ejecución limpia Windows conserva además `provenance.json` y el clon
 - [x] Verificar anónimamente el commit, etiqueta y propiedades públicos;
   descargar APK/sumas y comprobar versión, hash, certificado y reproducción.
 - [x] Comprobar la CI GitHub del tag y sus cuatro jobs sobre el commit final.
-- [ ] Actualizar la MR !51433 y revisar su nueva CI; distinguir aprobación
-  local, CI de contribución e inclusión efectiva en el catálogo.
+- [x] Actualizar la MR !51433 a 1.4.3 y comprobar su commit, receta y diff público.
+- [x] Cerrar la nueva CI de contribución y revisar sus nueve jobs, comparación
+  reproducible, escáneres y avisos de Code Quality.
+- [ ] Obtener la revisión del mantenedor y la inclusión efectiva en el
+  catálogo F-Droid.
 
 Los resultados y hashes de [1.4.2](VALIDATION-1.4.2.md) conservan su alcance
 histórico. La CI desktop no equivale a publicar o instalar nuevos paquetes PC.

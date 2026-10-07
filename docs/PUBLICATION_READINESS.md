@@ -11,8 +11,14 @@ permisos DrvFs están revisados y conservados. La
 [release estable 1.4.3](https://github.com/IntelogNatanael/Qetara/releases/tag/v1.4.3),
 sus fuentes/etiqueta, APK firmado y sumas ya se publicaron el 7 de octubre.
 La comprobación anónima pública y la reproducción del APK descargado aprobaron;
-la CI GitHub del tag completó 4/4 jobs sobre el commit final. La actualización
-de la MR y su nueva CI F-Droid siguen pendientes; no se afirma inclusión.
+la CI GitHub del tag completó 4/4 jobs sobre el commit final. La MR !51433 ya
+propone 1.4.3 mediante el commit de metadata `45acfb7b4cda9da3026615d9534cbeb437dd5e65`.
+Su [nueva CI F-Droid](https://gitlab.com/carlos5alentino/fdroiddata/-/pipelines/2924351724)
+aprobó los nueve jobs obligatorios, incluida la reconstrucción con R8 y la
+comparación con el APK público. El escáner del APK aprobó; los cuatro avisos
+menores sobre permisos se mantienen respecto de 1.4.2 y el aviso de ausencia
+de R8 desapareció. La revisión del mantenedor y la inclusión en el catálogo
+permanecen pendientes.
 
 [Validación 1.4.2](VALIDATION-1.4.2.md) conserva la publicación y las pruebas
 del 6 de octubre. El resto de este documento es **histórico de 1.4.0**: sus

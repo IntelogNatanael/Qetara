@@ -1,6 +1,7 @@
 # Preparación de F-Droid
 
-**Estado al 7 de octubre de 2026:** la receta local propone **1.4.3/código 10**,
+**Estado al 7 de octubre de 2026:** la receta local y la MR !51433 proponen
+**1.4.3/código 10**,
 commit `ee4c0aea8110f4ff8d11aa701cd93e1c7b3a3489`, con R8, `Binaries` global y
 sin `MaintainerNotes`. Su metadata pasó lectura, normalización estable y lint.
 Las builds Windows, Linux y F-Droid produjeron APK sin firma y `mapping.txt`
@@ -13,9 +14,21 @@ real, con alcance de transporte ADB/USB y loopback. La
 fuentes/etiqueta, APK y sumas se publicaron el 7 de octubre. La comprobación
 anónima pública y la reproducción del APK descargado aprobaron; también la
 [CI GitHub del tag, 4/4 jobs](https://github.com/IntelogNatanael/Qetara/actions/runs/37698052755).
-La MR !51433 no está actualizada a 1.4.3. La consulta API del 7 de octubre,
-22:46 UTC, conserva el commit `b7f7f882612613a94d55dd589c946da69ea78d9b` y la
-pipeline `2919175178` de 1.4.2; su nueva CI de contribución F-Droid sigue pendiente.
+La MR !51433 y su descripción ya están actualizadas a 1.4.3 con el
+[commit de metadata `45acfb7b4cda9da3026615d9534cbeb437dd5e65`](https://gitlab.com/carlos5alentino/fdroiddata/-/commit/45acfb7b4cda9da3026615d9534cbeb437dd5e65).
+Se verificaron la autoría UNSA, el diff limitado al YAML de Qetara y la receta
+pública idéntica a la validada: 715 bytes, SHA-256
+`0582224ea231060bb53723f0714754185d9032c8ce575d7ffbc7fe952bdeeef4`.
+La [pipeline 2924351724](https://gitlab.com/carlos5alentino/fdroiddata/-/pipelines/2924351724)
+aprobó los nueve jobs obligatorios en 6 min 29 s sobre el nuevo commit.
+La [build](https://gitlab.com/carlos5alentino/fdroiddata/-/jobs/17015490814)
+reconstruyó las fuentes fijadas con R8 y aprobó la comparación y firma con el
+APK público. El [escáner del APK](https://gitlab.com/carlos5alentino/fdroiddata/-/jobs/17015490822)
+aprobó y reconoció R8 9.0.32, modo release/full; desapareció el aviso de
+ausencia de marcador. Los cuatro avisos menores sobre permisos son los
+mismos de 1.4.2. La revisión del mantenedor y la inclusión en F-Droid siguen
+pendientes; esta CI de contribución no acredita una build de producción o
+publicación en el catálogo.
 La [validación de 1.4.3](../docs/VALIDATION-1.4.3.md) separa cada resultado y
 pendiente. La URL derivada de `Binaries` apunta a la release ya publicada;
 su comprobación desde descarga pública se registra separadamente.
@@ -23,7 +36,7 @@ su comprobación desde descarga pública se registra separadamente.
 ## Historial de la publicación 1.4.2
 
 Los párrafos siguientes conservan el estado del 6 de octubre de 2026; sus
-hashes y pipelines no acreditan la candidata 1.4.3.
+hashes y pipelines no acreditan la versión 1.4.3.
 
 La receta presentada originalmente describía Android 1.4.2/código 9 del commit
 `c960afafbef5ad463e22127e979408e7a3c4d3af`.
@@ -141,7 +154,7 @@ en inglés y español; la receta no los duplica ni anula mediante `Summary` o
 `Description`. `AuthorName` identifica el pseudónimo público del mantenedor.
 La [MR !51433](https://gitlab.com/fdroid/fdroiddata/-/merge_requests/51433)
 procede del fork público `carlos5alentino/fdroiddata`, rama
-`codex/qetara-1.4.2`, ahora en `b7f7f882612613a94d55dd589c946da69ea78d9b`, y
+`codex/qetara-1.4.2`, entonces en `b7f7f882612613a94d55dd589c946da69ea78d9b`, y
 propone sólo el YAML, sin cambiar el commit de fuentes, la etiqueta ni el APK.
 El YAML canónico tiene 1 797 bytes LF y SHA-256
 `5377907e627663ebfe9991e4e9db3371516e18d88f75056dc34c15a0848e1657`.
