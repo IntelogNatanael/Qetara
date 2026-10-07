@@ -1,0 +1,2 @@
+Smaller Android release package using R8 code optimization and resource shrinking.
+Preserves the app identity, transfer protocol and existing workflows.

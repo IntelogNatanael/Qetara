@@ -1,0 +1,2 @@
+Paquete Android más pequeño mediante optimización de código con R8 y reducción de recursos.
+Conserva la identidad de la aplicación, el protocolo de transferencia y los flujos existentes.
