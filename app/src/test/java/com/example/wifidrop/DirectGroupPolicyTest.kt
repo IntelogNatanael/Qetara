@@ -6,7 +6,7 @@ import java.net.InetAddress
 import java.net.ServerSocket
 import java.net.Socket
 
-class DirectGroupPolicyTest {
+class DirectGroupPolicyTest : com.example.wifidrop.LocalizedResourcesTest() {
     private val owner = "10.77.8.1"
     private val group = DirectGroupContext("group-a", owner, true, "p2p-fixture", setOf(owner), 100L)
     private val first = peer("first", "10.77.8.4")

@@ -37,7 +37,7 @@ fun resolveVerifiedDirectParticipants(
     if (!connection.isGroupOwner) {
         // The platform supplies this destination before credentials can be approved.
         return listOf(transferState.knownPeers.firstOrNull { it.ip == ownerIp } ?: KnownPeerSnapshot(
-            id = "direct_owner_$ownerIp", label = "Anfitrión Wi-Fi Direct", ip = ownerIp,
+            id = "direct_owner_$ownerIp", label = appString(R.string.rt_direct_host), ip = ownerIp,
             trusted = false, globalLanJoined = false, lastSeenAtMs = 0L
         ))
     }

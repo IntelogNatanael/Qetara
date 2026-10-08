@@ -9,7 +9,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 
-class P2pRoutingPolicyTest {
+class P2pRoutingPolicyTest : com.example.wifidrop.LocalizedResourcesTest() {
 
     @Test
     fun lanRoutingPrefersTrustedRecentPeer() {

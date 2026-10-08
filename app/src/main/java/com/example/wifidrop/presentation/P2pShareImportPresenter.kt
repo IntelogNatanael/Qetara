@@ -1,5 +1,9 @@
 package com.example.wifidrop.presentation
 
+import com.example.wifidrop.R
+import com.example.wifidrop.appString
+import com.example.wifidrop.appQuantityString
+
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -57,7 +61,7 @@ class P2pShareImportPresenter(
         val tickets = P2pAttachmentContext.entries.associateWith { context ->
             val ticket = imports.getValue(context).replace()
             if (snapshot.files[context].orEmpty().isNotEmpty()) {
-                updateDraft(context) { it.copy(status = "Recuperando selección...") }
+                updateDraft(context) { it.copy(status = appString(R.string.pr_attachments_restoring)) }
             }
             ticket
         }
@@ -85,7 +89,7 @@ class P2pShareImportPresenter(
 
     suspend fun importPickedUris(uris: List<Uri>, context: P2pAttachmentContext) {
         if (uris.isEmpty()) return
-        updateDraft(context) { it.copy(status = "Agregando archivos...") }
+        updateDraft(context) { it.copy(status = appString(R.string.pr_attachments_adding)) }
         imports.getValue(context).append(load = { loadOutboundSelections(uris) }) { loaded ->
             updateDraft(context) { draft ->
                 val merged = mergeAttachmentFiles(
@@ -95,11 +99,7 @@ class P2pShareImportPresenter(
                 )
                 draft.copy(
                     files = merged,
-                    status = if (merged.size == 1) {
-                        "1 archivo seleccionado."
-                    } else {
-                        "${merged.size} archivos seleccionados."
-                    }
+                    status = appQuantityString(R.plurals.pr_files_selected, merged.size, merged.size)
                 )
             }
         }
@@ -118,7 +118,7 @@ class P2pShareImportPresenter(
             _state.update {
                 it.copy(
                     attachments = it.attachments.update(context) { draft ->
-                        draft.copy(files = loaded, status = "Recibidos ${loaded.size} archivo(s) desde Compartir.")
+                        draft.copy(files = loaded, status = appQuantityString(R.plurals.pr_files_shared_imported, loaded.size, loaded.size))
                     }.select(context),
                     incomingShareEventId = sharePayload.eventId
                 )
@@ -148,14 +148,13 @@ class P2pShareImportPresenter(
 
     fun markDirectComposerFilesQueued(fileCount: Int) {
         imports.getValue(P2pAttachmentContext.DIRECT_CHAT).replace()
-        updateDraft(P2pAttachmentContext.DIRECT_CHAT) { P2pAttachmentDraft(status = "Enviando $fileCount archivo(s).") }
+        updateDraft(P2pAttachmentContext.DIRECT_CHAT) { P2pAttachmentDraft(status = appQuantityString(R.plurals.pr_files_sending, fileCount, fileCount)) }
     }
 
     fun markChannelComposerFilesQueued(fileCount: Int) {
         imports.getValue(P2pAttachmentContext.CHANNEL).replace()
         updateDraft(P2pAttachmentContext.CHANNEL) {
-            P2pAttachmentDraft(status = if (fileCount == 1) "Publicado 1 archivo en el canal Wi‑Fi."
-                else "Publicados $fileCount archivos en el canal Wi‑Fi.")
+            P2pAttachmentDraft(status = appQuantityString(R.plurals.pr_channel_files_posted, fileCount, fileCount))
         }
     }
 

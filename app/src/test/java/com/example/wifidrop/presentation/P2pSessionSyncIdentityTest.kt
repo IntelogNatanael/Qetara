@@ -6,7 +6,7 @@ import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-class P2pSessionSyncIdentityTest {
+class P2pSessionSyncIdentityTest : com.example.wifidrop.LocalizedResourcesTest() {
     private val started = P2pSessionState(
         "OLD12345", "123456", 999_999L, localDeviceIdShort = "self",
         connectionNetworkKey = "lan:true:10.0.2.16", connectionTargetIp = "10.0.2.2"

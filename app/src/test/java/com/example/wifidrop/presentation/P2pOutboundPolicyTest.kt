@@ -5,7 +5,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-class P2pOutboundPolicyTest {
+class P2pOutboundPolicyTest : com.example.wifidrop.LocalizedResourcesTest() {
 
     @Test
     fun directMessageRequiresText() {

@@ -151,8 +151,8 @@ internal fun P2pMessagesTab(
     val isP2pHost = state.connection?.isGroupOwner == true
     val isGlobalChat = activeChannel == ChatChannel.GLOBAL
     val channelTitle = when {
-        isGlobalChat -> "Canal Wi‑Fi"
-        else -> "Chat"
+        isGlobalChat -> appString(R.string.msg_channel_wifi)
+        else -> appString(R.string.msg_chat)
     }
     val globalLanJoined = state.globalLanJoined
     val globalDeviceCountLabel = deviceCountLabel(state.globalChatPeerCount)
@@ -185,7 +185,7 @@ internal fun P2pMessagesTab(
     val directTargetCount = state.chatDirectTargetIps.size
     val directTargetLabel = state.chatDirectTargetLabel ?: state.chatDirectTargetIp
     val directSelectionSummary = when {
-        directTargetCount > 1 -> "$directTargetCount equipos"
+        directTargetCount > 1 -> appQuantityString(R.plurals.msg_devices_count, directTargetCount, directTargetCount)
         directTargetLabel != null -> directTargetLabel
         else -> state.chatDirectTargetIps.firstOrNull()
     }
@@ -201,148 +201,148 @@ internal fun P2pMessagesTab(
     val showChannelJoinPrompt = isGlobalChat && !channelReady
     val hasMessages = recentMessages.isNotEmpty()
     val hasComposerPayload = state.chatDraft.isNotBlank() || state.selectedFilesCount > 0
-    val sendButtonLabel = "Enviar"
+    val sendButtonLabel = appString(R.string.msg_send)
     val directNotReadyTitle = when {
         isDirectWifiMode && !state.permissionGranted ->
-            "Falta permiso"
+            appString(R.string.msg_permission_missing)
         isDirectWifiMode && !state.p2pEnabled ->
-            "Abre Wi-Fi del sistema"
+            appString(R.string.msg_open_system_wifi)
         isDirectWifiMode && state.directCreatingGroup ->
-            "Enlace creado en este equipo"
+            appString(R.string.msg_link_created_here)
         isDirectWifiMode && state.directConnecting ->
-            "Uniéndote al enlace"
+            appString(R.string.msg_joining_link)
         isDirectWifiMode && p2pLinked && directWifiPeers.isNotEmpty() ->
-            "Elige uno o varios equipos"
+            appString(R.string.msg_choose_devices)
         isDirectWifiMode && p2pLinked ->
-            "Esperando participantes"
+            appString(R.string.msg_waiting_participants)
         isDirectWifiMode && state.directDiscovering && state.peers.isNotEmpty() ->
-            "Elige un equipo"
+            appString(R.string.msg_choose_device)
         isDirectWifiMode && state.directDiscovering ->
-            "Buscando equipos"
+            appString(R.string.msg_searching_devices)
         isDirectWifiMode ->
-            "Directo todavía no está listo"
+            appString(R.string.msg_direct_not_ready)
         else ->
-            "Elige un equipo"
+            appString(R.string.msg_choose_device)
     }
     val directNotReadyBody = when {
         isDirectWifiMode && !state.permissionGranted ->
-            "Concede el permiso y luego vuelve a Conectar para completar el enlace."
+            appString(R.string.msg_permission_connect)
         isDirectWifiMode && !state.p2pEnabled ->
-            "La app no puede encender Wi-Fi Direct. Abre Wi-Fi del sistema y luego crea o busca un enlace."
+            appString(R.string.msg_system_wifi_help)
         isDirectWifiMode && state.directCreatingGroup ->
-            "En el otro equipo, toca Buscar enlace y luego Conectar."
+            appString(R.string.msg_other_device_find)
         isDirectWifiMode && state.directConnecting ->
-            "Espera mientras ambos equipos terminan de enlazarse."
+            appString(R.string.msg_wait_linking)
         isDirectWifiMode && p2pLinked && directWifiPeers.isNotEmpty() ->
-            "Elige a quién enviar dentro del grupo Wi‑Fi Direct."
+            appString(R.string.msg_choose_group_recipient)
         isDirectWifiMode && p2pLinked ->
-            "Cuando los equipos compartan sesión aparecerán aquí para elegirlos."
+            appString(R.string.msg_session_devices_appear)
         isDirectWifiMode && state.directDiscovering && state.peers.isNotEmpty() ->
-            "Abre Conectar, elige el equipo correcto y toca Conectar."
+            appString(R.string.msg_open_connect_choose)
         isDirectWifiMode && state.directDiscovering ->
-            "Mantén abierto el enlace en el otro equipo. La lista se actualizará sola."
+            appString(R.string.msg_keep_other_link_open)
         isDirectWifiMode ->
-            "Primero crea o busca un enlace para habilitar el chat directo."
+            appString(R.string.msg_create_link_first)
         else ->
-            "Primero elige el equipo con el que vas a chatear."
+            appString(R.string.msg_choose_chat_device_first)
     }
     val showDirectSetupCard = !isGlobalChat && !directChannelReady
     val composerPlaceholder = when {
-        state.selectedFilesCount > 0 -> "Añade un mensaje opcional..."
-        isGlobalChat -> "Mensaje para el canal Wi‑Fi"
-        showDirectSetupCard -> "Directo se habilita cuando el enlace esté listo"
-        directTargetCount > 1 -> "Mensaje para $directTargetCount equipos"
-        !directSelectionSummary.isNullOrBlank() -> "Mensaje para ${directSelectionSummary ?: "este equipo"}"
-        else -> "Escribe un mensaje"
+        state.selectedFilesCount > 0 -> appString(R.string.msg_optional_message)
+        isGlobalChat -> appString(R.string.msg_channel_message)
+        showDirectSetupCard -> appString(R.string.msg_direct_ready_placeholder)
+        directTargetCount > 1 -> appQuantityString(R.plurals.msg_message_devices_count, directTargetCount, directTargetCount)
+        !directSelectionSummary.isNullOrBlank() -> appString(R.string.msg_message_destination, directSelectionSummary ?: appString(R.string.msg_this_device))
+        else -> appString(R.string.msg_write_message)
     }
 
     val sendDisabledReason = when {
-        !state.sessionEnabled -> "Activa la sesión para enviar archivos o mensajes."
-        isGlobalChat && !state.lanConnected -> "El canal requiere estar en una red Wi‑Fi."
-        isGlobalChat && !globalLanJoined -> "Entra al canal Wi‑Fi para escribir."
+        !state.sessionEnabled -> appString(R.string.msg_enable_session_to_send)
+        isGlobalChat && !state.lanConnected -> appString(R.string.msg_channel_needs_wifi)
+        isGlobalChat && !globalLanJoined -> appString(R.string.msg_join_to_write)
         isGlobalChat && state.selectedFilesCount > 0 && state.globalChatPeerCount <= 0 ->
-            "No hay otros equipos en el canal para recibir archivos."
-        isGlobalChat && state.chatDraft.isBlank() && state.selectedFilesCount <= 0 -> "Escribe un mensaje o adjunta archivos."
-        !hasComposerPayload -> "Escribe un mensaje o adjunta archivos."
-        state.sessionExpired -> "Sesión expirada. Renueva la sesión."
-        !isGlobalChat && directChannelReady && !state.chatSessionReady -> "Confirma la sesión con el receptor en Conectar antes de enviar."
+            appString(R.string.msg_no_channel_recipients)
+        isGlobalChat && state.chatDraft.isBlank() && state.selectedFilesCount <= 0 -> appString(R.string.msg_write_or_attach)
+        !hasComposerPayload -> appString(R.string.msg_write_or_attach)
+        state.sessionExpired -> appString(R.string.msg_expired_renew)
+        !isGlobalChat && directChannelReady && !state.chatSessionReady -> appString(R.string.msg_confirm_receiver_session)
         !isGlobalChat && directChatMode == ConnectionMode.WIFI_DIRECT && state.chatDirectTargetIps.isEmpty() ->
-            "Elige al menos un equipo del grupo Wi‑Fi Direct."
+            appString(R.string.msg_choose_group_at_least_one)
         !isGlobalChat && directChatMode == ConnectionMode.WIFI_DIRECT && state.selectedFilesCount > 0 && state.chatDirectTargetIps.size > 1 ->
-            "Por ahora los adjuntos por Wi‑Fi Direct salen a un solo equipo."
+            appString(R.string.msg_direct_attachments_single)
         !isGlobalChat && directChatMode == ConnectionMode.WIFI_DIRECT &&
             state.selectedFilesCount > 0 &&
             !isP2pHost &&
             state.chatDirectTargetIps.singleOrNull() != state.connection?.groupOwnerAddress ->
-            "Desde clientes, los archivos por Wi‑Fi Direct solo salen directo al anfitrión."
+            appString(R.string.msg_client_files_host_only)
         !isGlobalChat && !directChannelReady -> when (directChatMode) {
-            ConnectionMode.WIFI_DIRECT -> "Primero deja listo un equipo por Wi-Fi Direct."
-            ConnectionMode.LAN -> "Elige un equipo para usar Directo por Wi-Fi LAN."
+            ConnectionMode.WIFI_DIRECT -> appString(R.string.msg_prepare_direct_first)
+            ConnectionMode.LAN -> appString(R.string.msg_choose_lan_direct)
         }
         else -> null
     }
     val composerNotice = when {
         hasComposerPayload && sendDisabledReason != null -> sendDisabledReason
-        state.sessionExpired -> "Renueva la sesión para volver a enviar."
+        state.sessionExpired -> appString(R.string.msg_renew_to_send)
         isGlobalChat && state.selectedFilesCount > 0 && state.globalChatPeerCount <= 0 ->
-            "Cuando haya otro equipo en el canal podrás enviarle archivos."
+            appString(R.string.msg_wait_channel_peer_files)
         isGlobalChat && state.selectedFilesCount > 0 ->
-            "Se publicará una descarga para ${if (state.globalChatPeerCount == 1) "1 equipo" else "${state.globalChatPeerCount} equipos"} del canal."
+            appQuantityString(R.plurals.msg_channel_download_recipients, state.globalChatPeerCount, state.globalChatPeerCount)
         else -> null
     }
     val chatStarterTitle = when {
         isGlobalChat -> channelTitle
-        isDirectWifiMode -> "Chat directo"
-        else -> "Directo por LAN"
+        isDirectWifiMode -> appString(R.string.msg_direct_chat)
+        else -> appString(R.string.msg_lan_direct)
     }
     val chatStarterBody = when {
         isGlobalChat && !state.lanConnected ->
-            "Conecta este equipo a una red Wi‑Fi"
+            appString(R.string.msg_connect_device_wifi)
         isGlobalChat && !globalLanJoined ->
-            "Toca Entrar para participar"
+            appString(R.string.msg_tap_join)
         isGlobalChat && state.globalChatPeerCount <= 0 ->
-            "Solo tú en este canal"
+            appString(R.string.msg_alone_channel)
         isGlobalChat ->
             globalDeviceCountLabel
         directTargetCount > 1 ->
-            "$directTargetCount equipos quedaron listos. Puedes escribir o adjuntar archivos."
+            appQuantityString(R.plurals.msg_devices_ready_hint, directTargetCount, directTargetCount)
         directChannelReady ->
-            "${directTargetLabel ?: "Equipo"} quedó listo. Puedes escribir o adjuntar archivos."
+            appString(R.string.msg_device_ready_hint, directTargetLabel ?: appString(R.string.msg_device))
         else ->
-            "Ningún equipo listo"
+            appString(R.string.msg_no_device_ready)
     }
     val chatHeaderSummary = when {
-        isGlobalChat && !state.lanConnected -> "Sin red local"
-        isGlobalChat && !globalLanJoined -> "No estás dentro"
-        isGlobalChat && state.globalChatPeerCount <= 0 -> "Solo tú en este canal"
+        isGlobalChat && !state.lanConnected -> appString(R.string.msg_no_local_network)
+        isGlobalChat && !globalLanJoined -> appString(R.string.msg_not_joined)
+        isGlobalChat && state.globalChatPeerCount <= 0 -> appString(R.string.msg_alone_channel)
         isGlobalChat -> globalDeviceCountLabel
-        directTargetCount > 1 -> "Directo · Wi‑Fi Direct · $directTargetCount equipos"
+        directTargetCount > 1 -> appQuantityString(R.plurals.msg_direct_group_summary, directTargetCount, directTargetCount)
         directChannelReady -> buildString {
-            append("1 a 1 · ")
+            append(appString(R.string.msg_one_to_one_prefix))
             append(if (directChatMode == ConnectionMode.WIFI_DIRECT) "Wi-Fi Direct" else "Wi-Fi LAN")
             directTargetLabel?.let {
                 append(" · ")
                 append(it)
             }
         }
-        else -> "1 a 1 · ${if (directChatMode == ConnectionMode.WIFI_DIRECT) "Wi-Fi Direct" else "Wi-Fi LAN"}"
+        else -> appString(R.string.msg_one_to_one_mode, if (directChatMode == ConnectionMode.WIFI_DIRECT) "Wi-Fi Direct" else "Wi-Fi LAN")
     }
     val chatHeaderTitle = when {
         isGlobalChat -> channelTitle
-        isDirectWifiMode -> "Chat directo"
-        else -> "Directo por LAN"
+        isDirectWifiMode -> appString(R.string.msg_direct_chat)
+        else -> appString(R.string.msg_lan_direct)
     }
     val channelHelperText = when {
-        isGlobalChat && !state.lanConnected -> "Conéctate a una red Wi‑Fi para ver el canal."
-        isGlobalChat && !globalLanJoined -> "Entra para escribir en el canal de esta red."
+        isGlobalChat && !state.lanConnected -> appString(R.string.msg_connect_wifi_to_view)
+        isGlobalChat && !globalLanJoined -> appString(R.string.msg_join_network_channel)
         !isGlobalChat && !directChannelReady -> when (directChatMode) {
             ConnectionMode.WIFI_DIRECT -> when {
-                !state.permissionGranted -> "Concede el permiso para usar Wi-Fi Direct."
-                !state.p2pEnabled -> "Abre Wi-Fi del sistema para continuar."
-                p2pLinked -> "Elige a uno o varios equipos del grupo."
-                else -> "Crea o busca un enlace para usar Directo."
+                !state.permissionGranted -> appString(R.string.msg_grant_direct_permission)
+                !state.p2pEnabled -> appString(R.string.msg_open_wifi_to_continue)
+                p2pLinked -> appString(R.string.msg_choose_group_devices)
+                else -> appString(R.string.msg_create_find_direct)
             }
-            ConnectionMode.LAN -> "Elige un equipo para chatear 1 a 1 en esta Wi-Fi."
+            ConnectionMode.LAN -> appString(R.string.msg_choose_one_to_one_lan)
         }
         else -> null
     }
@@ -357,25 +357,21 @@ internal fun P2pMessagesTab(
     val operationalNoticeIsError = operationalNotice != null && (
         state.sessionExpired ||
             (isGlobalChat && !state.lanConnected) ||
-            state.messageStatus.contains("error", ignoreCase = true) ||
-            state.messageStatus.contains("fall", ignoreCase = true) ||
-            state.messageStatus.contains("no ", ignoreCase = true)
+            com.example.wifidrop.presentation.isMessageStatusFailure(state.messageStatus)
         )
     val tokenSyncNeedsManualAction =
-        state.tokenSyncStatus.contains("reintent", ignoreCase = true) ||
-            state.tokenSyncStatus.contains("no pude", ignoreCase = true) ||
-            state.tokenSyncStatus.contains("fall", ignoreCase = true)
+        com.example.wifidrop.presentation.isSessionSyncFailure(state.tokenSyncStatus)
     val showSyncButton = !state.chatSessionReady && experience.showSyncAction && (!isGlobalChat || tokenSyncNeedsManualAction)
     val queueHeadline = when {
-        queueRunningCount > 0 -> "Cola activa"
-        queueFailedCount > 0 -> "Requiere atención"
-        queuePendingCount > 0 -> "Cola lista"
+        queueRunningCount > 0 -> appString(R.string.msg_queue_active)
+        queueFailedCount > 0 -> appString(R.string.msg_needs_attention)
+        queuePendingCount > 0 -> appString(R.string.msg_queue_ready)
         else -> null
     }
     val queueSummary = buildList {
-        if (queueRunningCount > 0) add("$queueRunningCount activo${if (queueRunningCount == 1) "" else "s"}")
-        if (queuePendingCount > 0) add("$queuePendingCount pendiente${if (queuePendingCount == 1) "" else "s"}")
-        if (queueFailedCount > 0) add("$queueFailedCount para reintentar")
+        if (queueRunningCount > 0) add(appQuantityString(R.plurals.msg_queue_running_count, queueRunningCount, queueRunningCount))
+        if (queuePendingCount > 0) add(appQuantityString(R.plurals.msg_queue_pending_count, queuePendingCount, queuePendingCount))
+        if (queueFailedCount > 0) add(appQuantityString(R.plurals.msg_queue_retry_count, queueFailedCount, queueFailedCount))
     }.joinToString(" · ")
     val featuredQueueItem = state.sendQueue.firstOrNull()
     val sectionCardColors = CardDefaults.elevatedCardColors(
@@ -412,9 +408,9 @@ internal fun P2pMessagesTab(
     ) {
         val sectionLabel = when {
             showChannelJoinPrompt -> null
-            showDirectSetupCard && hasMessages -> "Historial reciente"
-            hasMessages -> if (messageQuery.isNotBlank()) "Resultados guardados" else if (isGlobalChat) "Mensajes" else "Historial de chats directos"
-            !showDirectSetupCard -> if (isGlobalChat) null else "Empieza aquí"
+            showDirectSetupCard && hasMessages -> appString(R.string.msg_recent_history)
+            hasMessages -> if (messageQuery.isNotBlank()) appString(R.string.msg_saved_results) else if (isGlobalChat) appString(R.string.msg_messages) else appString(R.string.msg_direct_history)
+            !showDirectSetupCard -> if (isGlobalChat) null else appString(R.string.msg_start_here)
             else -> null
         }
         BoxWithConstraints(Modifier.fillMaxSize()) {
@@ -436,11 +432,11 @@ internal fun P2pMessagesTab(
                         onValueChange = { messageQuery = it.take(160) },
                         modifier = Modifier.fillMaxWidth().focusRequester(searchFocusRequester),
                         singleLine = true,
-                        label = { Text("Buscar texto o equipo") },
+                        label = { Text(appString(R.string.msg_search_text_device)) },
                         leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
                         trailingIcon = {
                             IconButton(onClick = closeSearch, modifier = Modifier.size(48.dp)) {
-                                Icon(Icons.Rounded.Close, contentDescription = "Cerrar búsqueda")
+                                Icon(Icons.Rounded.Close, contentDescription = appString(R.string.msg_close_search))
                             }
                         },
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
@@ -448,7 +444,7 @@ internal fun P2pMessagesTab(
                         shape = RoundedCornerShape(16.dp)
                     )
                     Text(
-                        "${recentMessages.size} ${if (recentMessages.size == 1) "mensaje encontrado" else "mensajes encontrados"}",
+                        appQuantityString(R.plurals.msg_messages_found_count, recentMessages.size, recentMessages.size),
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -487,7 +483,7 @@ internal fun P2pMessagesTab(
                 ) {
                     if (filteredMessages.isNotEmpty()) {
                         IconButton(onClick = { composerMoreExpanded = false; searchVisible = true }, modifier = Modifier.size(48.dp)) {
-                            Icon(Icons.Rounded.Search, contentDescription = "Buscar en mensajes guardados")
+                            Icon(Icons.Rounded.Search, contentDescription = appString(R.string.msg_search_saved_messages))
                         }
                     }
                     if (isGlobalChat && globalLanJoined) {
@@ -497,12 +493,12 @@ internal fun P2pMessagesTab(
                                 contentDescription = null,
                                 modifier = Modifier.size(18.dp)
                             )
-                            Text("Salir")
+                            Text(appString(R.string.msg_leave))
                         }
                     }
                     if (filteredMessages.isNotEmpty()) {
                         IconButton(onClick = { confirmClearChat = true }, modifier = Modifier.size(48.dp)) {
-                            Icon(Icons.Rounded.DeleteSweep, contentDescription = "Eliminar historial de este canal")
+                            Icon(Icons.Rounded.DeleteSweep, contentDescription = appString(R.string.msg_delete_channel_history))
                         }
                     }
                 }
@@ -531,7 +527,7 @@ internal fun P2pMessagesTab(
             }
 
             if (!isGlobalChat && directChannelReady && !state.chatSessionReady) {
-                TextButton(onClick = onOpenConnectTab, modifier = Modifier.heightIn(min = 48.dp)) { Text("Confirmar sesión en Conectar") }
+                TextButton(onClick = onOpenConnectTab, modifier = Modifier.heightIn(min = 48.dp)) { Text(appString(R.string.msg_confirm_session_connect)) }
             }
 
             if (showDirectSetupCard && hasMessages) {
@@ -543,7 +539,7 @@ internal fun P2pMessagesTab(
                     onClick = onOpenConnectTab,
                     modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
                 ) {
-                    Text("Ir a Conectar")
+                    Text(appString(R.string.msg_go_connect))
                 }
             } else {
                 if (!showChannelJoinPrompt) {
@@ -555,15 +551,15 @@ internal fun P2pMessagesTab(
                             StatusChip(
                                 label = if (isGlobalChat) {
                                     when {
-                                        !state.lanConnected -> "Sin Wi‑Fi"
-                                        !globalLanJoined -> "Fuera del canal"
-                                        state.globalChatPeerCount <= 0 -> "Solo tú"
+                                        !state.lanConnected -> appString(R.string.msg_no_wifi)
+                                        !globalLanJoined -> appString(R.string.msg_outside_channel)
+                                        state.globalChatPeerCount <= 0 -> appString(R.string.msg_only_you)
                                         else -> globalDeviceCountLabel
                                     }
                                 } else if (channelReady) {
-                                    if (!state.chatSessionReady) "Sesión por confirmar" else if (directTargetCount > 1) "$directTargetCount equipos" else "Equipo listo"
+                                    if (!state.chatSessionReady) appString(R.string.msg_session_unconfirmed) else if (directTargetCount > 1) appQuantityString(R.plurals.msg_devices_count, directTargetCount, directTargetCount) else appString(R.string.msg_device_ready)
                                 } else {
-                                    "Sin equipo"
+                                    appString(R.string.msg_no_device)
                                 },
                                 containerColor = if (channelReady) {
                                     MaterialTheme.colorScheme.primaryContainer
@@ -580,13 +576,11 @@ internal fun P2pMessagesTab(
                         if (state.sessionExpired || (!state.chatSessionReady && (experience.showSyncAction || state.tokenSyncStatus.isNotBlank()))) {
                             StatusChip(
                                 label = when {
-                                    state.sessionExpired -> "Sesión expirada"
-                                    state.tokenSyncStatus.contains("aprob", ignoreCase = true) -> "Pendiente"
-                                    state.tokenSyncStatus.contains("reintent", ignoreCase = true) ||
-                                        state.tokenSyncStatus.contains("no pude", ignoreCase = true) ||
-                                        state.tokenSyncStatus.contains("fall", ignoreCase = true) -> "Reintentar"
-                                    state.sessionSyncing -> "Sincronizando"
-                                    else -> "Sesión"
+                                    state.sessionExpired -> appString(R.string.msg_session_expired)
+                                    com.example.wifidrop.presentation.isSessionSyncApprovalRequired(state.tokenSyncStatus) -> appString(R.string.msg_pending)
+                                    com.example.wifidrop.presentation.isSessionSyncFailure(state.tokenSyncStatus) -> appString(R.string.msg_retry)
+                                    state.sessionSyncing -> appString(R.string.msg_syncing)
+                                    else -> appString(R.string.msg_session)
                                 },
                                 containerColor = if (state.sessionExpired) {
                                     MaterialTheme.colorScheme.errorContainer
@@ -612,13 +606,13 @@ internal fun P2pMessagesTab(
 
                     if (showSyncButton) {
                         OutlinedButton(onClick = onSyncToken, modifier = Modifier.heightIn(min = 48.dp)) {
-                            Text("Sincronizar sesión")
+                            Text(appString(R.string.msg_sync_session))
                         }
                     }
 
                     if (isGlobalChat) {
                         TextButton(onClick = { channelOptionsExpanded = !channelOptionsExpanded }, modifier = Modifier.heightIn(min = 48.dp)) {
-                            Text(if (channelOptionsExpanded) "Ocultar opciones del canal" else "Opciones del canal")
+                            Text(if (channelOptionsExpanded) appString(R.string.msg_hide_channel_options) else appString(R.string.msg_channel_options))
                         }
                         if (channelOptionsExpanded) {
                             ChannelDownloadSettingsCard(
@@ -800,7 +794,7 @@ internal fun P2pMessagesTab(
                         modifier = Modifier.align(Alignment.BottomCenter).padding(8.dp).heightIn(min = 48.dp)
                     ) {
                         Icon(Icons.Rounded.ArrowDownward, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Text(if (newMessagesCount > 0) "${newMessagesCount} nuevos" else "Ir al último mensaje")
+                        Text(if (newMessagesCount > 0) appQuantityString(R.plurals.msg_new_messages_count, newMessagesCount, newMessagesCount) else appString(R.string.msg_latest_message))
                     }
                 }
                 }
@@ -810,9 +804,9 @@ internal fun P2pMessagesTab(
                     contentAlignment = Alignment.Center
                 ) {
                     EmptyStateBlock(
-                        title = "No encontramos ese mensaje",
-                        body = "Prueba otra palabra o busca por el nombre del equipo.",
-                        actionLabel = "Borrar búsqueda",
+                        title = appString(R.string.msg_message_not_found),
+                        body = appString(R.string.msg_try_other_message_query),
+                        actionLabel = appString(R.string.msg_clear_search),
                         onAction = { messageQuery = "" }
                     )
                 }
@@ -832,7 +826,7 @@ internal fun P2pMessagesTab(
                         onClick = onOpenConnectTab,
                         modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
                     ) {
-                        Text("Ir a Conectar")
+                        Text(appString(R.string.msg_go_connect))
                     }
                 }
             } else if (showChannelJoinPrompt) {
@@ -925,7 +919,7 @@ internal fun P2pMessagesTab(
                 onDismissRequest = { composerMoreExpanded = false }
             ) {
                 DropdownMenuItem(
-                    text = { Text("Adjuntar archivos") },
+                    text = { Text(appString(R.string.msg_attach_files)) },
                     leadingIcon = {
                         Icon(
                             imageVector = Icons.Rounded.AttachFile,
@@ -943,7 +937,7 @@ internal fun P2pMessagesTab(
                     }
                 )
                 DropdownMenuItem(
-                    text = { Text("Limpiar texto") },
+                    text = { Text(appString(R.string.msg_clear_text)) },
                     leadingIcon = {
                         Icon(
                             imageVector = Icons.Rounded.Clear,
@@ -957,7 +951,7 @@ internal fun P2pMessagesTab(
                     }
                 )
                 DropdownMenuItem(
-                    text = { Text("Quitar adjuntos") },
+                    text = { Text(appString(R.string.msg_remove_attachments)) },
                     leadingIcon = {
                         Icon(
                             imageVector = Icons.Rounded.Close,
@@ -982,12 +976,12 @@ internal fun P2pMessagesTab(
             containerColor = MaterialTheme.colorScheme.surface,
             titleContentColor = MaterialTheme.colorScheme.onSurface,
             textContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-            title = { Text("Eliminar mensaje") },
+            title = { Text(appString(R.string.msg_delete_message)) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(UiSpaceS)) {
-                    Text("Se eliminará este mensaje del historial de este equipo.")
+                    Text(appString(R.string.msg_delete_message_body))
                     Text(
-                        pendingMessage?.text?.take(160).orEmpty().ifBlank { "Mensaje sin contenido visible." },
+                        pendingMessage?.text?.take(160).orEmpty().ifBlank { appString(R.string.msg_message_no_visible_content) },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -1003,12 +997,12 @@ internal fun P2pMessagesTab(
                         if (id != null) onDeleteMessage(id)
                     }
                 ) {
-                    Text("Eliminar")
+                    Text(appString(R.string.msg_delete))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { pendingDeleteMessageId = null }, modifier = Modifier.heightIn(min = 48.dp)) {
-                    Text("Cancelar")
+                    Text(appString(R.string.msg_cancel))
                 }
             }
         )
@@ -1020,10 +1014,10 @@ internal fun P2pMessagesTab(
             containerColor = MaterialTheme.colorScheme.surface,
             titleContentColor = MaterialTheme.colorScheme.onSurface,
             textContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-            title = { Text("Limpiar chat") },
+            title = { Text(appString(R.string.msg_clear_chat)) },
             text = {
                 Text(
-                    "Se eliminarán todos los mensajes de este canal guardados en este equipo, incluidos los que no aparecen en la búsqueda. Esta acción no se puede deshacer."
+                    appString(R.string.msg_clear_chat_body)
                 )
             },
             confirmButton = {
@@ -1035,12 +1029,12 @@ internal fun P2pMessagesTab(
                         onClearMessages(activeChannel)
                     }
                 ) {
-                    Text("Limpiar")
+                    Text(appString(R.string.msg_clear))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { confirmClearChat = false }, modifier = Modifier.heightIn(min = 48.dp)) {
-                    Text("Cancelar")
+                    Text(appString(R.string.msg_cancel))
                 }
             }
         )
@@ -1124,7 +1118,7 @@ private fun WifiChannelJoinCard(
                         modifier = Modifier.size(18.dp)
                     )
                     Text(
-                        if (connectedToWifi) "Wi‑Fi listo" else "Sin Wi‑Fi",
+                        if (connectedToWifi) appString(R.string.msg_wifi_ready) else appString(R.string.msg_no_wifi),
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.SemiBold
                     )
@@ -1133,19 +1127,19 @@ private fun WifiChannelJoinCard(
 
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(
-                    "Canal de esta Wi‑Fi",
+                    appString(R.string.msg_this_wifi_channel),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
                     if (connectedToWifi) {
                         if (peerCount > 0) {
-                            "Entra para escribir a los equipos de esta red."
+                            appString(R.string.msg_join_write_network)
                         } else {
-                            "Entra ahora. Los equipos aparecerán cuando también se unan."
+                            appString(R.string.msg_join_peers_appear)
                         }
                     } else {
-                        "Conecta este equipo a una red Wi‑Fi para usar el canal."
+                        appString(R.string.msg_connect_wifi_channel)
                     },
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -1162,7 +1156,7 @@ private fun WifiChannelJoinCard(
                         contentDescription = null,
                         modifier = Modifier.size(18.dp)
                     )
-                    Text("Entrar al canal Wi‑Fi", Modifier.padding(start = 8.dp))
+                    Text(appString(R.string.msg_join_wifi_channel), Modifier.padding(start = 8.dp))
                 }
             } else {
                 OutlinedButton(
@@ -1174,7 +1168,7 @@ private fun WifiChannelJoinCard(
                         contentDescription = null,
                         modifier = Modifier.size(18.dp)
                     )
-                    Text("Ir a Conectar", Modifier.padding(start = 8.dp))
+                    Text(appString(R.string.msg_go_connect), Modifier.padding(start = 8.dp))
                 }
             }
         }
@@ -1198,12 +1192,12 @@ private fun WifiChannelEmptyCard() {
         ) {
             ChatEmptyIcon(Icons.Rounded.ChatBubbleOutline)
             Text(
-                "Sin mensajes todavía",
+                appString(R.string.msg_no_messages_yet),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.SemiBold
             )
             Text(
-                "Lo que escribas aparecerá aquí para los equipos de esta Wi‑Fi.",
+                appString(R.string.msg_messages_appear_here),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -1244,11 +1238,7 @@ private fun ChatComposerPanel(
     onSend: () -> Unit,
     onOpenMore: () -> Unit
 ) {
-    val attachmentsLabel = if (selectedFilesCount == 1) {
-        "1 archivo listo"
-    } else {
-        "$selectedFilesCount archivos listos"
-    }
+    val attachmentsLabel = appQuantityString(R.plurals.msg_files_ready_count, selectedFilesCount, selectedFilesCount)
     Surface(
         modifier = Modifier.fillMaxWidth().heightIn(max = maxHeight),
         shape = RoundedCornerShape(16.dp),
@@ -1266,8 +1256,8 @@ private fun ChatComposerPanel(
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
                         if (recoveryIncomplete) {
-                            if (selectedFilesCount > 0) "$selectedFilesCount disponibles; faltan otros. Elige de nuevo."
-                            else "No se recuperaron los adjuntos. Elige de nuevo."
+                            if (selectedFilesCount > 0) appQuantityString(R.plurals.msg_attachments_partially_restored, selectedFilesCount, selectedFilesCount)
+                            else appString(R.string.msg_attachments_not_restored)
                         } else attachmentsLabel + selectedFileNames.firstOrNull()?.let { " · $it" }.orEmpty(),
                         modifier = Modifier.weight(1f),
                         style = MaterialTheme.typography.bodySmall,
@@ -1276,9 +1266,9 @@ private fun ChatComposerPanel(
                         overflow = TextOverflow.Ellipsis
                     )
                     if (recoveryIncomplete) {
-                        TextButton(onClick = onPickFile, modifier = Modifier.heightIn(min = 48.dp)) { Text("Elegir") }
+                        TextButton(onClick = onPickFile, modifier = Modifier.heightIn(min = 48.dp)) { Text(appString(R.string.msg_choose)) }
                     } else {
-                        TextButton(onClick = onClearSelectedFiles, modifier = Modifier.heightIn(min = 48.dp)) { Text("Quitar") }
+                        TextButton(onClick = onClearSelectedFiles, modifier = Modifier.heightIn(min = 48.dp)) { Text(appString(R.string.msg_remove)) }
                     }
                 }
             }
@@ -1294,9 +1284,9 @@ private fun ChatComposerPanel(
                     .fillMaxWidth()
                     .weight(1f, fill = false)
                     .heightIn(min = 56.dp)
-                    .semantics { contentDescription = "Escribir mensaje para $destinationDescription" },
+                    .semantics { contentDescription = appString(R.string.msg_write_destination, destinationDescription) },
                 keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
-                supportingText = if (draft.length >= 1_800) { { Text("${draft.length}/2000 caracteres") } } else null,
+                supportingText = if (draft.length >= 1_800) { { Text(appString(R.string.msg_character_count, draft.length)) } } else null,
                 maxLines = 4,
                 textStyle = MaterialTheme.typography.bodyLarge,
                 shape = RoundedCornerShape(12.dp),
@@ -1323,7 +1313,7 @@ private fun ChatComposerPanel(
                         enabled = attachEnabled && composerEnabled,
                         modifier = Modifier.size(48.dp)
                     ) {
-                        Icon(Icons.Rounded.AttachFile, contentDescription = "Adjuntar archivos")
+                        Icon(Icons.Rounded.AttachFile, contentDescription = appString(R.string.msg_attach_files))
                     }
                 }
                 Button(
@@ -1339,14 +1329,14 @@ private fun ChatComposerPanel(
                         modifier = Modifier.size(18.dp)
                     )
                     Text(
-                        if (keyboardVisible && selectedFilesCount > 0) "Enviar ($selectedFilesCount)" else sendButtonLabel,
+                        if (keyboardVisible && selectedFilesCount > 0) appString(R.string.msg_send_attachment_count, selectedFilesCount) else sendButtonLabel,
                         modifier = Modifier.padding(start = 8.dp)
                     )
                 }
                 IconButton(onClick = onOpenMore, modifier = Modifier.size(48.dp)) {
                     Icon(
                         imageVector = Icons.Rounded.MoreHoriz,
-                        contentDescription = "Más acciones"
+                        contentDescription = appString(R.string.msg_more_actions)
                     )
                 }
             }
@@ -1384,14 +1374,14 @@ private fun ChatStarterCard(
                 StatusChip(
                     label = if (isGlobal) {
                         when {
-                            !joined -> "No estás dentro"
-                            peerCount <= 0 -> "Solo tú"
+                            !joined -> appString(R.string.msg_not_joined)
+                            peerCount <= 0 -> appString(R.string.msg_only_you)
                             else -> deviceCountLabel(peerCount)
                         }
                     } else if (isReady) {
-                        "Listo"
+                        appString(R.string.msg_ready)
                     } else {
-                        "Sin equipo"
+                        appString(R.string.msg_no_device)
                     },
                     containerColor = if (isReady) {
                         MaterialTheme.colorScheme.primaryContainer
@@ -1436,7 +1426,7 @@ private fun ChannelDownloadSettingsCard(
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             Text(
-                "Descargas del Canal Wi‑Fi",
+                appString(R.string.msg_channel_downloads),
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.SemiBold
             )
@@ -1452,7 +1442,7 @@ private fun ChannelDownloadSettingsCard(
                     onCheckedChange = null
                 )
                 Text(
-                    "Descargar automáticamente archivos del canal",
+                    appString(R.string.msg_channel_auto_download),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.weight(1f)
@@ -1509,8 +1499,8 @@ private fun ChatMessageCard(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        if (outgoing) "Tú" + (item.peerLabel?.takeIf { it.isNotBlank() }?.let { " → $it" } ?: "")
-                        else item.peerLabel ?: "Equipo",
+                        if (outgoing) appString(R.string.msg_you) + (item.peerLabel?.takeIf { it.isNotBlank() }?.let { " → $it" } ?: "")
+                        else item.peerLabel ?: appString(R.string.msg_device),
                         modifier = Modifier.weight(1f),
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.SemiBold,
@@ -1519,40 +1509,40 @@ private fun ChatMessageCard(
                     )
                     Box {
                         IconButton(onClick = { itemMoreExpanded = true }, modifier = Modifier.size(48.dp)) {
-                            Icon(Icons.Rounded.MoreHoriz, contentDescription = "Acciones del mensaje", modifier = Modifier.size(20.dp))
+                            Icon(Icons.Rounded.MoreHoriz, contentDescription = appString(R.string.msg_message_actions), modifier = Modifier.size(20.dp))
                         }
                         DropdownMenu(expanded = itemMoreExpanded, onDismissRequest = { itemMoreExpanded = false }) {
                             if (channelFileOffer == null) {
                                 DropdownMenuItem(
-                                    text = { Text("Copiar texto") },
+                                    text = { Text(appString(R.string.msg_copy_text)) },
                                     leadingIcon = { Icon(Icons.Rounded.ContentCopy, contentDescription = null) },
                                     onClick = {
                                         itemMoreExpanded = false
-                                        copySensitiveText(clipboardContext, "Mensaje de Qetara", item.text)
+                                        copySensitiveText(clipboardContext, appString(R.string.msg_qetara_message), item.text)
                                     }
                                 )
                             }
                             DropdownMenuItem(
-                                text = { Text("Compartir mensaje") },
+                                text = { Text(appString(R.string.msg_share_message)) },
                                 leadingIcon = { Icon(Icons.Rounded.IosShare, contentDescription = null) },
                                 onClick = { itemMoreExpanded = false; onShareMessage() }
                             )
                             if (outgoing && failed) {
                                 DropdownMenuItem(
-                                    text = { Text("Reintentar envío") },
+                                    text = { Text(appString(R.string.msg_retry_send)) },
                                     leadingIcon = { Icon(Icons.Rounded.Refresh, contentDescription = null) },
                                     onClick = { itemMoreExpanded = false; onRetryMessage(item.id) }
                                 )
                             }
                             if (outgoing && pending) {
                                 DropdownMenuItem(
-                                    text = { Text("Cancelar envío") },
+                                    text = { Text(appString(R.string.msg_cancel_send)) },
                                     leadingIcon = { Icon(Icons.Rounded.Close, contentDescription = null) },
                                     onClick = { itemMoreExpanded = false; onCancelQueuedMessage(item.id) }
                                 )
                             }
                             DropdownMenuItem(
-                                text = { Text("Eliminar de este equipo") },
+                                text = { Text(appString(R.string.msg_delete_from_device)) },
                                 leadingIcon = { Icon(Icons.Rounded.DeleteOutline, contentDescription = null) },
                                 onClick = { itemMoreExpanded = false; onRequestDelete() }
                             )
@@ -1574,14 +1564,14 @@ private fun ChatMessageCard(
                             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                 Text(channelFileOffer.fileName, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
                                 Text(
-                                    if (channelFileOffer.fileSizeBytes >= 0) formatBytes(channelFileOffer.fileSizeBytes) else "Tamaño no disponible",
+                                    if (channelFileOffer.fileSizeBytes >= 0) formatBytes(channelFileOffer.fileSizeBytes) else appString(R.string.msg_size_unavailable),
                                     style = MaterialTheme.typography.bodySmall
                                 )
                             }
                         }
                     }
                     if (!outgoing) {
-                        FilledTonalButton(onClick = onDownloadChannelFileOffer, modifier = Modifier.heightIn(min = 48.dp)) { Text("Descargar archivo") }
+                        FilledTonalButton(onClick = onDownloadChannelFileOffer, modifier = Modifier.heightIn(min = 48.dp)) { Text(appString(R.string.msg_download_file)) }
                     }
                 } else {
                     SelectionContainer { Text(item.text, style = MaterialTheme.typography.bodyLarge) }
@@ -1597,7 +1587,7 @@ private fun ChatMessageCard(
                     Text(friendlyIssue, style = MaterialTheme.typography.bodySmall, color = contentColor)
                 }
                 if (outgoing && failed) {
-                    TextButton(onClick = { onRetryMessage(item.id) }, modifier = Modifier.heightIn(min = 48.dp)) { Text("Reintentar envío") }
+                    TextButton(onClick = { onRetryMessage(item.id) }, modifier = Modifier.heightIn(min = 48.dp)) { Text(appString(R.string.msg_retry_send)) }
                 }
             }
         }
@@ -1605,7 +1595,7 @@ private fun ChatMessageCard(
 }
 
 private fun deviceCountLabel(count: Int): String {
-    return if (count == 1) "1 equipo conectado" else "$count equipos conectados"
+    return appQuantityString(R.plurals.msg_connected_devices_count, count, count)
 }
 
 private fun shareChatMessage(context: android.content.Context, item: ChatMessageEntry) {
@@ -1618,28 +1608,28 @@ private fun shareChatMessage(context: android.content.Context, item: ChatMessage
         append('\n')
         append(
             when (item.scope) {
-                ChatMessageScope.DIRECT -> "Canal: Directo"
-                ChatMessageScope.GLOBAL_LAN -> "Canal: Wi‑Fi"
-                ChatMessageScope.DIRECT_CHANNEL -> "Canal: Wi‑Fi Direct"
+                ChatMessageScope.DIRECT -> appString(R.string.msg_share_direct_channel)
+                ChatMessageScope.GLOBAL_LAN -> appString(R.string.msg_share_wifi_channel)
+                ChatMessageScope.DIRECT_CHANNEL -> appString(R.string.msg_share_wifi_direct_channel)
             }
         )
         append('\n')
         append(
             if (item.direction == ChatMessageDirection.OUTGOING) {
-                "Desde: Tú"
+                appString(R.string.msg_share_from_you)
             } else {
-                "Desde: ${item.peerLabel ?: "Equipo"}"
+                appString(R.string.msg_share_sender, item.peerLabel ?: appString(R.string.msg_device))
             }
         )
         append('\n')
-        append("Hora: ${formatHistoryTime(item.timestampMs)}")
+        append(appString(R.string.msg_share_time, formatHistoryTime(item.timestampMs)))
         append("\n\n")
         if (fileOffer != null) {
             append(
                 if (item.direction == ChatMessageDirection.OUTGOING) {
-                    "Tú compartiste:"
+                    appString(R.string.msg_you_shared)
                 } else {
-                    "${item.peerLabel ?: fileOffer.senderLabel} compartió:"
+                    appString(R.string.msg_peer_shared, item.peerLabel ?: fileOffer.senderLabel)
                 }
             )
             append('\n')
@@ -1649,7 +1639,7 @@ private fun shareChatMessage(context: android.content.Context, item: ChatMessage
                 if (fileOffer.fileSizeBytes >= 0L) {
                     formatBytes(fileOffer.fileSizeBytes)
                 } else {
-                    "Tamaño no disponible"
+                    appString(R.string.msg_size_unavailable)
                 }
             )
         } else {
@@ -1661,14 +1651,15 @@ private fun shareChatMessage(context: android.content.Context, item: ChatMessage
         putExtra(Intent.EXTRA_TEXT, shareBody)
         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
     }
-    context.startActivity(Intent.createChooser(intent, "Compartir desde Qetara").apply {
+    context.startActivity(Intent.createChooser(intent, appString(R.string.msg_share_from_qetara)).apply {
         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
     })
 }
 
 private fun friendlyMessageIssue(cause: String?): String? {
-    if (cause?.contains("cancelad", ignoreCase = true) == true) return null
-    return com.example.wifidrop.presentation.actionableTransferIssue(cause, "No se pudo enviar. Comprueba la conexión y vuelve a intentarlo.")
+    if (cause?.contains("cancel", ignoreCase = true) == true) return null
+    return com.example.wifidrop.presentation.actionableTransferIssue(cause, appString(R.string.msg_send_failed_hint))
+        ?.let(::runtimeFailureText)
 }
 
 @Composable

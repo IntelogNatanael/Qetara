@@ -50,11 +50,11 @@ object ExternalOpenUtils {
         val mime = ReceivedFileMimeTypes.resolve(context, uri, fileName) ?: "*/*"
         val intent = Intent(Intent.ACTION_VIEW).apply {
             setDataAndType(uri, mime)
-            clipData = ClipData.newRawUri("Archivo de Qetara", uri)
+            clipData = ClipData.newRawUri(context.getString(R.string.rt_qetara_file), uri)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
         // A chooser keeps the decision with the user even when another app is the default.
-        val chooser = Intent.createChooser(intent, "Abrir con").apply {
+        val chooser = Intent.createChooser(intent, context.getString(R.string.rt_open_with)).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
         try {

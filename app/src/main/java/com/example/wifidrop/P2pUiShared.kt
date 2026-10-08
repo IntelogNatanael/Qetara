@@ -1,5 +1,7 @@
 package com.example.wifidrop
 
+import androidx.compose.ui.res.stringResource
+
 import android.net.wifi.p2p.WifiP2pDevice
 import androidx.compose.foundation.border
 import androidx.compose.foundation.selection.toggleable
@@ -41,7 +43,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.Dp
 import com.example.wifidrop.presentation.actionableTransferIssue
-import java.text.SimpleDateFormat
+import java.text.DateFormat
 import java.util.Date
 import java.util.Locale
 
@@ -164,7 +166,7 @@ internal fun PrimaryActionBar(
                 modifier = Modifier.heightIn(min = (primaryHeight ?: 48.dp).coerceAtLeast(48.dp)),
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp)
             ) {
-                Text("Más")
+                Text(stringResource(R.string.shell_more))
             }
             DropdownMenu(
                 expanded = menuExpanded,
@@ -228,7 +230,7 @@ internal fun StageHeader(
                 }
                 if (showControls) {
                     TextButton(onClick = onOpen) {
-                        Text("Abrir")
+                        Text(stringResource(R.string.shell_open))
                     }
                 }
             }
@@ -258,10 +260,10 @@ internal fun StageHeader(
                 if (showControls) {
                     Row {
                         TextButton(onClick = onToggleExpanded) {
-                            Text(if (expanded) "Menos" else "Detalles")
+                            Text(if (expanded) stringResource(R.string.shell_less) else stringResource(R.string.shell_details))
                         }
                         TextButton(onClick = onMinimize) {
-                            Text("Ocultar")
+                            Text(stringResource(R.string.shell_hide))
                         }
                     }
                 }
@@ -343,7 +345,7 @@ internal fun OnboardingStepRow(
             verticalAlignment = Alignment.CenterVertically
         ) {
             StatusChip(
-                label = if (done) "OK" else "Paso $step",
+                label = if (done) stringResource(R.string.shell_ok) else stringResource(R.string.shell_step_number, step),
                 containerColor = when {
                     done -> MaterialTheme.colorScheme.primary
                     isActive -> MaterialTheme.colorScheme.primaryContainer
@@ -368,7 +370,7 @@ internal fun OnboardingStepRow(
             }
             if (isActive && !done) {
                 Text(
-                    text = "Ahora",
+                    text = stringResource(R.string.shell_now),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onPrimaryContainer
                 )
@@ -388,72 +390,81 @@ internal fun buildStatusBarSummary(
     receiving: Boolean
 ): String {
     val role = when {
-        !connected -> "sin sesion P2P"
-        isHost -> "rol Host"
-        else -> "rol Cliente"
+        !connected -> appString(R.string.shell_no_p2p_session)
+        isHost -> appString(R.string.shell_role_host)
+        else -> appString(R.string.shell_role_client)
     }
     val transfer = when {
-        sending && receiving -> "envio y recepcion activos"
-        sending -> "enviando en progreso"
-        receiving -> "recibiendo en progreso"
-        else -> "transferencia en espera"
+        sending && receiving -> appString(R.string.shell_sending_receiving_active)
+        sending -> appString(R.string.shell_sending_in_progress)
+        receiving -> appString(R.string.shell_receiving_in_progress)
+        else -> appString(R.string.shell_transfer_waiting)
     }
-    val queueSummary = "cola $queuePendingCount pendientes / $queueRunningCount activos / $queueFailedCount fallidos"
-    return "$role · $transfer · $queueSummary · mensajes $chatCount"
+    val queueSummary = appString(
+        R.string.shell_queue_accessibility_summary,
+        appQuantityString(R.plurals.shell_pending_summary, queuePendingCount, queuePendingCount),
+        appQuantityString(R.plurals.shell_active_summary, queueRunningCount, queueRunningCount),
+        appQuantityString(R.plurals.shell_failed_summary, queueFailedCount, queueFailedCount)
+    )
+    return appString(R.string.shell_status_bar_summary, (role).toString(), (transfer).toString(), (queueSummary).toString(), chatCount)
 }
 
 internal fun peerStatusLabel(status: Int): String {
     return when (status) {
-        WifiP2pDevice.AVAILABLE -> "Disponible"
-        WifiP2pDevice.INVITED -> "Invitado"
-        WifiP2pDevice.CONNECTED -> "Conectado"
-        WifiP2pDevice.FAILED -> "Fallo"
-        WifiP2pDevice.UNAVAILABLE -> "No disponible"
-        else -> "Desconocido ($status)"
+        WifiP2pDevice.AVAILABLE -> appString(R.string.shell_available)
+        WifiP2pDevice.INVITED -> appString(R.string.shell_invited)
+        WifiP2pDevice.CONNECTED -> appString(R.string.shell_connected)
+        WifiP2pDevice.FAILED -> appString(R.string.shell_failure)
+        WifiP2pDevice.UNAVAILABLE -> appString(R.string.shell_unavailable)
+        else -> appString(R.string.shell_unknown_status, status)
     }
 }
 
 internal fun formatBytes(bytes: Long): String {
-    if (bytes < 0) return "-"
-    if (bytes < 1024) return "$bytes B"
+    if (bytes < 0) return appString(R.string.shell_unknown_value)
+    if (bytes < 1024) return appString(R.string.shell_byte_count, bytes)
     val kb = bytes / 1024.0
-    if (kb < 1024) return String.format(Locale.getDefault(), "%.1f KB", kb)
+    if (kb < 1024) return appString(R.string.shell_kilobytes, kb)
     val mb = kb / 1024.0
-    if (mb < 1024) return String.format(Locale.getDefault(), "%.1f MB", mb)
+    if (mb < 1024) return appString(R.string.shell_megabytes, mb)
     val gb = mb / 1024.0
-    return String.format(Locale.getDefault(), "%.2f GB", gb)
+    return appString(R.string.shell_gigabytes, gb)
 }
 
 internal fun formatRate(bytesPerSec: Long): String {
-    if (bytesPerSec <= 0L) return "0 B/s"
+    if (bytesPerSec <= 0L) return appString(R.string.shell_zero_rate)
     val kb = bytesPerSec / 1024.0
-    if (kb < 1024) return String.format(Locale.getDefault(), "%.1f KB/s", kb)
+    if (kb < 1024) return appString(R.string.shell_kilobytes_per_second, kb)
     val mb = kb / 1024.0
-    if (mb < 1024) return String.format(Locale.getDefault(), "%.1f MB/s", mb)
+    if (mb < 1024) return appString(R.string.shell_megabytes_per_second, mb)
     val gb = mb / 1024.0
-    return String.format(Locale.getDefault(), "%.2f GB/s", gb)
+    return appString(R.string.shell_gigabytes_per_second, gb)
 }
 
 internal fun formatEta(etaSeconds: Long?): String {
-    if (etaSeconds == null) return "-"
+    if (etaSeconds == null) return appString(R.string.shell_unknown_value)
     val sec = etaSeconds.coerceAtLeast(0L)
     val h = sec / 3600
     val m = (sec % 3600) / 60
     val s = sec % 60
-    return if (h > 0) "%02d:%02d:%02d".format(h, m, s) else "%02d:%02d".format(m, s)
+    return if (h > 0) {
+        appString(R.string.shell_eta_hours, h, m, s)
+    } else {
+        appString(R.string.shell_eta_minutes, m, s)
+    }
 }
 
 internal fun formatSessionExpiry(expiresAtMs: Long, nowMs: Long): String {
     val remaining = expiresAtMs - nowMs
-    if (remaining <= 0L) return "Expirada"
+    if (remaining <= 0L) return appString(R.string.shell_expired)
     val min = remaining / 60000L
     val sec = (remaining % 60000L) / 1000L
-    return "Expira en ${min}m ${sec}s"
+    return appString(R.string.shell_expires_in, min, sec)
 }
 
 internal fun formatHistoryTime(timestampMs: Long): String {
     return try {
-        val fmt = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
+        val fmt = DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT, Locale.getDefault())
         fmt.format(Date(timestampMs))
     } catch (_: Exception) {
         timestampMs.toString()
@@ -461,42 +472,42 @@ internal fun formatHistoryTime(timestampMs: Long): String {
 }
 
 internal fun formatRelativeSeen(lastSeenAtMs: Long, nowMs: Long): String {
-    if (lastSeenAtMs <= 0L) return "sin registro"
+    if (lastSeenAtMs <= 0L) return appString(R.string.shell_no_record)
     val diff = (nowMs - lastSeenAtMs).coerceAtLeast(0L)
     val sec = diff / 1000L
     return when {
-        sec < 10L -> "ahora"
-        sec < 60L -> "hace ${sec}s"
-        sec < 3600L -> "hace ${sec / 60L}m"
-        sec < 86_400L -> "hace ${sec / 3600L}h"
-        else -> "hace ${sec / 86_400L}d"
+        sec < 10L -> appString(R.string.shell_now_lowercase)
+        sec < 60L -> appString(R.string.shell_seconds_ago, sec)
+        sec < 3600L -> appString(R.string.shell_minutes_ago, sec / 60L)
+        sec < 86_400L -> appString(R.string.shell_hours_ago, sec / 3600L)
+        else -> appString(R.string.shell_days_ago, sec / 86_400L)
     }
 }
 
 internal fun historyDirectionLabel(direction: TransferDirection): String {
     return when (direction) {
-        TransferDirection.SENT -> "Enviado"
-        TransferDirection.RECEIVED -> "Recibido"
+        TransferDirection.SENT -> appString(R.string.shell_sent)
+        TransferDirection.RECEIVED -> appString(R.string.shell_received)
     }
 }
 
 internal fun historyOutcomeLabel(outcome: TransferOutcome): String {
     return when (outcome) {
-        TransferOutcome.SUCCESS -> "Completado"
-        TransferOutcome.FAILED -> "No se completó"
-        TransferOutcome.CANCELED -> "Cancelado"
+        TransferOutcome.SUCCESS -> appString(R.string.shell_completed)
+        TransferOutcome.FAILED -> appString(R.string.shell_not_completed)
+        TransferOutcome.CANCELED -> appString(R.string.shell_canceled)
     }
 }
 
 internal fun queueStatusLabel(status: SendQueueStatus): String {
     return when (status) {
-        SendQueueStatus.QUEUED -> "En cola"
-        SendQueueStatus.RUNNING -> "Enviando"
-        SendQueueStatus.PAUSED -> "Pausado"
-        SendQueueStatus.RETRY_WAIT -> "Reintento"
-        SendQueueStatus.SUCCESS -> "OK"
-        SendQueueStatus.FAILED -> "Fallo"
-        SendQueueStatus.CANCELED -> "Cancelado"
+        SendQueueStatus.QUEUED -> appString(R.string.shell_queued)
+        SendQueueStatus.RUNNING -> appString(R.string.shell_sending)
+        SendQueueStatus.PAUSED -> appString(R.string.shell_paused)
+        SendQueueStatus.RETRY_WAIT -> appString(R.string.shell_retry_status)
+        SendQueueStatus.SUCCESS -> appString(R.string.shell_ok)
+        SendQueueStatus.FAILED -> appString(R.string.shell_failure)
+        SendQueueStatus.CANCELED -> appString(R.string.shell_canceled)
     }
 }
 
@@ -508,16 +519,16 @@ internal fun isTerminalQueueStatus(status: SendQueueStatus): Boolean {
 
 internal fun chatStatusLabel(status: ChatMessageStatus): String {
     return when (status) {
-        ChatMessageStatus.QUEUED -> "En cola"
-        ChatMessageStatus.SENDING -> "Enviando"
-        ChatMessageStatus.PUBLISHED -> "Publicado"
-        ChatMessageStatus.SENT -> "Enviado"
-        ChatMessageStatus.RECEIVED -> "Recibido"
-        ChatMessageStatus.CANCELED -> "Cancelado"
-        ChatMessageStatus.FAILED -> "Fallido"
+        ChatMessageStatus.QUEUED -> appString(R.string.shell_queued)
+        ChatMessageStatus.SENDING -> appString(R.string.shell_sending)
+        ChatMessageStatus.PUBLISHED -> appString(R.string.shell_published)
+        ChatMessageStatus.SENT -> appString(R.string.shell_sent)
+        ChatMessageStatus.RECEIVED -> appString(R.string.shell_received)
+        ChatMessageStatus.CANCELED -> appString(R.string.shell_canceled)
+        ChatMessageStatus.FAILED -> appString(R.string.shell_failed)
     }
 }
 
 internal fun friendlyTransferIssue(cause: String?, fallback: String): String? {
-    return actionableTransferIssue(cause, fallback)
+    return actionableTransferIssue(cause, fallback)?.let(::runtimeFailureText)
 }

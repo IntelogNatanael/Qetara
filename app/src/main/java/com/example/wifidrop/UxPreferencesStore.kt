@@ -3,11 +3,13 @@ package com.example.wifidrop
 import android.content.Context
 import androidx.core.content.edit
 
-enum class FocusStage(val title: String) {
-    OFF("Completo"),
-    CONNECT("Conectar"),
-    SEND("Enviar"),
-    CHAT("Chat");
+enum class FocusStage(private val titleResource: Int) {
+    OFF(R.string.conn_full),
+    CONNECT(R.string.conn_connect),
+    SEND(R.string.conn_send),
+    CHAT(R.string.conn_chat);
+
+    val title: String get() = appString(titleResource)
 
     companion object {
         fun fromStored(raw: String?): FocusStage {
@@ -16,9 +18,11 @@ enum class FocusStage(val title: String) {
     }
 }
 
-enum class ConnectionMode(val title: String) {
-    WIFI_DIRECT("Wi-Fi Direct"),
-    LAN("Wi-Fi normal");
+enum class ConnectionMode(private val titleResource: Int) {
+    WIFI_DIRECT(R.string.conn_wifi_direct),
+    LAN(R.string.conn_standard_wifi);
+
+    val title: String get() = appString(titleResource)
 
     companion object {
         fun fromStored(raw: String?): ConnectionMode {
@@ -27,10 +31,12 @@ enum class ConnectionMode(val title: String) {
     }
 }
 
-enum class ConnectionViewMode(val title: String) {
-    WIFI_DIRECT("Wi‑Fi Direct"),
-    LAN("Wi‑Fi LAN"),
-    ADVANCED("Completo");
+enum class ConnectionViewMode(private val titleResource: Int) {
+    WIFI_DIRECT(R.string.conn_wifi_direct),
+    LAN(R.string.conn_wifi_lan),
+    ADVANCED(R.string.conn_full);
+
+    val title: String get() = appString(titleResource)
 
     companion object {
         fun fromStored(raw: String?): ConnectionViewMode {

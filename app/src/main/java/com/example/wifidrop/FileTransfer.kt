@@ -218,7 +218,7 @@ object FileTransfer {
                 }
             }
 
-            "Archivo enviado a $hostAddress:$port"
+            context.getString(R.string.rt_file_sent_address, hostAddress, port.toString())
         }
     }
 
@@ -298,7 +298,7 @@ object FileTransfer {
                 }
             }
 
-            "Mensaje enviado a $hostAddress:$port"
+            context.getString(R.string.rt_message_sent_address, hostAddress, port.toString())
         }
     }
 
@@ -539,7 +539,7 @@ object FileTransfer {
                 server.bind(InetSocketAddress(port))
                 server.soTimeout = 1_000
                 onListening()
-                onStatus("Esperando archivos en puerto $port")
+                onStatus(context.getString(R.string.rt_waiting_files_port, port.toString()))
 
                 while (currentCoroutineContext().isActive) {
                     currentCoroutineContext().ensureActive()
@@ -599,17 +599,17 @@ object FileTransfer {
                                 } catch (error: CancellationException) {
                                     if (fileStarted) onReceiveFailed(error)
                                     currentCoroutineContext().ensureActive()
-                                    onStatus("Transferencia cancelada por usuario.")
+                                    onStatus(context.getString(R.string.rt_transfer_canceled_by_user))
                                 } catch (error: Exception) {
                                     currentCoroutineContext().ensureActive()
                                     val failure = if (isClientCancelled()) CancellationException("cancelado por usuario") else error
                                     if (fileStarted) onReceiveFailed(failure)
                                     if (failure is CancellationException) {
-                                        onStatus("Transferencia cancelada por usuario.")
+                                        onStatus(context.getString(R.string.rt_transfer_canceled_by_user))
                                     } else if (error is SecurityException) {
-                                        onStatus("Conexion rechazada de $remoteIp: ${error.message ?: "no autorizada"}")
+                                        onStatus(context.getString(R.string.rt_connection_rejected_from, remoteIp, runtimeFailureText(error.message ?: "no autorizada")))
                                     } else {
-                                        onStatus("Error procesando cliente $remoteIp: ${error.message ?: error::class.java.simpleName}")
+                                        onStatus(context.getString(R.string.rt_client_processing_error, remoteIp, runtimeFailureText(error.message ?: error::class.java.simpleName)))
                                     }
                                 }
                             }
@@ -617,7 +617,7 @@ object FileTransfer {
                             currentCoroutineContext().ensureActive()
                         } catch (error: Exception) {
                             // A failed client must not cancel the listening scope and other transfers.
-                            onStatus("Conexion cerrada: ${error.message ?: error::class.java.simpleName}")
+                            onStatus(context.getString(R.string.rt_connection_closed, runtimeFailureText(error.message ?: error::class.java.simpleName)))
                         }
                     }
                     // Also runs if cancellation happens before the worker's body starts.

@@ -10,11 +10,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.edit
 
-internal enum class QetaraAppearance(val title: String) {
-    SYSTEM("Automático"),
-    IVORY("Marfil"),
-    BLUE_GRAY("Gris azulado"),
-    DARK("Oscuro");
+internal enum class QetaraAppearance(val titleRes: Int) {
+    SYSTEM(R.string.shell_automatic),
+    IVORY(R.string.shell_ivory),
+    BLUE_GRAY(R.string.shell_blue_gray),
+    DARK(R.string.shell_dark);
+
+    val title: String get() = appString(titleRes)
 
     fun resolved(systemDark: Boolean): QetaraAppearance = when (this) {
         SYSTEM -> if (systemDark) DARK else BLUE_GRAY

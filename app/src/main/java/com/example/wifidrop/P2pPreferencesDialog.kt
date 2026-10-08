@@ -41,7 +41,7 @@ internal fun QetaraPreferencesDialog(
 ) {
                 AlertDialog(
                     onDismissRequest = onDismiss,
-                    title = { Text("A tu manera") },
+                    title = { Text(appString(R.string.msg_preferences_title)) },
                     text = {
                         Column(
                             modifier = Modifier
@@ -50,7 +50,7 @@ internal fun QetaraPreferencesDialog(
                             verticalArrangement = Arrangement.spacedBy(UiSpaceM)
                         ) {
                             Text(
-                                "Ajusta Qetara a tu forma de leer y compartir. Los cambios se guardan automáticamente.",
+                                appString(R.string.msg_preferences_intro),
                                 style = MaterialTheme.typography.bodySmall
                             )
                             QetaraAppearanceControls()
@@ -66,12 +66,12 @@ internal fun QetaraPreferencesDialog(
                                     verticalArrangement = Arrangement.spacedBy(UiSpaceS)
                                 ) {
                                     Text(
-                                        "Tamaño del texto",
+                                        appString(R.string.msg_text_size),
                                         style = MaterialTheme.typography.titleSmall,
                                         fontWeight = FontWeight.SemiBold
                                     )
                                     Text(
-                                        "Escala de la aplicación: ${(state.fontScale * 100).roundToInt()}%",
+                                        appString(R.string.msg_app_text_scale, (state.fontScale * 100).roundToInt()),
                                         modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -86,21 +86,21 @@ internal fun QetaraPreferencesDialog(
                                             },
                                             enabled = state.fontScale > 0.85f,
                                             modifier = Modifier.heightIn(min = 48.dp).semantics {
-                                                contentDescription = "Reducir tamaño del texto"
+                                                contentDescription = appString(R.string.msg_decrease_text_size)
                                             },
                                             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
                                         ) {
-                                            Text("A-", modifier = Modifier.clearAndSetSemantics { })
+                                            Text(appString(R.string.msg_text_size_decrease_symbol), modifier = Modifier.clearAndSetSemantics { })
                                         }
                                         OutlinedButton(
                                             onClick = { onFontScaleChange(1.0f) },
                                             enabled = kotlin.math.abs(state.fontScale - 1.0f) > 0.01f,
                                             modifier = Modifier.heightIn(min = 48.dp).semantics {
-                                                contentDescription = "Restablecer tamaño del texto al 100 %"
+                                                contentDescription = appString(R.string.msg_reset_text_size)
                                             },
                                             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
                                         ) {
-                                            Text("Normal", modifier = Modifier.clearAndSetSemantics { })
+                                            Text(appString(R.string.msg_normal), modifier = Modifier.clearAndSetSemantics { })
                                         }
                                         OutlinedButton(
                                             onClick = {
@@ -108,34 +108,34 @@ internal fun QetaraPreferencesDialog(
                                             },
                                             enabled = state.fontScale < 1.25f,
                                             modifier = Modifier.heightIn(min = 48.dp).semantics {
-                                                contentDescription = "Aumentar tamaño del texto"
+                                                contentDescription = appString(R.string.msg_increase_text_size)
                                             },
                                             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
                                         ) {
-                                            Text("A+", modifier = Modifier.clearAndSetSemantics { })
+                                            Text(appString(R.string.msg_text_size_increase_symbol), modifier = Modifier.clearAndSetSemantics { })
                                         }
                                     }
                                     PreferenceToggleRow(
-                                        title = "Modo compacto",
-                                        subtitle = "Acerca los elementos para ver más contenido.",
+                                        title = appString(R.string.msg_compact_mode),
+                                        subtitle = appString(R.string.msg_compact_mode_hint),
                                         checked = state.compactMode,
                                         onCheckedChange = onCompactModeChange
                                     )
                                     PreferenceToggleRow(
-                                        title = "Vibrar al conectar",
-                                        subtitle = "Una vibración cuando el otro equipo está listo.",
+                                        title = appString(R.string.msg_vibrate_connect),
+                                        subtitle = appString(R.string.msg_vibrate_connect_hint),
                                         checked = state.vibrateOnConnect,
                                         onCheckedChange = onVibrateOnConnectChange
                                     )
                                     PreferenceToggleRow(
-                                        title = "Vibrar en errores",
-                                        subtitle = "Una vibración cuando algo requiere tu atención.",
+                                        title = appString(R.string.msg_vibrate_errors),
+                                        subtitle = appString(R.string.msg_vibrate_errors_hint),
                                         checked = state.vibrateOnError,
                                         onCheckedChange = onVibrateOnErrorChange
                                     )
                                     PreferenceToggleRow(
-                                        title = "Confirmaciones discretas",
-                                        subtitle = "Muestra menos avisos cuando todo va bien.",
+                                        title = appString(R.string.msg_quiet_confirmations),
+                                        subtitle = appString(R.string.msg_quiet_confirmations_hint),
                                         checked = state.silentSuccessFeedback,
                                         onCheckedChange = onSilentSuccessFeedbackChange
                                     )
@@ -145,7 +145,7 @@ internal fun QetaraPreferencesDialog(
                     },
                     confirmButton = {
                         TextButton(onClick = onDismiss) {
-                            Text("Cerrar")
+                            Text(appString(R.string.msg_close))
                         }
                     }
                 )

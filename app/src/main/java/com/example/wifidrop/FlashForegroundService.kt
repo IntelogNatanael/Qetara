@@ -10,6 +10,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
+import android.content.res.Configuration
 import android.net.Uri
 import android.net.wifi.WifiManager
 import android.os.Build
@@ -54,10 +55,20 @@ class FlashForegroundService : Service() {
     override fun onCreate() {
         super.onCreate()
         current = this
+        updateNotificationChannel()
+    }
+
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        updateNotificationChannel()
+        if (ticket != 0L && !stopping) refreshNotification()
+    }
+
+    private fun updateNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             getSystemService(NotificationManager::class.java).createNotificationChannel(
-                NotificationChannel(CHANNEL, "Flash temporal", NotificationManager.IMPORTANCE_DEFAULT)
-                    .apply { description = "Estado y solicitudes de la sesión Flash que activas." }
+                NotificationChannel(CHANNEL, getString(R.string.flash_channel_name), NotificationManager.IMPORTANCE_DEFAULT)
+                    .apply { description = getString(R.string.flash_channel_description) }
             )
         }
     }
@@ -73,7 +84,7 @@ class FlashForegroundService : Service() {
                     startFlash(intent.getStringExtra(EXTRA_LABEL).orEmpty())
                 }
             }
-            ACTION_STOP -> stopFlash("Flash desactivado. Los archivos recibidos se conservan.")
+            ACTION_STOP -> stopFlash(flashText(R.string.flash_stopped))
             else -> if (engine == null) stopSelfResult(startId)
         }
         // Process death must never make a previous activation discoverable again.
@@ -84,7 +95,7 @@ class FlashForegroundService : Service() {
         ticket = fence.activate()
         val activation = ticket
         FlashAndroidRuntime.update {
-            it.copy(phase = FlashAndroidPhase.STARTING, status = "Activando Flash…", engine = null,
+            it.copy(phase = FlashAndroidPhase.STARTING, statusText = flashText(R.string.flash_activating), engine = null,
                 selectedPeer = null, progress = emptyMap(), deviceLabel = sanitizePeerLabel(rawLabel.ifBlank { Build.MODEL }).take(60))
         }
         startupJob = scope.launch {
@@ -115,7 +126,7 @@ class FlashForegroundService : Service() {
                 val localAddresses = withContext(Dispatchers.IO) { localAddresses() }
                 FlashAndroidRuntime.update {
                     it.copy(phase = FlashAndroidPhase.ACTIVE, engine = started.snapshot(),
-                        status = "Flash activo. Elige un equipo o espera un archivo.", localAddresses = localAddresses)
+                        statusText = flashText(R.string.flash_active), localAddresses = localAddresses)
                 }
                 refreshNotification()
                 started.discover()
@@ -123,12 +134,12 @@ class FlashForegroundService : Service() {
                     delay(1_000)
                     val snapshot = started.snapshot()
                     if (!snapshot.active || snapshot.expiresAtMs <= System.currentTimeMillis()) {
-                        stopFlash("Terminó el tiempo de Flash. Actívalo de nuevo cuando lo necesites.")
+                        stopFlash(flashText(R.string.flash_session_expired))
                         break
                     }
                 }
             } catch (error: Exception) {
-                if (fence.accepts(activation)) stopFlash("No se pudo activar Flash. Comprueba la red y vuelve a intentar.")
+                if (fence.accepts(activation)) stopFlash(flashText(R.string.flash_activation_network_failed))
             }
         }
     }
@@ -142,7 +153,7 @@ class FlashForegroundService : Service() {
                     old.copy(engine = state, progress = old.progress.filterKeys { id -> state.operations.any { it.id == id } })
                 }
                 if (!state.active && FlashAndroidRuntime.state.value.phase == FlashAndroidPhase.ACTIVE) {
-                    stopFlash("Flash terminó. Los archivos recibidos se conservan.")
+                    stopFlash(flashText(R.string.flash_session_ended))
                 }
                 refreshNotification()
                 if (state.operations.isEmpty()) {
@@ -152,7 +163,7 @@ class FlashForegroundService : Service() {
         }
 
         override fun onApproval(approval: FlashApproval) = post(activation) {
-            FlashAndroidRuntime.update { it.copy(status = "Compara la verificación en los dos equipos.") }
+            FlashAndroidRuntime.update { it.copy(statusText = flashText(R.string.flash_compare_verification)) }
             refreshNotification()
         }
 
@@ -164,25 +175,28 @@ class FlashForegroundService : Service() {
             // Publication is terminal. Keep a known, verified receipt even when STOP won the UI epoch.
             if (!operationNames.containsKey(received.operationId)) return
             val result = FlashAndroidResult(received.operationId, received.file.name, FlashResultKind.RECEIVED,
-                "Archivo verificado y recibido en Qetara.", file = received.file)
+                flashText(R.string.flash_received_verified_in_qetara), file = received.file)
             addResult(result)
             post(activation) {
-                FlashAndroidRuntime.update { it.copy(status = "Archivo recibido y verificado.") }
+                FlashAndroidRuntime.update { it.copy(statusText = flashText(R.string.flash_received_verified)) }
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                     exportJobs += scope.launch {
                         val publication = withContext(Dispatchers.IO) {
                             DownloadsExport.exportToDownloads(applicationContext, received.file) {
                                 ensureActive()
-                                check(fence.accepts(activation)) { "Flash terminó" }
+                                check(fence.accepts(activation)) { "Flash session ended" }
                             }
                         }
                         if (fence.accepts(activation)) {
                             FlashAndroidRuntime.update { old -> old.copy(results = old.results.map {
                                 if (it.id != received.operationId) it else it.copy(
                                     downloadUri = publication.getOrNull()?.toString(),
-                                    detail = (if (publication.isSuccess) "Guardado en Descargas / Qetara."
-                                    else "Recibido en Qetara. Puedes guardar una copia donde prefieras.") +
-                                        if (it.confirmationIssue) " No se pudo confirmar la entrega al otro equipo." else ""
+                                    detailText = flashText(when {
+                                        publication.isSuccess && it.confirmationIssue -> R.string.flash_saved_downloads_unconfirmed
+                                        publication.isSuccess -> R.string.flash_saved_downloads
+                                        it.confirmationIssue -> R.string.flash_received_copy_unconfirmed
+                                        else -> R.string.flash_received_copy
+                                    })
                                 )
                             }) }
                         }
@@ -195,16 +209,16 @@ class FlashForegroundService : Service() {
         override fun onCompleted(completed: FlashCompleted) = post(activation) {
             if (completed.outgoing) {
                 addResult(FlashAndroidResult(completed.operationId, completed.fileName,
-                    FlashResultKind.DELIVERED, "El otro equipo confirmó la recepción y verificación del archivo."))
+                    FlashResultKind.DELIVERED, flashText(R.string.flash_delivery_confirmed_detail)))
                 val batch = outgoingBatch.complete(completed.operationId)
                 val sentFile = batch?.file
                 FlashAndroidRuntime.update { old -> old.copy(
-                    status = if (batch != null && batch.remaining > 0) {
-                        "Entrega ${batch.completed} de ${batch.total} confirmada. Preparando el siguiente archivo."
+                    statusText = if (batch != null && batch.remaining > 0) {
+                        flashText(R.string.flash_batch_delivery_progress, batch.completed, batch.total)
                     } else if (batch != null && batch.completed > 1) {
-                        "${batch.completed} archivos entregados y confirmados."
+                        flashPlural(R.plurals.flash_files_delivered, batch.completed, batch.completed)
                     } else {
-                        "Entrega confirmada por el otro equipo."
+                        flashText(R.string.flash_delivery_confirmed)
                     },
                     selectedFiles = old.selectedFiles.filterNot { it == sentFile }
                 ) }
@@ -215,13 +229,13 @@ class FlashForegroundService : Service() {
         }
 
         override fun onError(error: FlashError) = post(activation) {
-            val copy = flashErrorCopy(error.code)
+            val copy = flashErrorText(error.code)
             error.operationId?.let { id ->
-                val name = operationNames.remove(id) ?: "Archivo"
+                val name = operationNames.remove(id).orEmpty()
                 FlashAndroidRuntime.update { it.copy(results = recordFlashFailure(it.results, id, name, copy, error.code == "cancelled")) }
                 outgoingBatch.fail(id)
             }
-            FlashAndroidRuntime.update { it.copy(status = copy) }
+            FlashAndroidRuntime.update { it.copy(statusText = copy) }
             refreshNotification()
         }
     }
@@ -237,10 +251,10 @@ class FlashForegroundService : Service() {
     private fun discover(host: String? = null) {
         val currentEngine = engine ?: return
         if (!FlashAndroidRuntime.state.value.active) return
-        FlashAndroidRuntime.update { it.copy(status = if (host == null) "Búsqueda solicitada. Activa Flash en el otro equipo si no aparece." else "Dirección solicitada. Espera a que aparezca el equipo o revisa su conexión.") }
+        FlashAndroidRuntime.update { it.copy(statusText = if (host == null) flashText(R.string.flash_discovery_requested) else flashText(R.string.flash_address_requested)) }
         runCatching {
             if (host == null) currentEngine.discover() else currentEngine.discoverAt(host.trim())
-        }.onFailure { FlashAndroidRuntime.update { it.copy(status = "Revisa la dirección del otro equipo e inténtalo de nuevo.") } }
+        }.onFailure { FlashAndroidRuntime.update { it.copy(statusText = flashText(R.string.flash_check_address)) } }
     }
 
     private fun selectFiles(rawUris: List<Uri>) {
@@ -250,17 +264,18 @@ class FlashForegroundService : Service() {
         val pendingUris = importSources.pending(rawUris.map(Uri::toString), state.selectedFiles).toSet()
         val uris = rawUris.distinctBy(Uri::toString).filter { it.toString() in pendingUris }
         if (uris.isEmpty()) {
-            FlashAndroidRuntime.update { it.copy(status = "Los archivos elegidos ya están preparados.") }
+            FlashAndroidRuntime.update { it.copy(statusText = flashText(R.string.flash_selection_already_prepared)) }
             return
         }
         val activation = ticket
-        FlashAndroidRuntime.update { it.copy(importing = true, status = "Preparando ${uris.size} archivo(s)…") }
+        FlashAndroidRuntime.update { it.copy(importing = true, statusText = flashPlural(R.plurals.flash_preparing_file_count, uris.size, uris.size)) }
         importJob = scope.launch {
             val staged = mutableListOf<File>()
             var committed = false
             try {
                 uris.forEachIndexed { index, uri ->
                     prepareFlashImportFile(staged) {
+                        // This fallback becomes the transferred file name; keep it locale-independent.
                         var name = "Archivo"
                         var knownSize: Long? = null
                         contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME, OpenableColumns.SIZE), null, null, null)?.use { cursor ->
@@ -276,7 +291,7 @@ class FlashForegroundService : Service() {
                         val folder = File(cacheDir, "flash-outgoing/${UUID.randomUUID()}").apply { mkdirs() }
                         val file = File(folder, sanitizeFileName(name))
                         try {
-                            val input = contentResolver.openInputStream(uri) ?: error("No disponible")
+                            val input = contentResolver.openInputStream(uri) ?: error("Input stream unavailable")
                             importStream.set(input)
                             input.use { source -> file.outputStream().use { output ->
                                 val buffer = ByteArray(64 * 1024)
@@ -301,7 +316,7 @@ class FlashForegroundService : Service() {
                         }
                     }
                     if (fence.accepts(activation) && index + 1 < uris.size) {
-                        FlashAndroidRuntime.update { it.copy(status = "Preparando ${index + 1} de ${uris.size} archivos…") }
+                        FlashAndroidRuntime.update { it.copy(statusText = flashText(R.string.flash_preparing_file_progress, index + 1, uris.size)) }
                     }
                 }
                 if (fence.accepts(activation)) {
@@ -310,10 +325,10 @@ class FlashForegroundService : Service() {
                         previousSelection)
                     FlashAndroidRuntime.update { old ->
                         old.copy(selectedFiles = selected, importing = false,
-                            status = if (selected.size == 1) {
-                                "Archivo preparado. Elige el equipo receptor y envía la solicitud."
+                            statusText = if (selected.size == 1) {
+                                flashText(R.string.flash_file_prepared)
                             } else {
-                                "${selected.size} archivos preparados. Se enviarán uno por uno."
+                                flashPlural(R.plurals.flash_files_prepared, selected.size, selected.size)
                             })
                     }
                     committed = true
@@ -323,10 +338,10 @@ class FlashForegroundService : Service() {
                     }
                 }
             } catch (_: CancellationException) {
-                if (fence.accepts(activation)) FlashAndroidRuntime.update { it.copy(importing = false, status = "Selección cancelada.") }
+                if (fence.accepts(activation)) FlashAndroidRuntime.update { it.copy(importing = false, statusText = flashText(R.string.flash_selection_cancelled)) }
             } catch (_: Exception) {
                 if (fence.accepts(activation)) FlashAndroidRuntime.update { it.copy(importing = false,
-                    status = "No se pudo preparar el archivo. Comprueba que esté disponible y haya espacio, o elige otro.") }
+                    statusText = flashText(R.string.flash_file_preparation_failed)) }
             } finally {
                 if (!committed) withContext(NonCancellable + Dispatchers.IO) {
                     staged.forEach { file -> file.delete(); file.parentFile?.delete() }
@@ -342,36 +357,36 @@ class FlashForegroundService : Service() {
         val peer = resolveSelectedFlashPeer(state.selectedPeer, currentEngine.snapshot().peers, System.currentTimeMillis())
         val files = state.selectedFiles
         if (files.size > FLASH_MAX_BATCH_FILES) {
-            FlashAndroidRuntime.update { it.copy(status = "Puedes enviar hasta $FLASH_MAX_BATCH_FILES archivos por lote. Reduce la selección.") }
+            FlashAndroidRuntime.update { it.copy(statusText = flashPlural(R.plurals.flash_batch_limit, FLASH_MAX_BATCH_FILES, FLASH_MAX_BATCH_FILES)) }
             return
         }
         if (peer == null || files.isEmpty()) {
-            FlashAndroidRuntime.update { it.copy(status = "Vuelve a elegir un equipo disponible y al menos un archivo.") }
+            FlashAndroidRuntime.update { it.copy(statusText = flashText(R.string.flash_choose_available_device)) }
             return
         }
         if (!canSendFlashFiles(files)) {
-            FlashAndroidRuntime.update { it.copy(status = "Uno de los archivos ya no está disponible o no se puede leer. Revisa la selección.") }
+            FlashAndroidRuntime.update { it.copy(statusText = flashText(R.string.flash_selection_unreadable)) }
             return
         }
         if (!outgoingBatch.start(files)) return
-        FlashAndroidRuntime.update { it.copy(status = if (files.size == 1) {
-            "Preparando el envío. Compara la verificación en ambos equipos."
+        FlashAndroidRuntime.update { it.copy(statusText = if (files.size == 1) {
+            flashText(R.string.flash_preparing_send)
         } else {
-            "Preparando ${files.size} archivos. Una verificación autorizará este lote."
+            flashPlural(R.plurals.flash_preparing_batch, files.size, files.size)
         }) }
         runCatching { currentEngine.sendBatch(files, peer) }
             .onSuccess { id ->
                 outgoingBatch.started(id)
                 operationNames[id] = files.first().name
-                FlashAndroidRuntime.update { it.copy(status = if (files.size > 1) {
-                    "Lote de ${files.size} archivos: compara la verificación en ambos equipos."
+                FlashAndroidRuntime.update { it.copy(statusText = if (files.size > 1) {
+                    flashPlural(R.plurals.flash_verify_batch, files.size, files.size)
                 } else {
-                    "Solicitando conexión. Compara la verificación en ambos equipos."
+                    flashText(R.string.flash_requesting_connection)
                 }) }
             }
             .onFailure {
                 resetOutgoingBatch()
-                FlashAndroidRuntime.update { it.copy(status = "No se pudo iniciar. Comprueba el otro equipo y vuelve a intentar.") }
+                FlashAndroidRuntime.update { it.copy(statusText = flashText(R.string.flash_send_start_failed)) }
             }
     }
 
@@ -383,10 +398,10 @@ class FlashForegroundService : Service() {
         val state = FlashAndroidRuntime.state.value
         if (!canAnswerFlashApproval(state.active, requestId, state.engine?.approvals.orEmpty(), System.currentTimeMillis())) return
         val applied = engine?.approve(requestId, accepted) == true
-        if (!applied) FlashAndroidRuntime.update { it.copy(status = "La solicitud ya terminó. Pide al otro equipo que vuelva a intentar.") }
+        if (!applied) FlashAndroidRuntime.update { it.copy(statusText = flashText(R.string.flash_request_ended)) }
     }
 
-    private fun stopFlash(message: String) {
+    private fun stopFlash(message: FlashText) {
         if (stopping) return
         stopping = true
         fence.close()
@@ -396,7 +411,7 @@ class FlashForegroundService : Service() {
         resetOutgoingBatch()
         exportJobs.forEach { it.cancel() }
         FlashAndroidRuntime.update { it.copy(phase = FlashAndroidPhase.STOPPING, engine = null,
-            importing = false, progress = emptyMap(), selectedPeer = null, status = message) }
+            importing = false, progress = emptyMap(), selectedPeer = null, statusText = message) }
         scope.launch {
             startupJob?.cancelAndJoin()
             withContext(Dispatchers.IO) {
@@ -429,7 +444,7 @@ class FlashForegroundService : Service() {
     }
 
     override fun onTimeout(startId: Int, fgsType: Int) {
-        stopFlash("Android detuvo Flash. Puedes activarlo de nuevo cuando lo necesites.")
+        stopFlash(flashText(R.string.flash_android_stopped))
     }
 
     private fun acquireNetworkLocks() {
@@ -456,20 +471,20 @@ class FlashForegroundService : Service() {
         val stop = PendingIntent.getService(this, 9101, Intent(this, FlashForegroundService::class.java).setAction(ACTION_STOP), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         val state = FlashAndroidRuntime.state.value
         val text = when {
-            state.engine?.approvals?.isNotEmpty() == true -> "Compara la verificación y decide sobre el envío."
-            state.engine?.operations?.isNotEmpty() == true -> "Transferencia en curso. Abre Flash para ver el progreso."
-            else -> "Disponible temporalmente. Abre Flash o desactívalo."
+            state.engine?.approvals?.isNotEmpty() == true -> getString(R.string.flash_notification_verification)
+            state.engine?.operations?.isNotEmpty() == true -> getString(R.string.flash_notification_transfer)
+            else -> getString(R.string.flash_notification_available)
         }
         return NotificationCompat.Builder(this, CHANNEL)
             .setSmallIcon(R.drawable.ic_launcher_monochrome)
-            .setContentTitle("Qetara Flash")
+            .setContentTitle(getString(R.string.flash_notification_title))
             .setContentText(text)
             .setContentIntent(open)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
-            .addAction(0, "Abrir Flash", open)
-            .addAction(0, "Desactivar", stop)
+            .addAction(0, getString(R.string.flash_open_flash), open)
+            .addAction(0, getString(R.string.flash_deactivate), stop)
             .build()
     }
 
@@ -497,15 +512,15 @@ class FlashForegroundService : Service() {
 
         internal fun activate(context: Context, label: String) {
             if (FlashAndroidRuntime.state.value.phase != FlashAndroidPhase.OFF) return
-            FlashAndroidRuntime.update { it.copy(phase = FlashAndroidPhase.STARTING, status = "Activando Flash…") }
+            FlashAndroidRuntime.update { it.copy(phase = FlashAndroidPhase.STARTING, statusText = flashText(R.string.flash_activating)) }
             runCatching {
                 ContextCompat.startForegroundService(context, Intent(context, FlashForegroundService::class.java)
                     .setAction(ACTION_START).putExtra(EXTRA_LABEL, label))
             }.onFailure { FlashAndroidRuntime.update { it.copy(phase = FlashAndroidPhase.OFF,
-                status = "No se pudo activar Flash. Abre esta pantalla y vuelve a intentar.") } }
+                statusText = flashText(R.string.flash_activation_failed)) } }
         }
 
-        internal fun deactivate() { current?.stopFlash("Flash desactivado. Los archivos recibidos se conservan.") }
+        internal fun deactivate() { current?.stopFlash(flashText(R.string.flash_stopped)) }
         internal fun discoverPeers(host: String? = null) { current?.discover(host) }
         internal fun chooseFiles(uris: List<Uri>) { current?.selectFiles(uris) }
         internal fun send() { current?.sendSelected() }
@@ -530,7 +545,7 @@ class FlashForegroundService : Service() {
             if (current?.outgoingBatch?.active == true || state.engine?.operations?.isNotEmpty() == true || state.importing) return
             importSources.clear()
             FlashAndroidRuntime.update { it.copy(selectedFiles = emptyList(),
-                status = "Selección vacía. Elige archivos para compartir.") }
+                statusText = flashText(R.string.flash_selection_empty)) }
             current?.scope?.launch(Dispatchers.IO) {
                 state.selectedFiles.forEach { file -> file.delete(); file.parentFile?.delete() }
             }
@@ -544,21 +559,23 @@ private fun localAddresses(): List<String> = runCatching {
         .filter { !it.isLoopbackAddress && !it.isAnyLocalAddress }.mapNotNull { it.hostAddress }.distinct()
 }.getOrDefault(emptyList())
 
-internal fun flashErrorCopy(code: String): String = when (code) {
-    "discovery_failed" -> "No se pudo buscar esa dirección. Comprueba la IP, la red y que Flash esté activo en el otro equipo."
-    "cancelled" -> "Transferencia cancelada. Puedes volver a intentarlo cuando quieras."
-    "rejected" -> "La solicitud fue rechazada o la verificación no coincidió. No se envió el archivo."
-    "expired" -> "La solicitud o sesión expiró. Activa Flash y vuelve a intentar."
-    "approval_expired" -> "La confirmación caducó. Vuelve a solicitar el envío desde el equipo emisor y compara el nuevo código en ambos equipos."
-    "busy" -> "El otro equipo ya está atendiendo una transferencia. Espera y vuelve a intentar."
-    "invalid_file" -> "No se puede enviar ese archivo. Comprueba que esté disponible y haya espacio."
-    "invalid_batch" -> "El lote supera el límite de 128 archivos o el tamaño permitido para sus nombres y datos. Reduce la selección."
-    "batch_incompatible" -> "El otro equipo no admite una confirmación por lote. Actualiza Qetara en ambos equipos."
-    "peer_changed" -> "La sesión de Flash del otro equipo ya no coincide con la que elegiste. Búscalo de nuevo y vuelve a seleccionarlo."
-    "invalid_address" -> "La dirección no es válida. Escribe la IP local que aparece en Flash del otro equipo."
-    "storage_unavailable" -> "No se pudo preparar la carpeta para recibir el archivo. Revisa que el almacenamiento de este equipo esté disponible y tenga espacio."
-    "incompatible" -> "La respuesta del otro equipo no es compatible con Flash. Revisa la dirección y las versiones de Qetara en ambos equipos."
-    "integrity_failed" -> "El archivo no superó la verificación. Vuelve a enviarlo."
-    "unconfirmed" -> "No se pudo confirmar la entrega. Comprueba en el otro equipo si el archivo llegó antes de volver a enviarlo."
-    else -> "No se pudo completar la transferencia. Revisa Flash y la conexión del otro equipo."
+internal fun flashErrorCopy(code: String): String = flashErrorText(code).resolve()
+
+internal fun flashErrorText(code: String): FlashText = when (code) {
+    "discovery_failed" -> flashText(R.string.flash_error_discovery)
+    "cancelled" -> flashText(R.string.flash_error_cancelled)
+    "rejected" -> flashText(R.string.flash_error_rejected)
+    "expired" -> flashText(R.string.flash_error_expired)
+    "approval_expired" -> flashText(R.string.flash_error_approval_expired)
+    "busy" -> flashText(R.string.flash_error_busy)
+    "invalid_file" -> flashText(R.string.flash_error_invalid_file)
+    "invalid_batch" -> flashText(R.string.flash_error_invalid_batch)
+    "batch_incompatible" -> flashText(R.string.flash_error_batch_incompatible)
+    "peer_changed" -> flashText(R.string.flash_error_peer_changed)
+    "invalid_address" -> flashText(R.string.flash_error_invalid_address)
+    "storage_unavailable" -> flashText(R.string.flash_error_storage)
+    "incompatible" -> flashText(R.string.flash_error_incompatible)
+    "integrity_failed" -> flashText(R.string.flash_error_integrity)
+    "unconfirmed" -> flashText(R.string.flash_error_unconfirmed)
+    else -> flashText(R.string.flash_error_generic)
 }

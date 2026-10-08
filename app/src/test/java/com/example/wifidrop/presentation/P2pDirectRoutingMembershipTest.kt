@@ -12,7 +12,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-class P2pDirectRoutingMembershipTest {
+class P2pDirectRoutingMembershipTest : com.example.wifidrop.LocalizedResourcesTest() {
     private val owner = "192.168.49.1"
     private val lanPeer = KnownPeerSnapshot("pc-lan", "PC in LAN", "192.168.1.8", true, true, System.currentTimeMillis())
 

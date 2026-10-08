@@ -59,7 +59,7 @@ internal fun ProvidePrivateClipboard(content: @Composable () -> Unit) {
 
             override fun setText(annotatedString: AnnotatedString) {
                 // Qetara's legacy text copies are plain text; rich ClipEntry copies stay intact.
-                setClip(ClipEntry(ClipData.newPlainText("Texto de Qetara", annotatedString.text)))
+                setClip(ClipEntry(ClipData.newPlainText(appString(R.string.rt_qetara_text), annotatedString.text)))
             }
         }
     }

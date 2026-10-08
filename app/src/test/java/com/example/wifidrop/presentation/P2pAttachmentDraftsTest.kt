@@ -4,7 +4,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-class P2pAttachmentDraftsTest {
+class P2pAttachmentDraftsTest : com.example.wifidrop.LocalizedResourcesTest() {
     @Test
     fun sequentialPickerResultsAccumulateWithoutReplacingEarlierFiles() {
         val firstSelection = listOf("photo.jpg", "report.pdf")

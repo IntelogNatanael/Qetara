@@ -7,7 +7,7 @@ import java.util.concurrent.Callable
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
-class CredentialApprovalPolicyTest {
+class CredentialApprovalPolicyTest : com.example.wifidrop.LocalizedResourcesTest() {
     private val shown = PendingCredentialShareRequest("peer", "Displayed peer", "10.0.0.8", 123L, "key-A")
     private fun state(request: PendingCredentialShareRequest? = shown) = MutableStateFlow(TransferRuntimeState(pendingCredentialShare = request))
 

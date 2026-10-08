@@ -19,7 +19,7 @@ object LastSendTargetStore {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val ip = prefs.getString(KEY_IP, null).orEmpty().trim()
         if (ip.isBlank()) return null
-        val label = prefs.getString(KEY_LABEL, null).orEmpty().trim().ifBlank { "Ultimo destino" }
+        val label = prefs.getString(KEY_LABEL, null).orEmpty().trim().ifBlank { appString(R.string.conn_last_destination) }
         val updatedAt = prefs.getLong(KEY_UPDATED_AT, 0L)
         return LastSendTarget(ip = ip, label = label, updatedAtMs = updatedAt)
     }
@@ -27,7 +27,7 @@ object LastSendTargetStore {
     fun set(context: Context, ipRaw: String, labelRaw: String) {
         val ip = ipRaw.trim().take(64)
         if (ip.isBlank()) return
-        val label = labelRaw.trim().take(64).ifBlank { "Ultimo destino" }
+        val label = labelRaw.trim().take(64).ifBlank { appString(R.string.conn_last_destination) }
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             .edit {
                 putString(KEY_IP, ip)

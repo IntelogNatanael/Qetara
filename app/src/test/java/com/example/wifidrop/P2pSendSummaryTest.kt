@@ -4,7 +4,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 
-class P2pSendSummaryTest {
+class P2pSendSummaryTest : com.example.wifidrop.LocalizedResourcesTest() {
     @Test fun anEmptyOrMerelyPreparedSelectionHasNoDeliveryConfirmation() {
         assertNull(buildP2pSendSummary(0, 0, 0, 0, false, false))
     }

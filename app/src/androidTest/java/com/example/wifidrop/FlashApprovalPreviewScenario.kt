@@ -60,9 +60,13 @@ internal class FlashApprovalPreviewScenario(private val instrumentation: Instrum
                         Intent(context, FlashActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                     )
                 }
-                val action = "Coincide: ${if (outgoing) "enviar" else "recibir"} $count archivos"
+                val action = context.resources.getQuantityString(
+                    if (outgoing) R.plurals.flash_matches_send_files else R.plurals.flash_matches_receive_files,
+                    count, count)
                 awaitVisible(action)
-                awaitVisible("$count archivos ·")
+                val totalLabel = context.resources.getQuantityString(
+                    R.plurals.flash_approval_files_total, count, count, "")
+                awaitVisible(totalLabel.substringBefore("·").trim())
                 capture(directory, "$scenario-top", captures)
                 if (count == 128) {
                     scrollFilesToEnd(approval.files.first().fileName, approval.files.last().fileName)

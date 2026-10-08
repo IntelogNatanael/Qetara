@@ -1,5 +1,9 @@
 package com.example.wifidrop.presentation
 
+import com.example.wifidrop.R
+import com.example.wifidrop.appString
+import com.example.wifidrop.appQuantityString
+
 import com.example.wifidrop.ConnectionSnapshot
 import com.example.wifidrop.FileTransfer
 import com.example.wifidrop.TransferSecurity
@@ -49,20 +53,16 @@ fun buildFileBatchSendPlan(
     fileCount: Int
 ): P2pOutboundDecision<P2pFileBatchPlan> {
     if (fileCount <= 0) {
-        return P2pOutboundDecision.Blocked("Selecciona al menos un archivo.")
+        return P2pOutboundDecision.Blocked(appString(R.string.pr_file_required))
     }
 
-    return when (val targetDecision = validateOutboundTarget("enviar archivos", context, targetIp)) {
+    return when (val targetDecision = validateOutboundTarget(appString(R.string.pr_send_files_action), context, targetIp)) {
         is P2pOutboundDecision.Blocked -> targetDecision
         is P2pOutboundDecision.Ready -> P2pOutboundDecision.Ready(
             P2pFileBatchPlan(
                 targetIp = targetDecision.plan,
-                shareImportStatus = "Enviando $fileCount archivo(s).",
-                feedbackMessage = if (fileCount == 1) {
-                    "Archivo en cola para envío."
-                } else {
-                    "$fileCount archivos en cola para envío."
-                }
+                shareImportStatus = appQuantityString(R.plurals.pr_files_sending, fileCount, fileCount),
+                feedbackMessage = appQuantityString(R.plurals.pr_files_queued_count, fileCount, fileCount)
             )
         )
     }
@@ -75,16 +75,16 @@ fun buildDirectMessageSendPlan(
 ): P2pOutboundDecision<P2pDirectMessagePlan> {
     val message = sanitizeOutgoingMessage(draft)
     if (message.isBlank()) {
-        return P2pOutboundDecision.Blocked("Escribe un mensaje antes de enviar.")
+        return P2pOutboundDecision.Blocked(appString(R.string.pr_message_required))
     }
 
-    return when (val targetDecision = validateOutboundTarget("enviar mensajes", context, targetIp)) {
+    return when (val targetDecision = validateOutboundTarget(appString(R.string.pr_send_messages_action), context, targetIp)) {
         is P2pOutboundDecision.Blocked -> targetDecision
         is P2pOutboundDecision.Ready -> P2pOutboundDecision.Ready(
             P2pDirectMessagePlan(
                 targetIp = targetDecision.plan,
                 message = message,
-                feedbackMessage = "Mensaje en cola para envío."
+                feedbackMessage = appString(R.string.pr_message_queued)
             )
         )
     }
@@ -101,35 +101,31 @@ fun buildGlobalMessageSendPlan(
     val hasMessage = message.isNotBlank()
     val hasFiles = selectedFilesCount > 0
     if (!hasMessage && !hasFiles) {
-        return P2pOutboundDecision.Blocked("Escribe un mensaje o adjunta al menos un archivo.")
+        return P2pOutboundDecision.Blocked(appString(R.string.pr_message_or_file_required))
     }
     if (!context.lanConnected) {
-        return P2pOutboundDecision.Blocked("El canal requiere estar en una red Wi‑Fi.")
+        return P2pOutboundDecision.Blocked(appString(R.string.pr_channel_wifi_required))
     }
     if (!globalLanJoined) {
-        return P2pOutboundDecision.Blocked("Entra al canal Wi‑Fi para escribir.")
+        return P2pOutboundDecision.Blocked(appString(R.string.pr_channel_join_required))
     }
     if (hasFiles && targetCount <= 0) {
-        return P2pOutboundDecision.Blocked("No hay otros equipos en el canal para recibir archivos.")
+        return P2pOutboundDecision.Blocked(appString(R.string.pr_channel_no_recipients))
     }
 
-    return when (val sessionDecision = validateAuthenticatedSession("usar el canal Wi‑Fi", context)) {
+    return when (val sessionDecision = validateAuthenticatedSession(appString(R.string.pr_use_channel_action), context)) {
         is P2pOutboundDecision.Blocked -> sessionDecision
         is P2pOutboundDecision.Ready -> P2pOutboundDecision.Ready(
             P2pGlobalMessagePlan(
                 message = message.takeIf { hasMessage },
                 includeFiles = hasFiles,
                 feedbackMessage = when {
-                    hasMessage && hasFiles -> {
-                        val fileLabel = if (selectedFilesCount == 1) "1 archivo" else "$selectedFilesCount archivos"
-                        "Mensaje publicado y $fileLabel en cola para el canal Wi‑Fi."
-                    }
-                    hasFiles -> {
-                        val fileLabel = if (selectedFilesCount == 1) "1 archivo" else "$selectedFilesCount archivos"
-                        "$fileLabel en cola para el canal Wi‑Fi."
-                    }
-                    targetCount == 0 -> "Mensaje publicado en el canal Wi‑Fi."
-                    else -> "Mensaje publicado en el canal Wi‑Fi para ${if (targetCount == 1) "1 equipo" else "$targetCount equipos"}."
+                    hasMessage && hasFiles -> appQuantityString(
+                        R.plurals.pr_channel_message_files, selectedFilesCount, selectedFilesCount
+                    )
+                    hasFiles -> appQuantityString(R.plurals.pr_channel_files, selectedFilesCount, selectedFilesCount)
+                    targetCount == 0 -> appString(R.string.pr_channel_message_posted)
+                    else -> appQuantityString(R.plurals.pr_channel_message_targets, targetCount, targetCount)
                 }
             )
         )
@@ -146,13 +142,13 @@ fun buildDirectChatComposerPlan(
     val hasDraft = message.isNotBlank()
     val hasFiles = selectedFilesCount > 0
     if (!hasDraft && !hasFiles) {
-        return P2pOutboundDecision.Blocked("Escribe un mensaje o adjunta al menos un archivo.")
+        return P2pOutboundDecision.Blocked(appString(R.string.pr_message_or_file_required))
     }
 
     val actionLabel = when {
-        hasDraft && hasFiles -> "mensajes y archivos"
-        hasFiles -> "enviar archivos"
-        else -> "enviar mensajes"
+        hasDraft && hasFiles -> appString(R.string.pr_send_message_files_action)
+        hasFiles -> appString(R.string.pr_send_files_action)
+        else -> appString(R.string.pr_send_messages_action)
     }
 
     val normalizedTargets = targetIps
@@ -160,7 +156,7 @@ fun buildDirectChatComposerPlan(
         .filter { it.isNotBlank() }
         .distinct()
     if (normalizedTargets.isEmpty()) {
-        return P2pOutboundDecision.Blocked("No se pudo resolver IP destino para $actionLabel.")
+        return P2pOutboundDecision.Blocked(appString(R.string.pr_target_missing_action, actionLabel))
     }
 
     normalizedTargets.forEach { targetIp ->
@@ -177,12 +173,12 @@ fun buildDirectChatComposerPlan(
             includeFiles = hasFiles,
             feedbackMessage = when {
                 hasDraft && hasFiles && normalizedTargets.size > 1 ->
-                    "Mensaje y archivos en cola para ${normalizedTargets.size} equipos."
-                hasDraft && hasFiles -> "Mensaje y archivos en cola para envío."
-                hasDraft && normalizedTargets.size > 1 -> "Mensaje en cola para ${normalizedTargets.size} equipos."
-                hasDraft -> "Mensaje en cola para envío."
-                normalizedTargets.size > 1 -> "Archivos en cola para ${normalizedTargets.size} equipos."
-                else -> "Archivos en cola para envío."
+                    appQuantityString(R.plurals.pr_message_files_targets, normalizedTargets.size, normalizedTargets.size)
+                hasDraft && hasFiles -> appString(R.string.pr_message_files_queued)
+                hasDraft && normalizedTargets.size > 1 -> appQuantityString(R.plurals.pr_message_targets, normalizedTargets.size, normalizedTargets.size)
+                hasDraft -> appString(R.string.pr_message_queued)
+                normalizedTargets.size > 1 -> appQuantityString(R.plurals.pr_files_targets, normalizedTargets.size, normalizedTargets.size)
+                else -> appString(R.string.pr_files_queued)
             }
         )
     )
@@ -195,7 +191,7 @@ private fun validateOutboundTarget(
 ): P2pOutboundDecision<String> {
     if (!context.permissionGranted && !context.lanConnected) {
         return P2pOutboundDecision.Blocked(
-            "Faltan permisos de Wi-Fi Direct o conexión Wi-Fi para $actionLabel. Concede el permiso o usa el canal Wi‑Fi en la misma red."
+            appString(R.string.pr_permissions_action, actionLabel)
         )
     }
 
@@ -207,13 +203,13 @@ private fun validateOutboundTarget(
     val p2pLinked = context.connection?.groupFormed == true
     if (!p2pLinked && !context.lanConnected) {
         return P2pOutboundDecision.Blocked(
-            "Conecta por Wi-Fi Direct o a la misma red Wi-Fi antes de $actionLabel. Inicia anfitrión/cliente o selecciona un equipo LAN."
+            appString(R.string.pr_connect_action, actionLabel)
         )
     }
 
     val normalizedTarget = targetIp?.trim().takeUnless { it.isNullOrBlank() }
         ?: return P2pOutboundDecision.Blocked(
-            "No se pudo resolver IP destino para $actionLabel. Elige un equipo detectado o escribe la IP manualmente."
+            appString(R.string.pr_target_missing_hint, actionLabel)
         )
 
     if (
@@ -222,7 +218,7 @@ private fun validateOutboundTarget(
         normalizedTarget == context.connection.groupOwnerAddress
     ) {
         return P2pOutboundDecision.Blocked(
-            "Destino inválido: no puedes enviarte a este mismo equipo. Elige otro peer o borra esa IP."
+            appString(R.string.pr_invalid_self_target)
         )
     }
 
@@ -235,15 +231,15 @@ internal fun validateAuthenticatedSession(
 ): P2pOutboundDecision<Unit> {
     if (!FileTransfer.isValidToken(context.sessionToken)) {
         return P2pOutboundDecision.Blocked(
-            "La sesión actual no es válida. Sincroniza token/PIN con el otro equipo o crea una nueva."
+            appString(R.string.pr_session_invalid)
         )
     }
     if (!TransferSecurity.isValidPin(context.sessionPin)) {
-        return P2pOutboundDecision.Blocked("El PIN debe tener 6 dígitos.")
+        return P2pOutboundDecision.Blocked(appString(R.string.pr_pin_six_digits))
     }
     if (context.sessionExpired) {
         return P2pOutboundDecision.Blocked(
-            "La sesión expiró. Renuévala antes de $actionLabel."
+            appString(R.string.pr_expired_action, actionLabel)
         )
     }
 

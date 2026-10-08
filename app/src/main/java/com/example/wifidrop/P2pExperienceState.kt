@@ -1,5 +1,7 @@
 package com.example.wifidrop
 
+import com.example.wifidrop.presentation.isSessionSyncFailure
+
 internal enum class P2pExperienceCommand {
     REQUEST_PERMISSION,
     OPEN_WIFI_SETTINGS,
@@ -100,101 +102,101 @@ internal fun deriveP2pExperienceState(state: P2pScreenState): P2pExperienceState
     val connectionLabel = activeConnectionMode.title
     val headerSummary = when (activeConnectionMode) {
         ConnectionMode.WIFI_DIRECT -> when {
-            connected && directReadyForExchange && isHost -> "Wi-Fi Direct listo con ${directTargetLabel ?: "tu equipo"}."
-            connected && directReadyForExchange -> "Directo listo con ${directTargetLabel ?: "tu equipo"}."
-            connected && isHost -> "Enlace creado en este equipo."
-            connected -> "Preparando el enlace directo."
-            state.directCreatingGroup -> "Creando un enlace en este equipo."
-            state.directConnecting -> "Uniéndote al enlace directo."
-            state.directDiscovering && state.peers.isNotEmpty() -> "Elige un equipo para unirte."
-            state.directDiscovering -> "Buscando equipos con Wi-Fi Direct."
-            !state.permissionGranted -> "Falta permiso para usar Wi-Fi Direct."
-            !state.p2pEnabled -> "Abre Wi-Fi del sistema para usar Wi-Fi Direct."
-            else -> "Wi-Fi Direct listo para crear o buscar un enlace."
+            connected && directReadyForExchange && isHost -> appString(R.string.conn_wifi_direct_ready_with, directTargetLabel ?: appString(R.string.conn_your_device))
+            connected && directReadyForExchange -> appString(R.string.conn_direct_ready_with, directTargetLabel ?: appString(R.string.conn_your_device))
+            connected && isHost -> appString(R.string.conn_link_created_summary)
+            connected -> appString(R.string.conn_preparing_direct_summary)
+            state.directCreatingGroup -> appString(R.string.conn_creating_link_summary)
+            state.directConnecting -> appString(R.string.conn_joining_direct_summary)
+            state.directDiscovering && state.peers.isNotEmpty() -> appString(R.string.conn_choose_to_join)
+            state.directDiscovering -> appString(R.string.conn_searching_direct_summary)
+            !state.permissionGranted -> appString(R.string.conn_missing_direct_permission)
+            !state.p2pEnabled -> appString(R.string.conn_open_system_wifi_direct)
+            else -> appString(R.string.conn_direct_ready_create_search)
         }
 
         ConnectionMode.LAN -> when {
-            state.lanScanning -> "Buscando equipos en esta misma Wi-Fi."
-            state.lanConnected -> "Wi-Fi normal lista en ${state.lanLocalIp ?: "esta red"}."
-            else -> "Conecta ambos equipos a la misma red Wi-Fi."
+            state.lanScanning -> appString(R.string.conn_searching_same_wifi)
+            state.lanConnected -> appString(R.string.conn_wifi_ready_at, state.lanLocalIp ?: appString(R.string.conn_this_network))
+            else -> appString(R.string.conn_connect_both_same_wifi)
         }
     }
     val alternateModeHint = when {
         !alternateModeEnabled -> null
-        alternateConnectionMode == ConnectionMode.WIFI_DIRECT && connected -> "Tambien hay enlace directo disponible."
-        alternateConnectionMode == ConnectionMode.WIFI_DIRECT && state.p2pEnabled -> "Wi-Fi Direct sigue disponible como alternativa."
-        alternateConnectionMode == ConnectionMode.LAN && state.lanConnected -> "Wi-Fi normal disponible como alternativa."
-        alternateConnectionMode == ConnectionMode.LAN -> "Tambien puedes usar la misma red Wi-Fi."
+        alternateConnectionMode == ConnectionMode.WIFI_DIRECT && connected -> appString(R.string.conn_direct_alternative_available)
+        alternateConnectionMode == ConnectionMode.WIFI_DIRECT && state.p2pEnabled -> appString(R.string.conn_direct_still_available)
+        alternateConnectionMode == ConnectionMode.LAN && state.lanConnected -> appString(R.string.conn_wifi_alternative_available)
+        alternateConnectionMode == ConnectionMode.LAN -> appString(R.string.conn_same_wifi_alternative)
         else -> null
     }
     val primaryAction = when {
-        state.sessionExpired -> P2pExperienceAction("Renovar sesión", P2pExperienceCommand.RENEW_SESSION)
+        state.sessionExpired -> P2pExperienceAction(appString(R.string.conn_renew_session), P2pExperienceCommand.RENEW_SESSION)
 
-        connectionReadyForFlow && state.tokenSyncStatus.contains("no se pudo", ignoreCase = true) -> {
-            P2pExperienceAction("Sincronizar sesión", P2pExperienceCommand.SYNC_TOKEN)
+        connectionReadyForFlow && isSessionSyncFailure(state.tokenSyncStatus) -> {
+            P2pExperienceAction(appString(R.string.conn_sync_session), P2pExperienceCommand.SYNC_TOKEN)
         }
 
         connectionReadyForFlow && state.selectedFilesCount > 0 -> {
-            P2pExperienceAction("Continuar con envío", P2pExperienceCommand.CONTINUE_FLOW)
+            P2pExperienceAction(appString(R.string.conn_continue_send), P2pExperienceCommand.CONTINUE_FLOW)
         }
 
         connectionReadyForFlow && (state.chatDraft.isNotBlank() || state.chatMessages.isNotEmpty()) -> {
-            P2pExperienceAction("Abrir chat", P2pExperienceCommand.CONTINUE_FLOW)
+            P2pExperienceAction(appString(R.string.conn_open_chat), P2pExperienceCommand.CONTINUE_FLOW)
         }
 
         connectionReadyForFlow -> {
-            P2pExperienceAction("Continuar", P2pExperienceCommand.CONTINUE_FLOW)
+            P2pExperienceAction(appString(R.string.conn_continue), P2pExperienceCommand.CONTINUE_FLOW)
         }
 
         activeConnectionMode == ConnectionMode.WIFI_DIRECT && !state.permissionGranted -> {
-            P2pExperienceAction("Conceder permiso", P2pExperienceCommand.REQUEST_PERMISSION)
+            P2pExperienceAction(appString(R.string.conn_grant_permission), P2pExperienceCommand.REQUEST_PERMISSION)
         }
 
         activeConnectionMode == ConnectionMode.WIFI_DIRECT && !state.p2pEnabled -> {
-            P2pExperienceAction("Abrir Wi-Fi", P2pExperienceCommand.OPEN_WIFI_SETTINGS)
+            P2pExperienceAction(appString(R.string.conn_open_wifi), P2pExperienceCommand.OPEN_WIFI_SETTINGS)
         }
 
         activeConnectionMode == ConnectionMode.WIFI_DIRECT && connected && isHost && directReadyForExchange -> {
-            P2pExperienceAction("Continuar", P2pExperienceCommand.CONTINUE_FLOW)
+            P2pExperienceAction(appString(R.string.conn_continue), P2pExperienceCommand.CONTINUE_FLOW)
         }
 
         activeConnectionMode == ConnectionMode.WIFI_DIRECT && connected && isHost -> {
-            P2pExperienceAction("Cancelar enlace", P2pExperienceCommand.CANCEL_DIRECT)
+            P2pExperienceAction(appString(R.string.conn_cancel_link), P2pExperienceCommand.CANCEL_DIRECT)
         }
 
         activeConnectionMode == ConnectionMode.WIFI_DIRECT && connected && !isHost -> {
-            P2pExperienceAction("Preparando Directo", P2pExperienceCommand.REFRESH_STATE, enabled = false)
+            P2pExperienceAction(appString(R.string.conn_preparing_direct), P2pExperienceCommand.REFRESH_STATE, enabled = false)
         }
 
         activeConnectionMode == ConnectionMode.WIFI_DIRECT && directBusy -> {
-            P2pExperienceAction("Cancelar", P2pExperienceCommand.CANCEL_DIRECT)
+            P2pExperienceAction(appString(R.string.conn_cancel), P2pExperienceCommand.CANCEL_DIRECT)
         }
 
         activeConnectionMode == ConnectionMode.WIFI_DIRECT -> {
-            P2pExperienceAction("Buscar enlace", P2pExperienceCommand.START_CLIENT)
+            P2pExperienceAction(appString(R.string.conn_find_link), P2pExperienceCommand.START_CLIENT)
         }
 
         activeConnectionMode == ConnectionMode.LAN && state.lanScanning -> {
-            P2pExperienceAction("Cancelar búsqueda", P2pExperienceCommand.CANCEL_LAN_SCAN)
+            P2pExperienceAction(appString(R.string.conn_cancel_search), P2pExperienceCommand.CANCEL_LAN_SCAN)
         }
 
         activeConnectionMode == ConnectionMode.LAN && !state.lanConnected -> {
-            P2pExperienceAction("Conectar a Wi-Fi", P2pExperienceCommand.OPEN_WIFI_SETTINGS)
+            P2pExperienceAction(appString(R.string.conn_connect_wifi), P2pExperienceCommand.OPEN_WIFI_SETTINGS)
         }
 
         activeConnectionMode == ConnectionMode.LAN &&
             !state.suggestedTargetIp.isNullOrBlank() &&
             state.resolvedTargetIp.isNullOrBlank() -> {
-            P2pExperienceAction("Usar IP sugerida", P2pExperienceCommand.USE_SUGGESTED_TARGET)
+            P2pExperienceAction(appString(R.string.conn_use_suggested_ip), P2pExperienceCommand.USE_SUGGESTED_TARGET)
         }
 
         activeConnectionMode == ConnectionMode.LAN &&
             state.selectedFilesCount > 0 &&
             !state.resolvedTargetIp.isNullOrBlank() -> {
-            P2pExperienceAction("Enviar ahora", P2pExperienceCommand.SEND_NOW)
+            P2pExperienceAction(appString(R.string.conn_send_now), P2pExperienceCommand.SEND_NOW)
         }
 
-        else -> P2pExperienceAction("Buscar dispositivos", P2pExperienceCommand.SCAN_LAN)
+        else -> P2pExperienceAction(appString(R.string.conn_search_devices), P2pExperienceCommand.SCAN_LAN)
     }
     val onboardingStep1Done = when (activeConnectionMode) {
         ConnectionMode.WIFI_DIRECT -> state.permissionGranted
@@ -214,128 +216,128 @@ internal fun deriveP2pExperienceState(state: P2pScreenState): P2pExperienceState
     }
     val supportBanner = when {
         activeConnectionMode == ConnectionMode.WIFI_DIRECT && !state.permissionGranted -> P2pSupportBannerState(
-            title = "Permisos pendientes",
-            body = "Sin permiso de red cercana no puedes usar Wi-Fi Direct.",
-            action = P2pExperienceAction("Conceder permiso", P2pExperienceCommand.REQUEST_PERMISSION),
+            title = appString(R.string.conn_permissions_pending),
+            body = appString(R.string.conn_permission_required_hint),
+            action = P2pExperienceAction(appString(R.string.conn_grant_permission), P2pExperienceCommand.REQUEST_PERMISSION),
             isError = true
         )
 
         activeConnectionMode == ConnectionMode.WIFI_DIRECT && !state.p2pEnabled -> P2pSupportBannerState(
-            title = "Wi-Fi apagado",
-            body = "Android gestiona Wi-Fi Direct desde el sistema. Primero abre Wi-Fi y luego vuelve aquí.",
-            action = P2pExperienceAction("Abrir Wi-Fi", P2pExperienceCommand.OPEN_WIFI_SETTINGS),
+            title = appString(R.string.conn_wifi_off),
+            body = appString(R.string.conn_system_wifi_hint),
+            action = P2pExperienceAction(appString(R.string.conn_open_wifi), P2pExperienceCommand.OPEN_WIFI_SETTINGS),
             isError = true
         )
 
         activeConnectionMode == ConnectionMode.WIFI_DIRECT && state.directCreatingGroup -> P2pSupportBannerState(
-            title = "Enlace creado en este equipo",
-            body = "En el otro equipo, toca Buscar enlace y luego Conectar.",
-            action = P2pExperienceAction("Cancelar enlace", P2pExperienceCommand.CANCEL_DIRECT)
+            title = appString(R.string.conn_link_created),
+            body = appString(R.string.conn_other_find_connect_hint),
+            action = P2pExperienceAction(appString(R.string.conn_cancel_link), P2pExperienceCommand.CANCEL_DIRECT)
         )
 
         activeConnectionMode == ConnectionMode.WIFI_DIRECT && state.directConnecting -> P2pSupportBannerState(
-            title = "Uniéndote al enlace",
-            body = "Espera mientras ambos equipos terminan de enlazarse.",
-            action = P2pExperienceAction("Cancelar", P2pExperienceCommand.CANCEL_DIRECT)
+            title = appString(R.string.conn_joining_link),
+            body = appString(R.string.conn_wait_link_hint),
+            action = P2pExperienceAction(appString(R.string.conn_cancel), P2pExperienceCommand.CANCEL_DIRECT)
         )
 
         activeConnectionMode == ConnectionMode.WIFI_DIRECT && state.directDiscovering && state.peers.isEmpty() -> P2pSupportBannerState(
-            title = "Buscando equipos",
-            body = "Mantén el otro equipo con el enlace abierto. Cuando aparezca, toca Conectar.",
-            action = P2pExperienceAction("Cancelar", P2pExperienceCommand.CANCEL_DIRECT)
+            title = appString(R.string.conn_searching_devices),
+            body = appString(R.string.conn_keep_link_open_hint),
+            action = P2pExperienceAction(appString(R.string.conn_cancel), P2pExperienceCommand.CANCEL_DIRECT)
         )
 
         activeConnectionMode == ConnectionMode.WIFI_DIRECT && !connected -> P2pSupportBannerState(
-            title = "Elige el rol de este equipo",
-            body = "Si este equipo inicia, toca Crear enlace. Si el otro ya inició, toca Buscar enlace.",
-            action = P2pExperienceAction("Buscar enlace", P2pExperienceCommand.START_CLIENT)
+            title = appString(R.string.conn_choose_device_role),
+            body = appString(R.string.conn_role_hint),
+            action = P2pExperienceAction(appString(R.string.conn_find_link), P2pExperienceCommand.START_CLIENT)
         )
 
         activeConnectionMode == ConnectionMode.WIFI_DIRECT && connected && isHost && !directReadyForExchange -> P2pSupportBannerState(
-            title = "Enlace creado en este equipo",
-            body = "En el otro equipo, toca Buscar enlace para terminar la conexión.",
-            action = P2pExperienceAction("Refrescar estado", P2pExperienceCommand.REFRESH_STATE)
+            title = appString(R.string.conn_link_created),
+            body = appString(R.string.conn_other_find_finish_hint),
+            action = P2pExperienceAction(appString(R.string.conn_refresh_state), P2pExperienceCommand.REFRESH_STATE)
         )
 
         activeConnectionMode == ConnectionMode.LAN && !state.lanConnected && !directReadyForExchange -> P2pSupportBannerState(
-            title = "Falta red Wi-Fi compartida",
-            body = "Conecta ambos equipos a la misma red Wi-Fi para descubrir equipos por IP.",
-            action = P2pExperienceAction("Abrir ajustes Wi-Fi", P2pExperienceCommand.OPEN_WIFI_SETTINGS),
+            title = appString(R.string.conn_shared_wifi_missing),
+            body = appString(R.string.conn_shared_wifi_ip_hint),
+            action = P2pExperienceAction(appString(R.string.conn_open_wifi_settings), P2pExperienceCommand.OPEN_WIFI_SETTINGS),
             isError = true
         )
 
         activeConnectionMode == ConnectionMode.LAN && !lanReadyForExchange && !directReadyForExchange -> P2pSupportBannerState(
-            title = "Prepara esta misma Wi-Fi",
-            body = "Busca dispositivos o usa una IP sugerida.",
+            title = appString(R.string.conn_prepare_same_wifi),
+            body = appString(R.string.conn_find_or_suggested_ip),
             action = if (state.suggestedTargetIp.isNullOrBlank()) {
-                P2pExperienceAction("Buscar dispositivos", P2pExperienceCommand.SCAN_LAN)
+                P2pExperienceAction(appString(R.string.conn_search_devices), P2pExperienceCommand.SCAN_LAN)
             } else {
-                P2pExperienceAction("Usar IP sugerida", P2pExperienceCommand.USE_SUGGESTED_TARGET)
+                P2pExperienceAction(appString(R.string.conn_use_suggested_ip), P2pExperienceCommand.USE_SUGGESTED_TARGET)
             }
         )
 
         state.pendingCredentialShare != null -> P2pSupportBannerState(
-            title = "Solicitud de conexión",
-            body = "${state.pendingCredentialShare.label} quiere compartir la sesión.",
-            action = P2pExperienceAction("Revisar solicitud", P2pExperienceCommand.REVIEW_TRUST)
+            title = appString(R.string.conn_connection_request),
+            body = appString(R.string.conn_share_session_request, state.pendingCredentialShare.label),
+            action = P2pExperienceAction(appString(R.string.conn_review_request), P2pExperienceCommand.REVIEW_TRUST)
         )
 
         state.sessionExpired -> P2pSupportBannerState(
-            title = "Sesión expirada",
-            body = "Renueva la sesión para seguir usando chat y transferencias.",
-            action = P2pExperienceAction("Renovar sesión", P2pExperienceCommand.RENEW_SESSION),
+            title = appString(R.string.conn_session_expired),
+            body = appString(R.string.conn_renew_chat_transfers),
+            action = P2pExperienceAction(appString(R.string.conn_renew_session), P2pExperienceCommand.RENEW_SESSION),
             isError = true
         )
 
         !state.sendFailureCause.isNullOrBlank() || queueFailedCount > 0 -> P2pSupportBannerState(
-            title = "Hay fallos en la cola",
-            body = "Revisa los elementos fallidos y reintenta desde la vista dedicada.",
-            action = P2pExperienceAction("Abrir cola", P2pExperienceCommand.OPEN_QUEUE),
+            title = appString(R.string.conn_queue_failures),
+            body = appString(R.string.conn_retry_queue_hint),
+            action = P2pExperienceAction(appString(R.string.conn_open_queue), P2pExperienceCommand.OPEN_QUEUE),
             isError = true
         )
 
         state.selectedFilesCount > 0 && state.resolvedTargetIp.isNullOrBlank() -> P2pSupportBannerState(
-            title = "Destino no resuelto",
-            body = "Seleccionaste archivos, pero aún no hay una IP de destino válida.",
+            title = appString(R.string.conn_unresolved_destination),
+            body = appString(R.string.conn_files_no_destination_hint),
             action = if (state.suggestedTargetIp.isNullOrBlank()) {
-                P2pExperienceAction("Refrescar estado", P2pExperienceCommand.REFRESH_STATE)
+                P2pExperienceAction(appString(R.string.conn_refresh_state), P2pExperienceCommand.REFRESH_STATE)
             } else {
-                P2pExperienceAction("Usar destino sugerido", P2pExperienceCommand.USE_SUGGESTED_TARGET)
+                P2pExperienceAction(appString(R.string.conn_use_suggested_destination), P2pExperienceCommand.USE_SUGGESTED_TARGET)
             },
             isError = true
         )
 
         state.selectedFilesCount > 0 && !state.sessionExpired -> P2pSupportBannerState(
-            title = "Listo para enviar",
-            body = "Ya puedes iniciar el envío al equipo conectado.",
-            action = P2pExperienceAction("Enviar ahora", P2pExperienceCommand.SEND_NOW)
+            title = appString(R.string.conn_ready_send),
+            body = appString(R.string.conn_start_sending_hint),
+            action = P2pExperienceAction(appString(R.string.conn_send_now), P2pExperienceCommand.SEND_NOW)
         )
 
         messageFailedCount > 0 -> P2pSupportBannerState(
-            title = "Mensajes por reintentar",
-            body = "Hay mensajes fallidos en el chat.",
-            action = P2pExperienceAction("Abrir mensajes", P2pExperienceCommand.OPEN_MESSAGES),
+            title = appString(R.string.conn_messages_retry),
+            body = appString(R.string.conn_failed_messages_hint),
+            action = P2pExperienceAction(appString(R.string.conn_open_messages), P2pExperienceCommand.OPEN_MESSAGES),
             isError = true
         )
 
         !onboardingAllDone -> {
             val action = when (onboardingActiveStep) {
                 1 -> if (activeConnectionMode == ConnectionMode.WIFI_DIRECT) {
-                    P2pExperienceAction("Conceder permiso", P2pExperienceCommand.REQUEST_PERMISSION)
+                    P2pExperienceAction(appString(R.string.conn_grant_permission), P2pExperienceCommand.REQUEST_PERMISSION)
                 } else {
-                    P2pExperienceAction("Abrir Wi-Fi", P2pExperienceCommand.OPEN_WIFI_SETTINGS)
+                    P2pExperienceAction(appString(R.string.conn_open_wifi), P2pExperienceCommand.OPEN_WIFI_SETTINGS)
                 }
 
                 2 -> when (activeConnectionMode) {
                     ConnectionMode.WIFI_DIRECT -> if (state.p2pEnabled) {
-                        P2pExperienceAction("Buscar enlace", P2pExperienceCommand.START_CLIENT)
+                        P2pExperienceAction(appString(R.string.conn_find_link), P2pExperienceCommand.START_CLIENT)
                     } else {
-                        P2pExperienceAction("Abrir Wi-Fi", P2pExperienceCommand.OPEN_WIFI_SETTINGS)
+                        P2pExperienceAction(appString(R.string.conn_open_wifi), P2pExperienceCommand.OPEN_WIFI_SETTINGS)
                     }
 
                     ConnectionMode.LAN -> if (state.suggestedTargetIp.isNullOrBlank()) {
                         P2pExperienceAction(
-                            if (state.lanScanning) "Cancelar búsqueda" else "Buscar dispositivos",
+                            if (state.lanScanning) appString(R.string.conn_cancel_search) else appString(R.string.conn_search_devices),
                             if (state.lanScanning) {
                                 P2pExperienceCommand.CANCEL_LAN_SCAN
                             } else {
@@ -343,42 +345,42 @@ internal fun deriveP2pExperienceState(state: P2pScreenState): P2pExperienceState
                             }
                         )
                     } else {
-                        P2pExperienceAction("Usar IP sugerida", P2pExperienceCommand.USE_SUGGESTED_TARGET)
+                        P2pExperienceAction(appString(R.string.conn_use_suggested_ip), P2pExperienceCommand.USE_SUGGESTED_TARGET)
                     }
                 }
 
                 3 -> when {
-                    state.sessionExpired -> P2pExperienceAction("Renovar sesión", P2pExperienceCommand.RENEW_SESSION)
-                    !isHost && state.tokenSyncStatus.contains("no se pudo", ignoreCase = true) -> {
-                        P2pExperienceAction("Sincronizar sesión", P2pExperienceCommand.SYNC_TOKEN)
+                    state.sessionExpired -> P2pExperienceAction(appString(R.string.conn_renew_session), P2pExperienceCommand.RENEW_SESSION)
+                    !isHost && isSessionSyncFailure(state.tokenSyncStatus) -> {
+                        P2pExperienceAction(appString(R.string.conn_sync_session), P2pExperienceCommand.SYNC_TOKEN)
                     }
 
-                    else -> P2pExperienceAction("Ir a Mensajes", P2pExperienceCommand.OPEN_MESSAGES)
+                    else -> P2pExperienceAction(appString(R.string.conn_go_messages), P2pExperienceCommand.OPEN_MESSAGES)
                 }
 
-                else -> P2pExperienceAction("Refrescar estado", P2pExperienceCommand.REFRESH_STATE)
+                else -> P2pExperienceAction(appString(R.string.conn_refresh_state), P2pExperienceCommand.REFRESH_STATE)
             }
             P2pSupportBannerState(
                 title = when (onboardingActiveStep) {
-                    1 -> if (activeConnectionMode == ConnectionMode.WIFI_DIRECT) "Permisos pendientes" else "Conecta a la misma red"
-                    2 -> if (activeConnectionMode == ConnectionMode.WIFI_DIRECT) "Conecta por Wi-Fi Direct" else "Prepara esta misma Wi-Fi"
-                    3 -> "Listo para probar"
-                    else -> "Siguiente paso"
+                    1 -> if (activeConnectionMode == ConnectionMode.WIFI_DIRECT) appString(R.string.conn_permissions_pending) else appString(R.string.conn_connect_same_network)
+                    2 -> if (activeConnectionMode == ConnectionMode.WIFI_DIRECT) appString(R.string.conn_connect_direct_step) else appString(R.string.conn_prepare_same_wifi)
+                    3 -> appString(R.string.conn_ready_try)
+                    else -> appString(R.string.conn_next_step)
                 },
                 body = when (onboardingActiveStep) {
                     1 -> if (activeConnectionMode == ConnectionMode.WIFI_DIRECT) {
-                        "Sin permiso de red cercana no se detectan ni conectan dispositivos por Wi-Fi Direct."
+                        appString(R.string.conn_permission_discovery_required)
                     } else {
-                        "Conecta ambos equipos a la misma red Wi-Fi para usar IP y detección LAN."
+                        appString(R.string.conn_shared_wifi_discovery_hint)
                     }
 
                     2 -> if (activeConnectionMode == ConnectionMode.WIFI_DIRECT) {
-                        "Primero abre Wi-Fi del sistema. Luego crea o busca un enlace."
+                        appString(R.string.conn_system_wifi_then_link)
                     } else {
-                        "Busca dispositivos en esta misma Wi‑Fi. El canal Wi‑Fi sale por aquí."
+                        appString(R.string.conn_wifi_channel_discovery_hint)
                     }
 
-                    3 -> "Ya puedes probar chat, envío o historial sin salir de esta pantalla."
+                    3 -> appString(R.string.conn_try_chat_send_history)
                     else -> ""
                 },
                 action = action,
@@ -389,54 +391,54 @@ internal fun deriveP2pExperienceState(state: P2pScreenState): P2pExperienceState
         else -> null
     }
     val headerHint = when {
-        state.sessionExpired -> "Renueva la sesión para continuar con chat y transferencias."
-        state.sending -> "Enviando archivos en segundo plano. Puedes revisar la cola."
-        state.receiving -> "Recibiendo archivos en segundo plano."
-        state.pendingCredentialShare != null -> "Hay una solicitud de credenciales pendiente."
+        state.sessionExpired -> appString(R.string.conn_renew_continue_chat)
+        state.sending -> appString(R.string.conn_sending_background)
+        state.receiving -> appString(R.string.conn_receiving_background)
+        state.pendingCredentialShare != null -> appString(R.string.conn_credentials_pending)
         activeConnectionMode == ConnectionMode.WIFI_DIRECT && state.directCreatingGroup ->
-            "Este equipo ya creó el enlace. En el otro equipo, toca Buscar enlace."
+            appString(R.string.conn_created_other_find_hint)
         activeConnectionMode == ConnectionMode.WIFI_DIRECT && state.directConnecting ->
-            "Espera mientras este equipo se une al enlace."
+            appString(R.string.conn_wait_joining_hint)
         activeConnectionMode == ConnectionMode.WIFI_DIRECT && state.directDiscovering && state.peers.isNotEmpty() ->
-            "Elige el equipo que creó el enlace y toca Conectar."
+            appString(R.string.conn_choose_device_connect)
         activeConnectionMode == ConnectionMode.WIFI_DIRECT && state.directDiscovering ->
-            "Busca el otro equipo para unirte a su enlace."
+            appString(R.string.conn_find_other_link)
         activeConnectionMode == ConnectionMode.WIFI_DIRECT && !state.p2pEnabled ->
-            "Android gestiona Wi-Fi Direct desde el sistema. Abre Wi-Fi y vuelve aquí."
-        activeConnectionMode == ConnectionMode.WIFI_DIRECT && !connected -> "Si este equipo inicia, toca Crear enlace. Si el otro ya inició, toca Buscar enlace."
+            appString(R.string.conn_system_manages_direct_hint)
+        activeConnectionMode == ConnectionMode.WIFI_DIRECT && !connected -> appString(R.string.conn_role_hint)
         activeConnectionMode == ConnectionMode.WIFI_DIRECT && connected && isHost && !directReadyForExchange ->
-            "Este equipo ya creó el enlace. Falta que el otro equipo se una."
+            appString(R.string.conn_created_wait_other)
         activeConnectionMode == ConnectionMode.LAN && !state.lanConnected && !directReadyForExchange ->
-            "Conecta ambos equipos a la misma red Wi-Fi."
+            appString(R.string.conn_connect_both_same_wifi)
         activeConnectionMode == ConnectionMode.LAN && state.resolvedTargetIp.isNullOrBlank() -> {
-            "Busca equipos en esta misma Wi-Fi o usa una IP conocida."
+            appString(R.string.conn_find_or_known_ip)
         }
 
-        else -> "Usa la pestaña activa o la acción principal del encabezado."
+        else -> appString(R.string.conn_active_tab_hint)
     }
     val connectionNarrative = when (activeConnectionMode) {
         ConnectionMode.WIFI_DIRECT -> if (!state.p2pEnabled) {
-            "Primero abre Wi-Fi del sistema. Cuando Wi-Fi Direct esté disponible, podrás crear o buscar un enlace."
+            appString(R.string.conn_system_wifi_availability_hint)
         } else if (connected) {
             if (directReadyForExchange) {
-                "Cuando Directo está enlazado, Qetara lo usa primero para mensajes y archivos."
+                appString(R.string.conn_direct_prioritized)
             } else {
-                "Este equipo ya creó el enlace, pero aún falta que el otro termine de unirse."
+                appString(R.string.conn_other_finishing_join)
             }
         } else if (state.directDiscovering && state.peers.isNotEmpty()) {
-            "Elige el equipo que creó el enlace y toca Conectar para terminar la unión."
+            appString(R.string.conn_choose_connect_finish)
         } else if (state.directDiscovering) {
-            "Busca el otro equipo para unirte a su enlace directo."
+            appString(R.string.conn_find_other_direct_link)
         } else {
-            "Usa Crear enlace si este equipo inicia. Usa Buscar enlace si el otro ya inició."
+            appString(R.string.conn_create_or_find_role)
         }
 
         ConnectionMode.LAN -> if (directReadyForExchange) {
-            "Aunque estés viendo Wi-Fi normal, Directo ya quedó listo y se usará primero para enviar y chatear."
+            appString(R.string.conn_direct_ready_while_wifi)
         } else if (state.lanConnected) {
-            "Usa la misma red Wi-Fi para descubrir equipos por IP y compartir con PC u otros equipos."
+            appString(R.string.conn_same_wifi_pc_discovery)
         } else {
-            "Usa Wi-Fi normal cuando ambos equipos comparten la misma red local."
+            appString(R.string.conn_same_wifi_when_shared)
         }
     }
 
@@ -470,79 +472,79 @@ internal fun deriveP2pChatExperienceState(state: P2pScreenState): P2pChatExperie
     val directTargetLabel = state.chatDirectTargetLabel ?: state.chatDirectTargetIp
     val directChatMode = state.chatDirectTargetMode ?: state.activeConnectionMode
     val transportLabel = when (effectiveChatChannel) {
-        ChatChannel.DIRECT -> "Chat directo"
-        ChatChannel.GLOBAL -> "Canal Wi‑Fi"
+        ChatChannel.DIRECT -> appString(R.string.conn_direct_chat)
+        ChatChannel.GLOBAL -> appString(R.string.conn_wifi_channel)
     }
     val transportStatus = when {
         effectiveChatChannel == ChatChannel.GLOBAL && globalReady -> {
             if (state.globalChatPeerCount > 0) {
-                "Canal actual: Wi‑Fi · ${if (state.globalChatPeerCount == 1) "1 equipo" else "${state.globalChatPeerCount} equipos"}"
+                appQuantityString(R.plurals.conn_chat_wifi_devices, state.globalChatPeerCount, state.globalChatPeerCount)
             } else {
-                "Canal actual: Wi‑Fi · solo tú"
+                appString(R.string.conn_chat_wifi_alone)
             }
         }
-        effectiveChatChannel == ChatChannel.GLOBAL && !state.lanConnected -> "Canal actual: sin Wi‑Fi"
-        effectiveChatChannel == ChatChannel.GLOBAL && !state.globalLanJoined -> "Canal actual: fuera del canal Wi‑Fi"
-        effectiveChatChannel == ChatChannel.GLOBAL -> "Canal actual: Wi‑Fi · solo tú"
+        effectiveChatChannel == ChatChannel.GLOBAL && !state.lanConnected -> appString(R.string.conn_chat_no_wifi)
+        effectiveChatChannel == ChatChannel.GLOBAL && !state.globalLanJoined -> appString(R.string.conn_chat_outside_wifi)
+        effectiveChatChannel == ChatChannel.GLOBAL -> appString(R.string.conn_chat_wifi_alone)
         directReady && directChatMode == ConnectionMode.WIFI_DIRECT -> {
             when {
-                directTargetCount > 1 -> "Canal actual: Directo · Wi‑Fi Direct · $directTargetCount equipos"
-                directTargetLabel != null -> "Canal actual: Directo · Wi‑Fi Direct · $directTargetLabel"
-                else -> "Canal actual: Directo · Wi‑Fi Direct"
+                directTargetCount > 1 -> appQuantityString(R.plurals.conn_chat_direct_devices, directTargetCount, directTargetCount)
+                directTargetLabel != null -> appString(R.string.conn_chat_direct_device, directTargetLabel)
+                else -> appString(R.string.conn_chat_direct)
             }
         }
         directReady && directChatMode == ConnectionMode.LAN -> {
-            "Canal actual: Directo · Wi-Fi LAN${directTargetLabel?.let { " · $it" } ?: ""}"
+            if (directTargetLabel != null) appString(R.string.conn_chat_lan_device, directTargetLabel) else appString(R.string.conn_chat_lan)
         }
-        else -> "Canal actual: sin destino"
+        else -> appString(R.string.conn_chat_no_destination)
     }
     val transportHint = when {
-        state.sessionExpired -> "Sesión expirada: renueva la sesión para reactivar el chat."
+        state.sessionExpired -> appString(R.string.conn_chat_expired_hint)
         effectiveChatChannel == ChatChannel.GLOBAL && !state.lanConnected -> {
-            "Conecta este equipo a una red Wi‑Fi para usar el canal."
+            appString(R.string.conn_chat_connect_wifi_hint)
         }
 
         effectiveChatChannel == ChatChannel.GLOBAL && !state.globalLanJoined -> {
-            "Entra al canal Wi‑Fi para participar."
+            appString(R.string.conn_chat_join_channel_hint)
         }
 
         effectiveChatChannel == ChatChannel.GLOBAL && state.globalChatPeerCount <= 0 -> {
-            "Puedes escribir aunque todavía estés solo."
+            appString(R.string.conn_chat_write_alone_hint)
         }
 
         effectiveChatChannel == ChatChannel.GLOBAL -> {
-            "Envía texto a los equipos que ya entraron al canal Wi‑Fi."
+            appString(R.string.conn_chat_send_channel_hint)
         }
 
         directReady && directChatMode == ConnectionMode.WIFI_DIRECT -> {
             when {
-                directTargetCount > 1 -> "Tu chat directo por Wi‑Fi Direct está listo para $directTargetCount equipos."
-                directTargetLabel != null -> "Tu chat directo por Wi-Fi Direct ya está listo con $directTargetLabel."
-                else -> "Tu chat directo por Wi‑Fi Direct ya está listo."
+                directTargetCount > 1 -> appQuantityString(R.plurals.conn_chat_direct_ready_devices, directTargetCount, directTargetCount)
+                directTargetLabel != null -> appString(R.string.conn_chat_direct_ready_device, directTargetLabel)
+                else -> appString(R.string.conn_chat_direct_ready)
             }
         }
 
         activeConnectionMode == ConnectionMode.WIFI_DIRECT && p2pLinked && isP2pHost -> {
-            "Tu enlace directo ya está creado. Falta que el otro equipo se una para abrir el chat directo."
+            appString(R.string.conn_chat_wait_other_join)
         }
 
         activeConnectionMode == ConnectionMode.WIFI_DIRECT && p2pLinked -> {
-            "El modo actual es Wi-Fi Direct. El canal ya esta listo para chatear."
+            appString(R.string.conn_chat_direct_mode_ready)
         }
 
         activeConnectionMode == ConnectionMode.WIFI_DIRECT -> {
-            "El modo actual es Wi-Fi Direct. Primero conecta el otro equipo para habilitar el chat."
+            appString(R.string.conn_chat_direct_mode_connect)
         }
 
         activeConnectionMode == ConnectionMode.LAN && !state.lanConnected -> {
-            "El modo actual es Wi-Fi normal. Conecta ambos equipos a la misma red."
+            appString(R.string.conn_chat_wifi_mode_connect)
         }
 
         activeConnectionMode == ConnectionMode.LAN && !directReady -> {
-            "La red ya está lista, pero falta un equipo para chatear 1 a 1."
+            appString(R.string.conn_chat_wifi_needs_peer)
         }
 
-        else -> "El canal directo sobre Wi-Fi LAN ya está listo."
+        else -> appString(R.string.conn_chat_lan_ready)
     }
     val showSyncAction = !state.sessionExpired && (
         when (effectiveChatChannel) {

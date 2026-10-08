@@ -1,5 +1,7 @@
 <p>Qetara comparte archivos y mensajes entre dispositivos Android y un ordenador en la misma red local, sin crear una cuenta. Los dispositivos Android también pueden conectarse mediante Wi-Fi Direct.</p>
 
+<p>Disponible en español e inglés. Qetara sigue el idioma del dispositivo; en Android 13 y versiones posteriores, puedes elegir su idioma en los ajustes de la aplicación en Android.</p>
+
 <ul>
 <li>Selecciona varios archivos y consulta, cancela o reintenta sus transferencias.</li>
 <li>Abre, comparte y busca los archivos recibidos en tus descargas.</li>

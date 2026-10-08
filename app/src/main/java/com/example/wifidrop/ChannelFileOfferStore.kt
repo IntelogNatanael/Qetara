@@ -127,12 +127,13 @@ object ChannelFileOfferStore {
     }
 
     private fun sanitizeFileName(raw: String): String {
+        // The fallback becomes a stored/transmitted filename, not a localized display label.
         return raw.trim().replace(Regex("[\\\\/:*?\"<>|]"), "_").ifBlank {
             "archivo"
         }.take(160)
     }
 
     private fun sanitizeLabel(raw: String): String {
-        return raw.trim().replace(Regex("\\s+"), " ").ifBlank { "Equipo" }.take(64)
+        return raw.trim().replace(Regex("\\s+"), " ").ifBlank { appString(R.string.conn_device) }.take(64)
     }
 }

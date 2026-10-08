@@ -1,5 +1,9 @@
 package com.example.wifidrop.presentation
 
+import com.example.wifidrop.R
+import com.example.wifidrop.appString
+import com.example.wifidrop.localizeRuntimeStatus
+
 data class P2pTransientUiEffect(
     val feedback: P2pFeedbackMessage? = null,
     val triggerSuccessHaptic: Boolean = false
@@ -16,7 +20,7 @@ class P2pUiEffectsPresenter {
         wasConnected = connectedNow
         return if (shouldAnnounce) {
             P2pTransientUiEffect(
-                feedback = P2pFeedbackMessage("Conexion de red establecida."),
+                feedback = P2pFeedbackMessage(appString(R.string.pr_network_connected)),
                 triggerSuccessHaptic = true
             )
         } else {
@@ -32,7 +36,7 @@ class P2pUiEffectsPresenter {
         ) ?: return null
         lastTokenSyncFeedback = message
         return P2pFeedbackMessage(
-            message = message,
+            message = localizePresentationStatus(message),
             isError = isLikelyErrorMessage(message)
         )
     }
@@ -44,7 +48,7 @@ class P2pUiEffectsPresenter {
         ) ?: return null
         lastShareFeedback = message
         return P2pFeedbackMessage(
-            message = message,
+            message = localizePresentationStatus(message),
             isError = isIncompleteAttachmentRecovery(message) || isLikelyErrorMessage(message)
         )
     }
@@ -54,10 +58,10 @@ class P2pUiEffectsPresenter {
             rawMessage = rawMessage,
             lastFeedback = lastMessageFeedback
         ) ?: return null
-        if (message.contains("enviando", ignoreCase = true)) return null
+        if (isMessageStatusSending(message)) return null
         lastMessageFeedback = message
         return P2pFeedbackMessage(
-            message = message,
+            message = localizeRuntimeStatus(message),
             isError = isLikelyErrorMessage(message)
         )
     }

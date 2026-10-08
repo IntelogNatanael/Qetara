@@ -71,7 +71,7 @@ fun deriveP2pScreenRouteState(
     val lanConnected = input.lanDiscoveryState.connected
     val selectedFiles = input.shareImportState.selectedFiles
     val shareImportStatus = input.shareImportState.shareImportStatus
-    val latestLanDeviceLabel = input.wifiState.thisDeviceName.ifBlank { "cliente" }
+    val latestLanDeviceLabel = input.wifiState.thisDeviceName.ifBlank { appString(R.string.pr_client) }
     val latestSessionDeviceLabel = latestLanDeviceLabel
 
     val verifiedDirectParticipants = resolveVerifiedDirectParticipants(input.wifiState.connection, transferState)
@@ -142,7 +142,7 @@ fun deriveP2pScreenRouteState(
         )
     }
 
-    val localDeviceLabel = input.wifiState.thisDeviceName.ifBlank { "equipo" }
+    val localDeviceLabel = input.wifiState.thisDeviceName.ifBlank { appString(R.string.pr_device) }
     val outboundInput = P2pOutboundOrchestrationInput(
         outboundContext = P2pOutboundContext(
             permissionGranted = input.hasPermission,

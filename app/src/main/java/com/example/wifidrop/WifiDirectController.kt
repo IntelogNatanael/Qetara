@@ -47,7 +47,7 @@ data class WifiDirectState(
     val discoveringPeers: Boolean = false,
     val connectingToPeer: Boolean = false,
     val creatingGroup: Boolean = false,
-    val statusMessage: String = "Listo"
+    val statusMessage: String = appString(R.string.rt_ready)
 )
 
 class WifiDirectController(context: Context) {
@@ -60,9 +60,9 @@ class WifiDirectController(context: Context) {
         WifiDirectState(
             supported = manager != null && channel != null,
             statusMessage = if (manager == null || channel == null) {
-                "Wi-Fi Direct no disponible en este dispositivo."
+                appContext.getString(R.string.rt_wifi_unavailable_device)
             } else {
-                "Listo para Wi-Fi Direct."
+                appContext.getString(R.string.rt_wifi_ready)
             }
         )
     )
@@ -74,7 +74,7 @@ class WifiDirectController(context: Context) {
                 discoveringPeers = false,
                 connectingToPeer = false,
                 creatingGroup = false,
-                statusMessage = "Falta permiso runtime para Wi-Fi Direct."
+                statusMessage = appContext.getString(R.string.rt_wifi_permission_missing)
             )
         }
     }
@@ -89,14 +89,14 @@ class WifiDirectController(context: Context) {
                 discoveringPeers = if (enabled) it.discoveringPeers else false,
                 connectingToPeer = if (enabled) it.connectingToPeer else false,
                 creatingGroup = if (enabled) it.creatingGroup else false,
-                statusMessage = if (enabled) "Wi-Fi Direct activado." else "Wi-Fi Direct desactivado en sistema."
+                statusMessage = if (enabled) appContext.getString(R.string.rt_wifi_enabled) else appContext.getString(R.string.rt_wifi_disabled)
             )
         }
     }
 
     fun onThisDeviceChanged(device: WifiP2pDevice?) {
         if (device == null) return
-        val name = device.deviceName?.ifBlank { "(sin nombre)" } ?: "(sin nombre)"
+        val name = device.deviceName?.ifBlank { appContext.getString(R.string.rt_unnamed) } ?: appContext.getString(R.string.rt_unnamed)
         _state.update {
             it.copy(
                 thisDeviceName = name,
@@ -130,7 +130,7 @@ class WifiDirectController(context: Context) {
                             discoveringPeers = true,
                             connectingToPeer = false,
                             creatingGroup = false,
-                            statusMessage = "Buscando equipos con Wi-Fi Direct..."
+                            statusMessage = appContext.getString(R.string.rt_wifi_searching)
                         )
                     }
                 }
@@ -139,7 +139,7 @@ class WifiDirectController(context: Context) {
                     _state.update {
                         it.copy(
                             discoveringPeers = false,
-                            statusMessage = "No se pudo buscar equipos: ${reasonToText(reason)}"
+                            statusMessage = appContext.getString(R.string.rt_wifi_search_failed, reasonToText(reason))
                         )
                     }
                 }
@@ -154,7 +154,7 @@ class WifiDirectController(context: Context) {
                 val mapped = list.deviceList
                     .map { d ->
                         PeerDevice(
-                            name = d.deviceName?.ifBlank { "(sin nombre)" } ?: "(sin nombre)",
+                            name = d.deviceName?.ifBlank { appContext.getString(R.string.rt_unnamed) } ?: appContext.getString(R.string.rt_unnamed),
                             address = d.deviceAddress ?: "",
                             status = d.status
                         )
@@ -166,9 +166,9 @@ class WifiDirectController(context: Context) {
                         peers = mapped,
                         discoveringPeers = false,
                         statusMessage = if (mapped.isEmpty()) {
-                            "Aun no hay equipos cerca."
+                            appContext.getString(R.string.rt_wifi_no_peers)
                         } else {
-                            "Equipos listos para conectar: ${mapped.size}"
+                            appContext.resources.getQuantityString(R.plurals.rt_wifi_peers_ready, mapped.size, mapped.size)
                         }
                     )
                 }
@@ -181,7 +181,7 @@ class WifiDirectController(context: Context) {
         withManagerAndPermission { mgr, ch ->
             val normalizedAddress = deviceAddress.trim()
             if (normalizedAddress.isBlank()) {
-                updateStatus("Direccion de peer invalida para conectar.")
+                updateStatus(appContext.getString(R.string.rt_wifi_invalid_peer_address))
                 return@withManagerAndPermission
             }
             val config = WifiP2pConfig().apply {
@@ -196,7 +196,7 @@ class WifiDirectController(context: Context) {
                             discoveringPeers = false,
                             connectingToPeer = true,
                             creatingGroup = false,
-                            statusMessage = "Uniendote al enlace..."
+                            statusMessage = appContext.getString(R.string.rt_wifi_joining)
                         )
                     }
                 }
@@ -205,7 +205,7 @@ class WifiDirectController(context: Context) {
                     _state.update {
                         it.copy(
                             connectingToPeer = false,
-                            statusMessage = "No se pudo unir al enlace: ${reasonToText(reason)}"
+                            statusMessage = appContext.getString(R.string.rt_wifi_join_failed, reasonToText(reason))
                         )
                     }
                 }
@@ -222,7 +222,7 @@ class WifiDirectController(context: Context) {
                         it.copy(
                             discoveringPeers = false,
                             connectingToPeer = false,
-                            statusMessage = "Busqueda cancelada."
+                            statusMessage = appContext.getString(R.string.rt_wifi_search_canceled)
                         )
                     }
                 }
@@ -231,7 +231,7 @@ class WifiDirectController(context: Context) {
                     _state.update {
                         it.copy(
                             connectingToPeer = false,
-                            statusMessage = "No se pudo cancelar: ${reasonToText(reason)}"
+                            statusMessage = appContext.getString(R.string.rt_wifi_cancel_failed, reasonToText(reason))
                         )
                     }
                 }
@@ -275,7 +275,7 @@ class WifiDirectController(context: Context) {
                             discoveringPeers = false,
                             connectingToPeer = false,
                             creatingGroup = true,
-                            statusMessage = "Enlace creado en este equipo."
+                            statusMessage = appContext.getString(R.string.rt_wifi_group_created)
                         )
                     }
                 }
@@ -284,7 +284,7 @@ class WifiDirectController(context: Context) {
                     _state.update {
                         it.copy(
                             creatingGroup = false,
-                            statusMessage = "No se pudo crear el enlace: ${reasonToText(reason)}"
+                            statusMessage = appContext.getString(R.string.rt_wifi_create_failed, reasonToText(reason))
                         )
                     }
                 }
@@ -304,7 +304,7 @@ class WifiDirectController(context: Context) {
                             discoveringPeers = false,
                             connectingToPeer = false,
                             creatingGroup = false,
-                            statusMessage = "Enlace cerrado."
+                            statusMessage = appContext.getString(R.string.rt_wifi_group_closed)
                         )
                     }
                 }
@@ -314,7 +314,7 @@ class WifiDirectController(context: Context) {
                         it.copy(
                             creatingGroup = false,
                             connectingToPeer = false,
-                            statusMessage = "No se pudo cerrar el enlace: ${reasonToText(reason)}"
+                            statusMessage = appContext.getString(R.string.rt_wifi_close_failed, reasonToText(reason))
                         )
                     }
                 }
@@ -354,7 +354,7 @@ class WifiDirectController(context: Context) {
                         passphrase = it.passphrase,
                         ownerAddress = it.owner?.deviceAddress,
                         clients = it.clientList.map { client ->
-                            val n = client.deviceName?.ifBlank { "(sin nombre)" } ?: "(sin nombre)"
+                            val n = client.deviceName?.ifBlank { appContext.getString(R.string.rt_unnamed) } ?: appContext.getString(R.string.rt_unnamed)
                             "$n (${client.deviceAddress})"
                         }
                     )
@@ -368,7 +368,7 @@ class WifiDirectController(context: Context) {
         val mgr = manager
         val ch = channel
         if (mgr == null || ch == null) {
-            updateStatus("Wi-Fi Direct no esta disponible.")
+            updateStatus(appContext.getString(R.string.rt_wifi_unavailable))
             return
         }
 
@@ -385,7 +385,7 @@ class WifiDirectController(context: Context) {
                     discoveringPeers = false,
                     connectingToPeer = false,
                     creatingGroup = false,
-                    statusMessage = "Permiso denegado para operar Wi-Fi Direct."
+                    statusMessage = appContext.getString(R.string.rt_wifi_permission_denied)
                 )
             }
         }
@@ -406,10 +406,10 @@ class WifiDirectController(context: Context) {
 
     private fun reasonToText(reason: Int): String {
         return when (reason) {
-            WifiP2pManager.P2P_UNSUPPORTED -> "P2P_UNSUPPORTED"
-            WifiP2pManager.BUSY -> "BUSY"
-            WifiP2pManager.ERROR -> "ERROR"
-            else -> "UNKNOWN($reason)"
+            WifiP2pManager.P2P_UNSUPPORTED -> appContext.getString(R.string.rt_wifi_unsupported)
+            WifiP2pManager.BUSY -> appContext.getString(R.string.rt_wifi_busy)
+            WifiP2pManager.ERROR -> appContext.getString(R.string.rt_wifi_error)
+            else -> appContext.getString(R.string.rt_wifi_unknown_error, reason.toString())
         }
     }
 }

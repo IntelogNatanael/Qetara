@@ -4,10 +4,17 @@ import java.io.File
 import java.text.Normalizer
 import java.util.Locale
 
-internal enum class DownloadLibrarySection(val title: String) { FILES("Recibidos"), ACTIVITY("Actividad") }
-internal enum class DownloadFileSort(val title: String) { NEWEST("Más recientes"), NAME("Nombre"), LARGEST("Tamaño") }
-internal enum class DownloadHistoryFilter(val title: String) {
-    ALL("Todo"), RECEIVED("Recibidos"), SENT("Enviados"), ATTENTION("Sin completar")
+internal enum class DownloadLibrarySection(private val titleRes: Int) {
+    FILES(R.string.msg_received), ACTIVITY(R.string.msg_activity);
+    val title: String get() = appString(titleRes)
+}
+internal enum class DownloadFileSort(private val titleRes: Int) {
+    NEWEST(R.string.msg_newest), NAME(R.string.msg_name), LARGEST(R.string.msg_size);
+    val title: String get() = appString(titleRes)
+}
+internal enum class DownloadHistoryFilter(private val titleRes: Int) {
+    ALL(R.string.msg_all), RECEIVED(R.string.msg_received), SENT(R.string.msg_sent), ATTENTION(R.string.msg_incomplete);
+    val title: String get() = appString(titleRes)
 }
 
 internal data class DownloadFileSnapshot(val file: File, val bytes: Long, val modifiedAtMs: Long)

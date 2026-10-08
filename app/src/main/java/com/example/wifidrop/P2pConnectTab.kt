@@ -55,6 +55,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.heading
@@ -64,6 +65,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.example.wifidrop.presentation.isSessionSyncFailure
+import com.example.wifidrop.presentation.isSessionSyncManualPairingRequired
 import kotlinx.coroutines.launch
 
 /** The everyday connection flow. Detailed transport controls remain in the advanced view. */
@@ -116,11 +119,9 @@ internal fun P2pConnectTab(
     var showCredentials by rememberSaveable { mutableStateOf(false) }
     var showConnectionHelp by rememberSaveable { mutableStateOf(false) }
     var showRememberedPeers by rememberSaveable { mutableStateOf(false) }
-    val manualPairing = state.tokenSyncStatus.contains("manual", ignoreCase = true) ||
-        state.tokenSyncStatus.contains("secure_credentials_required", ignoreCase = true)
+    val manualPairing = isSessionSyncManualPairingRequired(state.tokenSyncStatus)
     val sessionProblem = state.sessionExpired || manualPairing ||
-        state.tokenSyncStatus.contains("no se pudo", ignoreCase = true) ||
-        state.tokenSyncStatus.contains("no pude", ignoreCase = true)
+        isSessionSyncFailure(state.tokenSyncStatus)
     val sessionSyncing = state.sessionSyncing
     val validCredentials = FileTransfer.isValidToken(state.authToken) && TransferSecurity.isValidPin(state.sessionPin)
     val invalidAddress = manualAddressDraft.isNotBlank() && !isValidManualConnectionAddress(manualAddressDraft)
@@ -147,16 +148,16 @@ internal fun P2pConnectTab(
         item("connect-intro") {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
-                    "Conectar equipos",
+                    stringResource(R.string.conn_connect_devices),
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.semantics { heading() }
                 )
                 Text(
-                    if (manualPairing) "Introduce el código y PIN del equipo receptor."
-                    else if (exchangeReady && !sessionProblem && !sessionSyncing) "Todo listo para enviar archivos y mensajes."
-                    else if (direct) "Entre Android cercanos, sin necesitar un router."
-                    else "Android y PC en la misma red Wi-Fi.",
+                    if (manualPairing) stringResource(R.string.conn_enter_receiver_credentials)
+                    else if (exchangeReady && !sessionProblem && !sessionSyncing) stringResource(R.string.conn_ready_files_messages)
+                    else if (direct) stringResource(R.string.conn_nearby_android_no_router)
+                    else stringResource(R.string.conn_android_pc_same_wifi),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -167,7 +168,7 @@ internal fun P2pConnectTab(
                         modifier = Modifier.heightIn(min = 48.dp),
                         colors = qetaraFilterChipColors(),
                         leadingIcon = { Icon(Icons.Rounded.Wifi, contentDescription = null, modifier = Modifier.size(18.dp)) },
-                        label = { Text("Misma Wi-Fi") }
+                        label = { Text(stringResource(R.string.conn_same_wifi)) }
                     )
                     FilterChip(
                         selected = direct,
@@ -175,7 +176,7 @@ internal fun P2pConnectTab(
                         modifier = Modifier.heightIn(min = 48.dp),
                         colors = qetaraFilterChipColors(),
                         leadingIcon = { Icon(Icons.Rounded.Link, contentDescription = null, modifier = Modifier.size(18.dp)) },
-                        label = { Text("Wi-Fi Direct") }
+                        label = { Text(stringResource(R.string.conn_wifi_direct)) }
                     )
                 }
             }
@@ -193,10 +194,10 @@ internal fun P2pConnectTab(
                         }
                     }
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                        Text("Este equipo", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text(state.thisDeviceName.ifBlank { "Mi Android" }, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                        Text(stringResource(R.string.conn_this_device), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(state.thisDeviceName.ifBlank { stringResource(R.string.conn_my_android) }, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
                         if (!direct && state.lanConnected) {
-                            Text(state.lanLocalIp ?: "Conectado a la red", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(state.lanLocalIp ?: stringResource(R.string.conn_connected_network), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }
@@ -206,117 +207,117 @@ internal fun P2pConnectTab(
             ConnectionStepSurface(active = state.sessionEnabled) {
                 when {
                     !state.sessionEnabled -> {
-                        Text("Sesión desactivada", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, modifier = Modifier.semantics { heading() })
-                        Text("Toca Activar sesión para conectar. Mientras tanto, puedes preparar archivos y consultar mensajes y Descargas.")
+                        Text(stringResource(R.string.conn_session_disabled), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, modifier = Modifier.semantics { heading() })
+                        Text(stringResource(R.string.conn_activate_session_hint))
                     }
                     direct && !state.permissionGranted -> {
-                        Text("Permite encontrar equipos", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, modifier = Modifier.semantics { heading() })
-                        Text("Android necesita tu permiso para detectar dispositivos cercanos y crear un enlace Wi-Fi Direct.")
-                        Button(onClick = onRequestPermission, modifier = Modifier.fillMaxWidth()) { Text("Permitir conexión cercana") }
-                        Text("También puedes elegir Misma Wi-Fi para compartir con un PC.", style = MaterialTheme.typography.bodySmall)
+                        Text(stringResource(R.string.conn_allow_discovery), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, modifier = Modifier.semantics { heading() })
+                        Text(stringResource(R.string.conn_nearby_permission_hint))
+                        Button(onClick = onRequestPermission, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.conn_allow_nearby_connection)) }
+                        Text(stringResource(R.string.conn_same_wifi_pc_hint), style = MaterialTheme.typography.bodySmall)
                     }
                     direct && !state.p2pEnabled -> {
-                        Text("Activa Wi-Fi", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, modifier = Modifier.semantics { heading() })
-                        Text("Abre los ajustes de Android, activa Wi-Fi y vuelve a Qetara. No hace falta tener internet.")
-                        Button(onClick = onOpenWifiSettings, modifier = Modifier.fillMaxWidth()) { Text("Abrir ajustes Wi-Fi") }
+                        Text(stringResource(R.string.conn_enable_wifi), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, modifier = Modifier.semantics { heading() })
+                        Text(stringResource(R.string.conn_enable_wifi_hint))
+                        Button(onClick = onOpenWifiSettings, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.conn_open_wifi_settings)) }
                     }
                     ready -> {
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Rounded.CheckCircleOutline, contentDescription = null, modifier = Modifier.size(20.dp))
-                            Text("Equipo seleccionado", style = MaterialTheme.typography.labelLarge)
+                            Text(stringResource(R.string.conn_selected_device), style = MaterialTheme.typography.labelLarge)
                         }
-                        Text(selectedLabel ?: "Tu otro equipo", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, modifier = Modifier.semantics { heading() })
+                        Text(selectedLabel ?: stringResource(R.string.conn_your_other_device), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, modifier = Modifier.semantics { heading() })
                         when {
                             sessionSyncing -> {
                                 LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-                                Text("Preparando la sesión. Si el otro equipo es Android, acepta allí la solicitud de conexión.")
+                                Text(stringResource(R.string.conn_preparing_approval_hint))
                             }
                             manualPairing -> {
-                                Text("Introduce debajo el código de sesión y el PIN que muestra Qetara en el equipo receptor.")
-                                FilledTonalButton(onClick = { showCredentials = true; scope.launch { listState.animateScrollToItem(3) } }) { Text("Introducir código y PIN") }
+                                Text(stringResource(R.string.conn_enter_credentials_below))
+                                FilledTonalButton(onClick = { showCredentials = true; scope.launch { listState.animateScrollToItem(3) } }) { Text(stringResource(R.string.conn_enter_code_pin)) }
                             }
                             !state.sessionReady || sessionProblem || !validCredentials -> {
-                                Text(if (state.sessionExpired) "Renueva la sesión para continuar." else "La sesión aún no está confirmada. Acepta la solicitud en el otro Android o introduce aquí los datos del receptor.", style = MaterialTheme.typography.bodyMedium)
-                                OutlinedButton(onClick = onSyncSession, enabled = !state.sessionExpired) { Text("Reintentar conexión") }
-                                TextButton(onClick = { showCredentials = true; scope.launch { listState.animateScrollToItem(3) } }) { Text("Introducir código y PIN") }
+                                Text(if (state.sessionExpired) stringResource(R.string.conn_renew_continue) else stringResource(R.string.conn_session_unconfirmed_hint), style = MaterialTheme.typography.bodyMedium)
+                                OutlinedButton(onClick = onSyncSession, enabled = !state.sessionExpired) { Text(stringResource(R.string.conn_retry_connection)) }
+                                TextButton(onClick = { showCredentials = true; scope.launch { listState.animateScrollToItem(3) } }) { Text(stringResource(R.string.conn_enter_code_pin)) }
                             }
                             else -> {
-                                Text("Sesión confirmada. Ya puedes compartir.", style = MaterialTheme.typography.bodyMedium)
+                                Text(stringResource(R.string.conn_session_confirmed_hint), style = MaterialTheme.typography.bodyMedium)
                                 Button(onClick = onOpenSend, modifier = Modifier.fillMaxWidth()) {
                                     Icon(Icons.AutoMirrored.Rounded.Send, contentDescription = null, modifier = Modifier.size(18.dp))
-                                    Text("Enviar archivos", Modifier.padding(start = 8.dp))
+                                    Text(stringResource(R.string.conn_send_files), Modifier.padding(start = 8.dp))
                                 }
                                 FilledTonalButton(onClick = onOpenChat, modifier = Modifier.fillMaxWidth()) {
                                     Icon(Icons.Rounded.ChatBubbleOutline, contentDescription = null, modifier = Modifier.size(18.dp))
-                                    Text("Abrir chat", Modifier.padding(start = 8.dp))
+                                    Text(stringResource(R.string.conn_open_chat), Modifier.padding(start = 8.dp))
                                 }
                             }
                         }
                         if (direct && linked) {
-                            TextButton(onClick = onDisconnect) { Text("Desconectar equipo") }
+                            TextButton(onClick = onDisconnect) { Text(stringResource(R.string.conn_disconnect_device)) }
                         }
                     }
                     direct && (state.directCreatingGroup || (linked && host)) -> {
-                        Text(if (linked) "Enlace disponible" else "Creando enlace…", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, modifier = Modifier.semantics { heading() })
+                        Text(if (linked) stringResource(R.string.conn_link_available) else stringResource(R.string.conn_creating_link), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, modifier = Modifier.semantics { heading() })
                         if (!linked) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                         if (linked && state.chatDirectAvailablePeers.isNotEmpty()) {
-                            Text("Elige el equipo que recibirá tus archivos y mensajes. La selección anterior no cambia sola.")
-                            FilledTonalButton(onClick = onOpenChat) { Text("Elegir equipo") }
+                            Text(stringResource(R.string.conn_choose_recipient_hint))
+                            FilledTonalButton(onClick = onOpenChat) { Text(stringResource(R.string.conn_choose_device)) }
                         } else {
-                            Text("En el otro Android, abre Qetara, elige Wi-Fi Direct y toca Buscar un equipo. Después elige este dispositivo.")
+                            Text(stringResource(R.string.conn_other_android_find_hint))
                         }
-                        Text(state.thisDeviceName.ifBlank { "Este equipo" }, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                        OutlinedButton(onClick = if (linked) onDisconnect else onCancelConnect) { Text("Cerrar enlace") }
+                        Text(state.thisDeviceName.ifBlank { stringResource(R.string.conn_this_device) }, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                        OutlinedButton(onClick = if (linked) onDisconnect else onCancelConnect) { Text(stringResource(R.string.conn_close_link)) }
                     }
                     direct && state.directConnecting -> {
-                        Text("Conectando los equipos…", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, modifier = Modifier.semantics { heading() })
+                        Text(stringResource(R.string.conn_connecting_devices), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, modifier = Modifier.semantics { heading() })
                         LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-                        Text("Acepta la solicitud de Android si aparece. Mantén Qetara abierto en ambos equipos.")
-                        TextButton(onClick = onCancelConnect) { Text("Cancelar conexión") }
+                        Text(stringResource(R.string.conn_accept_android_hint))
+                        TextButton(onClick = onCancelConnect) { Text(stringResource(R.string.conn_cancel_connection)) }
                     }
                     direct && linked -> {
-                        Text("Preparando la sesión…", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, modifier = Modifier.semantics { heading() })
+                        Text(stringResource(R.string.conn_preparing_session), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, modifier = Modifier.semantics { heading() })
                         LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-                        Text("El enlace ya existe. Aprueba la conexión en el equipo que abrió el enlace para empezar a compartir.")
-                        OutlinedButton(onClick = onSyncSession) { Text("Sincronizar sesión") }
-                        TextButton(onClick = onDisconnect) { Text("Desconectar") }
+                        Text(stringResource(R.string.conn_approve_host_hint))
+                        OutlinedButton(onClick = onSyncSession) { Text(stringResource(R.string.conn_sync_session)) }
+                        TextButton(onClick = onDisconnect) { Text(stringResource(R.string.conn_disconnect)) }
                     }
                     direct && state.directDiscovering -> {
-                        Text("Buscando un equipo cercano…", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, modifier = Modifier.semantics { heading() })
+                        Text(stringResource(R.string.conn_searching_nearby), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, modifier = Modifier.semantics { heading() })
                         LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-                        Text(if (state.peers.isEmpty()) "En el otro Android, toca Crear un enlace. Los equipos aparecerán aquí."
-                            else "Elige abajo el equipo que creó el enlace.")
-                        TextButton(onClick = onCancelConnect) { Text("Detener búsqueda") }
+                        Text(if (state.peers.isEmpty()) stringResource(R.string.conn_other_android_create_hint)
+                            else stringResource(R.string.conn_choose_link_device_below))
+                        TextButton(onClick = onCancelConnect) { Text(stringResource(R.string.conn_stop_search)) }
                     }
                     direct -> {
-                        Text("Conectar por Wi-Fi Direct", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, modifier = Modifier.semantics { heading() })
-                        Text("Crea un enlace en uno de los equipos y búscalo desde el otro.")
-                        Button(onClick = onStartHost, modifier = Modifier.fillMaxWidth()) { Text("Crear un enlace") }
-                        OutlinedButton(onClick = onStartClient, modifier = Modifier.fillMaxWidth()) { Text("Buscar un equipo") }
+                        Text(stringResource(R.string.conn_connect_wifi_direct), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, modifier = Modifier.semantics { heading() })
+                        Text(stringResource(R.string.conn_create_search_hint))
+                        Button(onClick = onStartHost, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.conn_create_a_link)) }
+                        OutlinedButton(onClick = onStartClient, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.conn_find_a_device)) }
                     }
                     !state.lanConnected -> {
-                        Text("Conecta a la misma Wi-Fi", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, modifier = Modifier.semantics { heading() })
-                        Text("Abre Qetara también en el otro equipo. Puede ser un Android o un PC; la red no necesita internet.")
-                        Button(onClick = onOpenWifiSettings, modifier = Modifier.fillMaxWidth()) { Text("Abrir ajustes Wi-Fi") }
+                        Text(stringResource(R.string.conn_connect_same_wifi), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, modifier = Modifier.semantics { heading() })
+                        Text(stringResource(R.string.conn_other_android_pc_hint))
+                        Button(onClick = onOpenWifiSettings, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.conn_open_wifi_settings)) }
                     }
                     else -> {
-                        Text(if (state.lanScanning) "Buscando en tu red…" else "Busca tu otro equipo", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, modifier = Modifier.semantics { heading() })
-                        Text("Abre Qetara en el otro equipo. En PC, activa Recibir.")
+                        Text(if (state.lanScanning) stringResource(R.string.conn_searching_network) else stringResource(R.string.conn_find_other_device), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, modifier = Modifier.semantics { heading() })
+                        Text(stringResource(R.string.conn_pc_receive_hint))
                         if (state.lanScanning) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                         Button(onClick = if (state.lanScanning) onCancelScan else onScan, modifier = Modifier.fillMaxWidth()) {
-                            Text(if (state.lanScanning) "Detener búsqueda" else "Buscar equipos")
+                            Text(if (state.lanScanning) stringResource(R.string.conn_stop_search) else stringResource(R.string.conn_find_devices))
                         }
                     }
                 }
                 if (!direct && state.lanConnected) {
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         if (ready) {
-                            TextButton(onClick = { scope.launch { listState.animateScrollToItem(lanPeersSectionIndex) } }) { Text("Cambiar equipo") }
+                            TextButton(onClick = { scope.launch { listState.animateScrollToItem(lanPeersSectionIndex) } }) { Text(stringResource(R.string.conn_change_device)) }
                         }
                         TextButton(onClick = {
                             showManualAddress = true
                             scope.launch { listState.animateScrollToItem(manualAddressIndex) }
-                        }) { Text("Conectar por dirección IP") }
+                        }) { Text(stringResource(R.string.conn_connect_ip_address)) }
                     }
                 }
             }
@@ -326,51 +327,51 @@ internal fun P2pConnectTab(
                 ConnectionStepSurface {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Rounded.Lock, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Text(if (manualPairing) "Sesión del otro equipo" else "Tu sesión", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                        Text(if (manualPairing) stringResource(R.string.conn_other_device_session) else stringResource(R.string.conn_your_session), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                     }
                     if (state.sessionExpired) {
-                        Text("La sesión terminó. Renuévala para seguir compartiendo.", color = MaterialTheme.colorScheme.error)
-                        Button(onClick = onRenewSession) { Text("Renovar sesión") }
+                        Text(stringResource(R.string.conn_session_ended_hint), color = MaterialTheme.colorScheme.error)
+                        Button(onClick = onRenewSession) { Text(stringResource(R.string.conn_renew_session)) }
                     } else if (state.tokenSyncStatus.isNotBlank()) {
                         Text(state.tokenSyncStatus, style = MaterialTheme.typography.bodySmall, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
                     } else {
-                        Text("Con un PC, escribe su código de sesión y PIN. Entre Android puedes aceptar la solicitud de conexión para compartir la sesión.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(stringResource(R.string.conn_credentials_or_approval_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     if (ready && !state.sessionExpired && !manualPairing && !sessionSyncing) {
-                        OutlinedButton(onClick = onSyncSession) { Text("Sincronizar sesión") }
+                        OutlinedButton(onClick = onSyncSession) { Text(stringResource(R.string.conn_sync_session)) }
                     }
                     TextButton(onClick = { showCredentials = !showCredentials }, modifier = Modifier.fillMaxWidth()) {
-                        Text(if (showCredentials) "Ocultar código y PIN" else "Mostrar código y PIN", Modifier.weight(1f))
+                        Text(if (showCredentials) stringResource(R.string.conn_hide_code_pin) else stringResource(R.string.conn_show_code_pin), Modifier.weight(1f))
                         Icon(if (showCredentials) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore, contentDescription = null, modifier = Modifier.size(20.dp))
                     }
                     if (showCredentials) {
                         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                        Text("Copia los datos que muestra Qetara en el receptor. El código y el PIN deben coincidir en ambos equipos.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        OutlinedTextField(value = state.authToken, onValueChange = onTokenChange, enabled = !sessionSyncing, label = { Text("Código de sesión") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+                        Text(stringResource(R.string.conn_matching_credentials_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        OutlinedTextField(value = state.authToken, onValueChange = onTokenChange, enabled = !sessionSyncing, label = { Text(stringResource(R.string.conn_session_code)) }, modifier = Modifier.fillMaxWidth(), singleLine = true)
                         P2pSessionPinField(state = state, onValueChange = onPinChange, modifier = Modifier.fillMaxWidth())
                         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            TextButton(onClick = onCopyToken) { Text("Copiar código") }
-                            TextButton(onClick = onPasteToken) { Text("Pegar código") }
+                            TextButton(onClick = onCopyToken) { Text(stringResource(R.string.conn_copy_code)) }
+                            TextButton(onClick = onPasteToken) { Text(stringResource(R.string.conn_paste_code)) }
                         }
                         if (ready && !state.sessionExpired) {
-                            Button(onClick = { onConfirmManualSession(); onOpenSend() }, enabled = validCredentials && !sessionSyncing, modifier = Modifier.fillMaxWidth()) { Text("Usar esta sesión") }
+                            Button(onClick = { onConfirmManualSession(); onOpenSend() }, enabled = validCredentials && !sessionSyncing, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.conn_use_session)) }
                         }
                     }
                 }
             }
         }
         if (state.sessionEnabled && direct && state.permissionGranted && state.p2pEnabled && !linked && state.peers.isNotEmpty()) {
-            item("direct-peers-title") { ConnectionSectionTitle("Equipos cercanos") }
+            item("direct-peers-title") { ConnectionSectionTitle(stringResource(R.string.conn_nearby_devices)) }
             items(state.peers, key = { "direct:" + it.address }) { peer ->
                 Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surface, contentColor = MaterialTheme.colorScheme.onSurface, border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
                     Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(peer.name.ifBlank { "Android cercano" }, fontWeight = FontWeight.SemiBold)
+                        Text(peer.name.ifBlank { stringResource(R.string.conn_nearby_android) }, fontWeight = FontWeight.SemiBold)
                         Text(peerStatusLabel(peer.status), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Button(
                             onClick = { onConnectToPeer(peer.address) },
                             enabled = peer.status == WifiP2pDevice.AVAILABLE || peer.status == WifiP2pDevice.FAILED,
                             modifier = Modifier.fillMaxWidth()
-                        ) { Text("Conectar con este equipo") }
+                        ) { Text(stringResource(R.string.conn_connect_this_device)) }
                     }
                 }
             }
@@ -378,18 +379,18 @@ internal fun P2pConnectTab(
         if (!direct && state.lanConnected) {
             item("lan-peers-title") {
                 FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    ConnectionSectionTitle("Equipos en esta red")
+                    ConnectionSectionTitle(stringResource(R.string.conn_network_devices))
                     TextButton(onClick = if (state.lanScanning) onCancelScan else onScan) {
                         Icon(if (state.lanScanning) Icons.Rounded.Close else Icons.Rounded.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Text(if (state.lanScanning) "Detener" else "Actualizar", Modifier.padding(start = 6.dp))
+                        Text(if (state.lanScanning) stringResource(R.string.conn_stop) else stringResource(R.string.conn_refresh), Modifier.padding(start = 6.dp))
                     }
                 }
             }
             if (peers.isEmpty() && !state.lanScanning) {
                 item("no-lan-peers") {
                     EmptyStateBlock(
-                        title = "Aún no hay equipos",
-                        body = "Comprueba que Qetara está abierto en la misma Wi-Fi. También puedes conectar por dirección IP."
+                        title = stringResource(R.string.conn_no_devices_yet),
+                        body = stringResource(R.string.conn_no_devices_hint)
                     )
                 }
             }
@@ -406,9 +407,9 @@ internal fun P2pConnectTab(
                             Icon(Icons.Rounded.Devices, contentDescription = null, modifier = Modifier.size(20.dp), tint = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant)
                             Text(peer.label.ifBlank { peer.ip }, modifier = Modifier.weight(1f), fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
                         }
-                        Text(peer.ip + if (peer.trusted) " · Equipo recordado" else "", style = MaterialTheme.typography.bodySmall, color = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(if (peer.trusted) stringResource(R.string.conn_remembered_ip, peer.ip) else peer.ip, style = MaterialTheme.typography.bodySmall, color = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant)
                         FilledTonalButton(onClick = { selectPeer(peer.ip) }, modifier = Modifier.fillMaxWidth()) {
-                            Text(if (state.resolvedTargetIp == peer.ip) "Sincronizar con este equipo" else "Conectar con este equipo")
+                            Text(if (state.resolvedTargetIp == peer.ip) stringResource(R.string.conn_sync_this_device) else stringResource(R.string.conn_connect_this_device))
                         }
                     }
                 }
@@ -416,7 +417,7 @@ internal fun P2pConnectTab(
             item("manual-address") {
                 ConnectionStepSurface {
                     TextButton(onClick = { showManualAddress = !showManualAddress }, modifier = Modifier.fillMaxWidth()) {
-                        Text(if (showManualAddress) "Ocultar dirección IP" else "Conectar por dirección IP", Modifier.weight(1f))
+                        Text(if (showManualAddress) stringResource(R.string.conn_hide_ip_address) else stringResource(R.string.conn_connect_ip_address), Modifier.weight(1f))
                         Icon(if (showManualAddress) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore, contentDescription = null, modifier = Modifier.size(20.dp))
                     }
                     if (showManualAddress) {
@@ -424,15 +425,15 @@ internal fun P2pConnectTab(
                             value = manualAddressDraft,
                             onValueChange = { manualAddressDraft = it.trim() },
                             modifier = Modifier.fillMaxWidth(),
-                            label = { Text("IP del otro equipo") },
-                            placeholder = { Text("192.168.1.8") },
-                            supportingText = { Text(if (invalidAddress) "Escribe una dirección IPv4, por ejemplo 192.168.1.8."
-                                else "Aparece en Qetara del otro equipo.") },
+                            label = { Text(stringResource(R.string.conn_other_device_ip)) },
+                            placeholder = { Text(stringResource(R.string.conn_ip_example)) },
+                            supportingText = { Text(if (invalidAddress) stringResource(R.string.conn_invalid_ip_hint)
+                                else stringResource(R.string.conn_ip_location_hint)) },
                             isError = invalidAddress,
                             singleLine = true,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii)
                         )
-                        Button(onClick = { selectPeer(manualAddressDraft.trim()) }, enabled = isValidManualConnectionAddress(manualAddressDraft) && !sessionSyncing) { Text("Conectar por IP") }
+                        Button(onClick = { selectPeer(manualAddressDraft.trim()) }, enabled = isValidManualConnectionAddress(manualAddressDraft) && !sessionSyncing) { Text(stringResource(R.string.conn_connect_ip)) }
                     }
                 }
             }
@@ -442,22 +443,22 @@ internal fun P2pConnectTab(
                 ConnectionStepSurface {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Rounded.Lock, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
-                        Text("¿Reconoces este equipo?", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                        Text(stringResource(R.string.conn_recognize_device), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                     }
-                    Text(request.label + " · " + request.ip)
-                    Text("Comprueba que el envío lo has iniciado tú desde ese equipo antes de recordarlo.", style = MaterialTheme.typography.bodySmall)
-                    Button(onClick = { onTrustPeer(request) }) { Text("Confiar en este equipo") }
+                    Text(stringResource(R.string.conn_peer_and_ip, request.label, request.ip))
+                    Text(stringResource(R.string.conn_verify_sender_hint), style = MaterialTheme.typography.bodySmall)
+                    Button(onClick = { onTrustPeer(request) }) { Text(stringResource(R.string.conn_trust_device)) }
                 }
             }
         }
         if (!direct && state.lanConnected && state.favoritePeers.any { !it.lastKnownIp.isNullOrBlank() }) {
-            item("favorites-title") { ConnectionSectionTitle("Tus favoritos") }
+            item("favorites-title") { ConnectionSectionTitle(stringResource(R.string.conn_favorites)) }
             items(state.favoritePeers.filter { !it.lastKnownIp.isNullOrBlank() }, key = { "favorite:" + it.id }) { peer ->
                 Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surface, contentColor = MaterialTheme.colorScheme.onSurface, border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
                     Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text(TrustedPeerStore.displayName(peer), fontWeight = FontWeight.SemiBold)
-                        Text("Última IP: " + peer.lastKnownIp, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        TextButton(onClick = { selectPeer(peer.lastKnownIp.orEmpty()) }) { Text("Conectar con favorito") }
+                        Text(stringResource(R.string.conn_last_ip, peer.lastKnownIp.orEmpty()), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        TextButton(onClick = { selectPeer(peer.lastKnownIp.orEmpty()) }) { Text(stringResource(R.string.conn_connect_favorite)) }
                     }
                 }
             }
@@ -466,11 +467,11 @@ internal fun P2pConnectTab(
         if (ready && !suggestionId.isNullOrBlank()) {
             item("favorite-suggestion") {
                 ConnectionStepSurface {
-                    Text("Encuéntralo más rápido la próxima vez", fontWeight = FontWeight.SemiBold)
-                    Text("Guarda a " + (state.favoriteSuggestionLabel ?: "este equipo") + " como favorito.", style = MaterialTheme.typography.bodySmall)
+                    Text(stringResource(R.string.conn_find_faster), fontWeight = FontWeight.SemiBold)
+                    Text(stringResource(R.string.conn_save_favorite_hint, state.favoriteSuggestionLabel ?: stringResource(R.string.conn_this_device_lowercase)), style = MaterialTheme.typography.bodySmall)
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        FilledTonalButton(onClick = { onSaveFavorite(suggestionId) }) { Text("Guardar favorito") }
-                        TextButton(onClick = { onSkipFavorite(suggestionId) }) { Text("Ahora no") }
+                        FilledTonalButton(onClick = { onSaveFavorite(suggestionId) }) { Text(stringResource(R.string.conn_save_favorite)) }
+                        TextButton(onClick = { onSkipFavorite(suggestionId) }) { Text(stringResource(R.string.conn_not_now)) }
                     }
                 }
             }
@@ -478,7 +479,7 @@ internal fun P2pConnectTab(
         if (state.trustedPeers.isNotEmpty()) {
             item("remembered-peers-toggle") {
                 TextButton(onClick = { showRememberedPeers = !showRememberedPeers }) {
-                    Text(if (showRememberedPeers) "Ocultar equipos recordados" else "Gestionar equipos recordados")
+                    Text(if (showRememberedPeers) stringResource(R.string.conn_hide_remembered) else stringResource(R.string.conn_manage_remembered))
                 }
             }
             if (showRememberedPeers) {
@@ -488,7 +489,7 @@ internal fun P2pConnectTab(
                             Text(TrustedPeerStore.displayName(peer), fontWeight = FontWeight.SemiBold)
                             peer.lastKnownIp?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
                             TextButton(onClick = { onRequestForgetPeer(peer.id) }) {
-                                Text("Olvidar equipo", color = MaterialTheme.colorScheme.error)
+                                Text(stringResource(R.string.conn_forget_device), color = MaterialTheme.colorScheme.error)
                             }
                         }
                     }
@@ -497,18 +498,12 @@ internal fun P2pConnectTab(
         }
         item("connection-help") {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                TextButton(onClick = { showConnectionHelp = !showConnectionHelp }) { Text(if (showConnectionHelp) "Cerrar ayuda" else "¿No aparece el otro equipo?") }
+                TextButton(onClick = { showConnectionHelp = !showConnectionHelp }) { Text(if (showConnectionHelp) stringResource(R.string.conn_close_help) else stringResource(R.string.conn_missing_device_help)) }
                 if (showConnectionHelp) {
                     Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surfaceContainerLow, contentColor = MaterialTheme.colorScheme.onSurfaceVariant) {
                         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                            Text(if (direct) """1. Mantén ambos Android cerca y con Wi-Fi activo.
-2. Crea un enlace en uno y búscalo desde el otro.
-3. Acepta la solicitud de conexión de Android.
-4. Si el dispositivo no admite Wi-Fi Direct, prueba Misma Wi-Fi."""
-                                else """1. Abre Qetara en ambos equipos.
-2. Comprueba que comparten la misma red. Las redes de invitados pueden impedir que se vean.
-3. En PC, permite a Qetara acceder a la red local.
-4. Si no aparece, escribe la IP que muestra el otro equipo.""", style = MaterialTheme.typography.bodySmall)
+                            Text(if (direct) stringResource(R.string.conn_help_direct)
+                                else stringResource(R.string.conn_help_lan), style = MaterialTheme.typography.bodySmall)
                         }
                     }
                 }

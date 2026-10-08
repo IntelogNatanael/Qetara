@@ -11,7 +11,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-class P2pSessionReadinessTest {
+class P2pSessionReadinessTest : com.example.wifidrop.LocalizedResourcesTest() {
     private val target = P2pResolvedTarget(peerId = "peer-A", ip = "192.168.1.8", label = "PC", mode = ConnectionMode.LAN)
     private val confirmed = P2pSessionConfirmation(target.ip, target.peerId, "network-A", "ABCD1234", "123456")
 

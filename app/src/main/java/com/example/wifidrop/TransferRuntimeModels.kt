@@ -60,7 +60,7 @@ data class TransferRuntimeState(
     val paused: Boolean = false,
     val receiving: Boolean = false,
     val receiverListening: Boolean = false,
-    val receiverStatus: String = "Receptor inactivo.",
+    val receiverStatus: String = appString(R.string.rt_receiver_inactive),
     val receiverProgress: Float? = null,
     val receiverFileName: String? = null,
     val receiverInstantBps: Long = 0L,

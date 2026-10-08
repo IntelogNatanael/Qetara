@@ -11,6 +11,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.heading
@@ -39,35 +41,35 @@ internal fun FlashIntroduction(
             Icon(Icons.Rounded.Bolt, contentDescription = null, modifier = Modifier.padding(16.dp).size(32.dp))
         }
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("Comparte en un momento", style = MaterialTheme.typography.headlineMedium,
+            Text(stringResource(R.string.flash_intro_title), style = MaterialTheme.typography.headlineMedium,
                 color = MaterialTheme.colorScheme.onBackground, modifier = Modifier.semantics { heading() })
-            Text("Envía y recibe archivos con otro equipo en la misma Wi-Fi.",
+            Text(stringResource(R.string.flash_intro_description),
                 style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         FlashCard {
-            FlashIntroStep("1", "Activa Flash en ambos equipos")
-            FlashIntroStep("2", "Elige el equipo y los archivos")
-            FlashIntroStep("3", "Compara el código y acepta el lote en ambos equipos")
+            FlashIntroStep("1", stringResource(R.string.flash_intro_step_activate))
+            FlashIntroStep("2", stringResource(R.string.flash_intro_step_choose))
+            FlashIntroStep("3", stringResource(R.string.flash_intro_step_verify))
         }
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text("Este equipo", style = MaterialTheme.typography.labelMedium,
+            Text(stringResource(R.string.flash_this_device), style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
             if (editingName) {
                 OutlinedTextField(value = label, onValueChange = onLabelChange,
-                    label = { Text("Nombre visible en Flash") }, singleLine = true,
+                    label = { Text(stringResource(R.string.flash_visible_name)) }, singleLine = true,
                     modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp))
             } else {
                 Text(label, style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onBackground)
             }
             TextButton(onClick = onToggleName, modifier = Modifier.heightIn(min = 48.dp)) {
-                Text(if (editingName) "Guardar nombre" else "Cambiar nombre")
+                Text(if (editingName) stringResource(R.string.flash_save_name) else stringResource(R.string.flash_change_name))
             }
         }
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Button(onClick = onActivate, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
-                shape = RoundedCornerShape(16.dp)) { Text("Activar Flash", textAlign = TextAlign.Center) }
-            Text("Disponible durante 30 minutos", modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp)) { Text(stringResource(R.string.flash_activate), textAlign = TextAlign.Center) }
+            Text(stringResource(R.string.flash_available_duration), modifier = Modifier.fillMaxWidth(),
                 textAlign = TextAlign.Center, style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
@@ -102,11 +104,11 @@ internal fun FlashSessionSummary(
     FlashCard {
         FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("Flash activo", style = MaterialTheme.typography.titleMedium,
+            Text(stringResource(R.string.flash_active_title), style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.semantics { heading() })
             Surface(color = MaterialTheme.colorScheme.primaryContainer,
                 contentColor = MaterialTheme.colorScheme.onPrimaryContainer, shape = RoundedCornerShape(12.dp)) {
-                Text("$remaining restantes", Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                Text(stringResource(R.string.flash_time_remaining, remaining), Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
                     style = MaterialTheme.typography.labelMedium)
             }
         }
@@ -114,11 +116,11 @@ internal fun FlashSessionSummary(
             if (awaitingApproval) {
                 Surface(color = MaterialTheme.colorScheme.tertiaryContainer,
                     contentColor = MaterialTheme.colorScheme.onTertiaryContainer, shape = RoundedCornerShape(10.dp)) {
-                    Text("Verificación pendiente", modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                    Text(stringResource(R.string.flash_verification_pending), modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
                         style = MaterialTheme.typography.bodyMedium)
                 }
             } else {
-                Text(if (transferring) "Transferencia en curso" else "Disponible para recibir",
+                Text(if (transferring) stringResource(R.string.flash_transfer_in_progress) else stringResource(R.string.flash_available_to_receive),
                     style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
             }
             Text(deviceLabel, style = MaterialTheme.typography.bodySmall,
@@ -126,16 +128,16 @@ internal fun FlashSessionSummary(
         }
         FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             TextButton(onClick = onToggleAddress, modifier = Modifier.heightIn(min = 48.dp)) {
-                Text(if (showAddress) "Ocultar dirección" else "Mi dirección")
+                Text(if (showAddress) stringResource(R.string.flash_hide_address) else stringResource(R.string.flash_my_address))
             }
-            TextButton(onClick = onStop, modifier = Modifier.heightIn(min = 48.dp)) { Text("Apagar Flash") }
+            TextButton(onClick = onStop, modifier = Modifier.heightIn(min = 48.dp)) { Text(stringResource(R.string.flash_stop)) }
         }
         if (showAddress) {
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-            Text("Dirección de este equipo", style = MaterialTheme.typography.labelLarge)
-            Text(addresses.ifEmpty { listOf("No disponible") }.joinToString(" · "),
+            Text(stringResource(R.string.flash_this_device_address), style = MaterialTheme.typography.labelLarge)
+            Text(addresses.ifEmpty { listOf(stringResource(R.string.flash_unavailable)) }.joinToString(" · "),
                 style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text("Flash sigue activo al volver a Qetara. Al apagarlo, los archivos recibidos se conservan.",
+            Text(stringResource(R.string.flash_session_help),
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
@@ -157,11 +159,10 @@ internal fun FlashSendBar(
         Column(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 20.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(when {
-                importing -> "Preparando los archivos…"
-                selectedPeer == null -> "Elige un equipo para continuar"
-                selectedFileCount == 0 -> "Añade los archivos que quieres compartir"
-                selectedFileCount == 1 -> "1 archivo preparado para enviar"
-                else -> "$selectedFileCount archivos preparados para enviar"
+                importing -> stringResource(R.string.flash_preparing_files_description)
+                selectedPeer == null -> stringResource(R.string.flash_choose_device_to_continue)
+                selectedFileCount == 0 -> stringResource(R.string.flash_add_files_to_continue)
+                else -> pluralStringResource(R.plurals.flash_files_ready_to_send, selectedFileCount, selectedFileCount)
             }, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Button(onClick = {
                 when {
@@ -172,13 +173,13 @@ internal fun FlashSendBar(
             }, enabled = enabled && !importing,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp), shape = RoundedCornerShape(16.dp)) {
                 Text(when {
-                    importing -> "Preparando archivos…"
-                    selectedPeer == null -> "Elegir receptor"
-                    selectedFileCount == 0 -> "Elegir archivos"
-                    else -> "Solicitar envío"
+                    importing -> stringResource(R.string.flash_preparing_files)
+                    selectedPeer == null -> stringResource(R.string.flash_choose_receiver)
+                    selectedFileCount == 0 -> stringResource(R.string.flash_choose_files)
+                    else -> stringResource(R.string.flash_request_send)
                 }, textAlign = TextAlign.Center)
             }
-            Text("Compara el código y acepta una vez en cada equipo para todo el lote.",
+            Text(stringResource(R.string.flash_batch_verification_help),
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
@@ -198,7 +199,7 @@ internal fun FlashPeerChoice(peer: FlashPeer, selected: Boolean, enabled: Boolea
                 modifier = Modifier.clearAndSetSemantics {})
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(peer.label, style = MaterialTheme.typography.titleSmall)
-                Text(peer.address + if (selected) " · Seleccionado" else "", style = MaterialTheme.typography.bodySmall,
+                Text(if (selected) stringResource(R.string.flash_selected_address, peer.address) else peer.address, style = MaterialTheme.typography.bodySmall,
                     color = if (selected) content else MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }

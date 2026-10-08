@@ -16,6 +16,9 @@ import java.io.File
 
 /** Real Android providers and Intents, without opening apps or touching existing downloads. */
 class ReceivedFileOpenInstrumentation : Instrumentation() {
+    private var localization = false
+    private var localizationRelease = false
+    private var localizationExpectedLanguage: String? = null
     private var flashSockets = false
     private var flashUdp = false
     private var flashApprovalPreview = false
@@ -23,6 +26,9 @@ class ReceivedFileOpenInstrumentation : Instrumentation() {
 
     override fun onCreate(arguments: Bundle?) {
         super.onCreate(arguments)
+        localization = arguments?.getString("scenario") == "localization"
+        localizationRelease = arguments?.getString("scenario") == "localization-release"
+        localizationExpectedLanguage = arguments?.getString("expected-language")
         flashSockets = arguments?.getString("scenario") == "flash-sockets"
         flashUdp = arguments?.getString("scenario") == "flash-udp"
         flashApprovalPreview = arguments?.getString("scenario") == "flash-approval-preview"
@@ -31,6 +37,14 @@ class ReceivedFileOpenInstrumentation : Instrumentation() {
     }
 
     override fun onStart() {
+        if (localizationRelease) {
+            LocalizationReleaseInstrumentationScenario(this, localizationExpectedLanguage).run()
+            return
+        }
+        if (localization) {
+            LocalizationInstrumentationScenario(this, localizationExpectedLanguage).run()
+            return
+        }
         if (flashApprovalPreview) {
             FlashApprovalPreviewScenario(this).run()
             return

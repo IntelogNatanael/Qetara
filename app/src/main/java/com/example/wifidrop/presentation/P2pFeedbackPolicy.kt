@@ -1,7 +1,9 @@
 package com.example.wifidrop.presentation
 
+import com.example.wifidrop.R
+import com.example.wifidrop.appString
+
 import com.example.wifidrop.ChatChannel
-import java.util.Locale
 
 data class P2pFeedbackMessage(
     val message: String,
@@ -10,7 +12,7 @@ data class P2pFeedbackMessage(
 
 data class P2pUndoFeedbackPlan(
     val promptMessage: String,
-    val actionLabel: String = "Deshacer",
+    val actionLabel: String = appString(R.string.pr_undo),
     val undoFeedback: P2pFeedbackMessage? = null,
     val committedFeedback: P2pFeedbackMessage? = null
 )
@@ -37,59 +39,44 @@ fun relayableFeedbackMessage(
 ): String? {
     val message = rawMessage.trim()
     if (message.isBlank() || message == lastFeedback) return null
-    if (
-        suppressProgressMessages &&
-        (
-            message.contains("sincronizando", ignoreCase = true) ||
-                message.contains("reintentando", ignoreCase = true)
-            )
-    ) {
+    if (suppressProgressMessages && isSessionSyncProgress(message)) {
         return null
     }
     return message
 }
 
 fun isLikelyErrorMessage(message: String): Boolean {
-    val normalized = message.lowercase(Locale.ROOT)
-    return normalized.contains("error") ||
-        normalized.contains("fall") ||
-        normalized.contains("inval") ||
-        normalized.contains("expir") ||
-        normalized.contains("no se pudo") ||
-        normalized.startsWith("no ") ||
-        normalized.contains("faltan") ||
-        normalized.contains("inactivo") ||
-        normalized.contains("cancelad")
+    return isKnownPresentationFailure(message)
 }
 
 fun buildDeleteMessageUndoPlan(): P2pUndoFeedbackPlan {
     return P2pUndoFeedbackPlan(
-        promptMessage = "Se eliminara el mensaje.",
-        undoFeedback = P2pFeedbackMessage("Eliminacion cancelada."),
-        committedFeedback = P2pFeedbackMessage("Mensaje eliminado.")
+        promptMessage = appString(R.string.pr_delete_prompt),
+        undoFeedback = P2pFeedbackMessage(appString(R.string.pr_delete_canceled)),
+        committedFeedback = P2pFeedbackMessage(appString(R.string.pr_message_deleted))
     )
 }
 
 fun buildClearMessagesUndoPlan(channel: ChatChannel): P2pUndoFeedbackPlan {
     val scopeLabel = when (channel) {
-        ChatChannel.DIRECT -> "el chat directo"
-        ChatChannel.GLOBAL -> "el canal"
+        ChatChannel.DIRECT -> appString(R.string.pr_direct_chat_scope)
+        ChatChannel.GLOBAL -> appString(R.string.pr_channel_scope)
     }
     val committed = when (channel) {
-        ChatChannel.DIRECT -> "Chat directo limpio."
-        ChatChannel.GLOBAL -> "Canal limpio."
+        ChatChannel.DIRECT -> appString(R.string.pr_direct_chat_cleared)
+        ChatChannel.GLOBAL -> appString(R.string.pr_channel_cleared)
     }
     return P2pUndoFeedbackPlan(
-        promptMessage = "Se limpiara $scopeLabel.",
-        undoFeedback = P2pFeedbackMessage("Limpieza cancelada."),
+        promptMessage = appString(R.string.pr_clear_prompt, scopeLabel),
+        undoFeedback = P2pFeedbackMessage(appString(R.string.pr_clear_canceled)),
         committedFeedback = P2pFeedbackMessage(committed)
     )
 }
 
 fun buildFavoriteRemovedUndoPlan(): P2pUndoFeedbackPlan {
     return P2pUndoFeedbackPlan(
-        promptMessage = "Favorito removido.",
-        undoFeedback = P2pFeedbackMessage("Favorito restaurado.")
+        promptMessage = appString(R.string.pr_favorite_removed),
+        undoFeedback = P2pFeedbackMessage(appString(R.string.pr_favorite_restored))
     )
 }
 
@@ -102,8 +89,8 @@ fun buildAliasUpdateFeedback(
     currentAlias: String
 ): P2pFeedbackMessage {
     return when {
-        normalizedAlias == currentAlias -> P2pFeedbackMessage("Apodo sin cambios.")
-        normalizedAlias.isBlank() -> P2pFeedbackMessage("Apodo eliminado.")
-        else -> P2pFeedbackMessage("Apodo actualizado.")
+        normalizedAlias == currentAlias -> P2pFeedbackMessage(appString(R.string.pr_alias_unchanged))
+        normalizedAlias.isBlank() -> P2pFeedbackMessage(appString(R.string.pr_alias_removed))
+        else -> P2pFeedbackMessage(appString(R.string.pr_alias_updated))
     }
 }

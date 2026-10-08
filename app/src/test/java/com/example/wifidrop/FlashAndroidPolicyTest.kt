@@ -6,7 +6,7 @@ import org.junit.Assert.*
 import org.junit.Test
 import java.io.File
 
-class FlashAndroidPolicyTest {
+class FlashAndroidPolicyTest : LocalizedResourcesTest() {
     private val peer = FlashPeer("peer-A", "Equipo A", "192.168.1.5", 8989, 5_000)
     private val request = FlashApproval("request-A", "operation-A", peer, "foto.png", 256,
         false, "1234 5678 9ABC DEF0", 2_000)
@@ -47,6 +47,23 @@ class FlashAndroidPolicyTest {
         assertFalse(discovery.contains("transferencia") || discovery.contains("archivo"))
         val unconfirmed = flashErrorCopy("unconfirmed")
         assertTrue(unconfirmed.contains("Comprueba en el otro equipo si el archivo llegó antes de volver a enviarlo"))
+    }
+
+    @Test fun retainedSessionAndReceiptUseTheCurrentLanguage() {
+        val state = FlashAndroidState(statusText = flashPlural(R.plurals.flash_files_delivered, 2, 2))
+        val received = FlashAndroidResult("operation-A", "foto.png", FlashResultKind.RECEIVED,
+            flashText(R.string.flash_received_verified), File("kept-photo.png"))
+        val result = recordFlashFailure(listOf(received), "operation-A", "foto.png",
+            flashErrorText("unconfirmed"), false).single()
+
+        assertEquals("2 archivos entregados y confirmados.", state.status)
+        assertEquals("Archivo recibido y verificado. No se pudo confirmar la entrega al otro equipo.", result.detail)
+        useAppLocale("en")
+        assertEquals("2 files delivered and confirmed.", state.status)
+        assertEquals("File received and verified. Could not confirm delivery to the other device.", result.detail)
+        assertEquals("foto.png", result.fileName)
+        assertEquals(received.file, result.file)
+        assertEquals("1 file ready to send", flashPlural(R.plurals.flash_files_ready_to_send, 1, 1).resolve())
     }
 
     @Test fun approvalRequiresCurrentRequestActiveSessionAndUnexpiredDeadline() {

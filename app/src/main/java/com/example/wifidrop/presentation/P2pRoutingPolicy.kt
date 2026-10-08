@@ -1,5 +1,8 @@
 package com.example.wifidrop.presentation
 
+import com.example.wifidrop.R
+import com.example.wifidrop.appString
+
 import com.example.wifidrop.ChatChannel
 import com.example.wifidrop.ConnectionViewMode
 import com.example.wifidrop.ConnectionMode
@@ -164,7 +167,7 @@ private fun resolveDirectTarget(
         return P2pResolvedTarget(
             peerId = ownerPeer?.id,
             ip = ownerIp,
-            label = ownerPeer?.label?.ifBlank { null } ?: "Anfitrión Wi‑Fi Direct",
+            label = ownerPeer?.label?.ifBlank { null } ?: appString(R.string.pr_direct_host),
             mode = ConnectionMode.WIFI_DIRECT
         )
     }

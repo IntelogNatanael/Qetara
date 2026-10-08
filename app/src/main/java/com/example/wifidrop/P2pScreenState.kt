@@ -2,9 +2,11 @@ package com.example.wifidrop
 
 import java.io.File
 
-enum class ChatChannel(val title: String) {
-    DIRECT("Directo"),
-    GLOBAL("Canal")
+enum class ChatChannel(private val titleResource: Int) {
+    DIRECT(R.string.pr_chat_direct),
+    GLOBAL(R.string.pr_chat_channel);
+
+    val title: String get() = appString(titleResource)
 }
 
 data class P2pScreenState(

@@ -1,5 +1,8 @@
 package com.example.wifidrop.presentation
 
+import com.example.wifidrop.R
+import com.example.wifidrop.appString
+
 import com.example.wifidrop.PendingCredentialShareRequest
 import com.example.wifidrop.PendingTrustRequest
 import com.example.wifidrop.backend.P2pBackend
@@ -25,6 +28,6 @@ class P2pTrustPresenter(
 
     fun rejectCredentialShare(request: PendingCredentialShareRequest): P2pFeedbackMessage {
         backend.rejectCredentialShare(request.id)
-        return P2pFeedbackMessage("Rechazaste compartir la sesión con ${request.label}.")
+        return P2pFeedbackMessage(appString(R.string.pr_trust_share_rejected, request.label))
     }
 }

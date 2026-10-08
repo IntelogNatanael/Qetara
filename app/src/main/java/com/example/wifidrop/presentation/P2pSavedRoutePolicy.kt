@@ -1,5 +1,8 @@
 package com.example.wifidrop.presentation
 
+import com.example.wifidrop.R
+import com.example.wifidrop.appQuantityString
+
 import com.example.wifidrop.FileTransfer
 import com.example.wifidrop.TransferSecurity
 
@@ -89,15 +92,17 @@ fun shouldNavigateToIncomingShare(eventId: Long?, lastHandledEventId: Long?): Bo
 
 fun restoredAttachmentStatus(available: Int, unavailable: Int): String = when {
     unavailable > 0 && available > 0 ->
-        "Recuperamos $available archivo(s). $unavailable ya no están disponibles; vuelve a seleccionarlos."
+        appQuantityString(R.plurals.pr_files_partially_recovered, available, available,
+            appQuantityString(R.plurals.pr_files_unavailable_reselect, unavailable, unavailable))
     unavailable > 0 ->
-        "No pudimos recuperar $unavailable archivo(s). Vuelve a seleccionarlos; tu texto se conserva."
-    available > 0 -> "$available archivo(s) recuperado(s). Revisa el equipo antes de enviar."
+        appQuantityString(R.plurals.pr_files_unavailable, unavailable, unavailable)
+    available > 0 -> appQuantityString(R.plurals.pr_files_recovered, available, available)
     else -> ""
 }
 
 fun isIncompleteAttachmentRecovery(status: String): Boolean =
-    status.startsWith("No pudimos recuperar ") || status.startsWith("Recuperamos ")
+    matchesLocalizedQuantityStatus(status, R.plurals.pr_files_unavailable) ||
+        matchesLocalizedQuantityStatus(status, R.plurals.pr_files_partially_recovered)
 
 data class P2pRecoveredAttachments(
     val files: Map<P2pAttachmentContext, List<P2pSavedAttachment>>,

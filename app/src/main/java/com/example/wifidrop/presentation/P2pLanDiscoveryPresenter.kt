@@ -1,5 +1,9 @@
 package com.example.wifidrop.presentation
 
+import com.example.wifidrop.R
+import com.example.wifidrop.appString
+import com.example.wifidrop.appQuantityString
+
 import android.content.Context
 import com.example.wifidrop.FileTransfer
 import com.example.wifidrop.NetworkUtils
@@ -125,7 +129,7 @@ class P2pLanDiscoveryPresenter(
         }
         _state.update {
             it.copy(
-                scanStatus = "Búsqueda cancelada.",
+                scanStatus = appString(R.string.pr_scan_canceled),
                 scanning = false
             )
         }
@@ -144,7 +148,7 @@ class P2pLanDiscoveryPresenter(
         val localIp = snapshot.ipv4
         if (!snapshot.connected || localIp.isNullOrBlank()) {
             _state.update {
-                it.copy(scanStatus = "Conecta este equipo a una misma Wi-Fi para buscar equipos.")
+                it.copy(scanStatus = appString(R.string.pr_scan_wifi_required))
             }
             return 0
         }
@@ -153,9 +157,9 @@ class P2pLanDiscoveryPresenter(
             it.copy(
                 scanning = true,
                 scanStatus = if (manual) {
-                    "Buscando equipos en esta Wi-Fi..."
+                    appString(R.string.pr_scanning)
                 } else {
-                    "Escaneo automático en red Wi-Fi..."
+                    appString(R.string.pr_scanning_auto)
                 }
             )
         }
@@ -166,13 +170,13 @@ class P2pLanDiscoveryPresenter(
             }
             if (candidates.isEmpty()) {
                 _state.update {
-                    it.copy(scanStatus = "No pude resolver el rango de red local.")
+                    it.copy(scanStatus = appString(R.string.pr_scan_range_missing))
                 }
                 return 0
             }
 
             val semaphore = Semaphore(24)
-            val sanitizedLabel = deviceLabel.ifBlank { "cliente" }
+            val sanitizedLabel = deviceLabel.ifBlank { appString(R.string.pr_client) }
             val foundIps = mutableListOf<String>()
             val foundLock = Any()
             val found = coroutineScope {
@@ -207,16 +211,16 @@ class P2pLanDiscoveryPresenter(
             _state.update {
                 it.copy(
                     scanStatus = if (found > 0) {
-                        "Equipos encontrados en esta Wi-Fi: $found"
+                        appQuantityString(R.plurals.pr_devices_found, found, found)
                     } else {
-                        "No se encontraron equipos en la red Wi-Fi actual."
+                        appString(R.string.pr_scan_empty)
                     }
                 )
             }
             found
         } catch (_: CancellationException) {
             _state.update {
-                it.copy(scanStatus = "Búsqueda cancelada.")
+                it.copy(scanStatus = appString(R.string.pr_scan_canceled))
             }
             0
         } finally {

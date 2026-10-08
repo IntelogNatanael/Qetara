@@ -16,7 +16,7 @@ object DownloadsExport {
     fun exportToDownloads(context: Context, source: File, checkActive: () -> Unit = {}): Result<Uri> {
         return runCatching {
             require(source.exists() && source.isFile) {
-                "Archivo origen invalido"
+                context.getString(R.string.rt_invalid_source_file)
             }
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -43,7 +43,7 @@ object DownloadsExport {
 
         val collection = MediaStore.Downloads.EXTERNAL_CONTENT_URI
         val uri = resolver.insert(collection, values)
-            ?: error("No pude crear entrada en Descargas")
+            ?: error(context.getString(R.string.rt_create_download_failed))
 
         try {
             resolver.openOutputStream(uri)?.use { out ->
@@ -56,7 +56,7 @@ object DownloadsExport {
                         if (count > 0) out.write(buffer, 0, count)
                     }
                 }
-            } ?: error("No pude abrir stream de salida en Descargas")
+            } ?: error(context.getString(R.string.rt_open_download_failed))
 
             checkActive()
             val updated = resolver.update(
@@ -67,7 +67,7 @@ object DownloadsExport {
                 null,
                 null
             )
-            check(updated > 0) { "No pude publicar el archivo en Descargas" }
+            check(updated > 0) { context.getString(R.string.rt_publish_download_failed) }
 
             return uri
         } catch (e: Exception) {

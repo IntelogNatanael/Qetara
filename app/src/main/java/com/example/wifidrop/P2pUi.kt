@@ -1,5 +1,10 @@
 package com.example.wifidrop
 
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+
 import android.content.Intent
 import android.net.wifi.p2p.WifiP2pDevice
 import androidx.compose.animation.AnimatedVisibility
@@ -84,15 +89,21 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
+import com.example.wifidrop.presentation.isSessionSyncManualPairingRequired
+import com.example.wifidrop.presentation.isSessionSyncRetrying
+import com.example.wifidrop.presentation.isSessionSyncApprovalRequired
+import com.example.wifidrop.presentation.isSessionSyncFailure
 import java.io.File
 import kotlin.math.roundToInt
 
-internal enum class P2pMainTab(val title: String) {
-    CONNECTION("Conectar"),
-    SEND("Enviar"),
-    MESSAGES("Chat"),
-    CHANNEL("Canal"),
-    HISTORY("Descargas")
+internal enum class P2pMainTab(val titleRes: Int) {
+    CONNECTION(R.string.shell_connect),
+    SEND(R.string.shell_send),
+    MESSAGES(R.string.shell_chat),
+    CHANNEL(R.string.shell_channel),
+    HISTORY(R.string.shell_downloads);
+
+    val title: String get() = appString(titleRes)
 }
 
 internal data class DirectFlowStepUi(
@@ -351,8 +362,8 @@ fun P2pScreen(
     val experience = deriveP2pExperienceState(state)
     val chatExperience = deriveP2pChatExperienceState(state)
     val sessionLabel = when {
-        !state.sessionEnabled -> "Sesión cerrada"
-        state.sessionExpired -> "Sesión expirada"
+        !state.sessionEnabled -> stringResource(R.string.shell_session_closed)
+        state.sessionExpired -> stringResource(R.string.shell_session_expired)
         else -> formatSessionExpiry(state.sessionExpiresAtMs, state.nowMs)
     }
     val activeConnectionMode = experience.activeConnectionMode
@@ -386,15 +397,15 @@ fun P2pScreen(
     val isSyncingNow = state.sessionSyncing
     val isDirectBusyNow = state.directDiscovering || state.directConnecting || state.directCreatingGroup
     val directActivityLabel = when {
-        state.directCreatingGroup -> "Creando enlace"
-        state.directConnecting -> "Conectando"
-        state.directDiscovering -> "Buscando equipos"
+        state.directCreatingGroup -> stringResource(R.string.shell_creating_link)
+        state.directConnecting -> stringResource(R.string.shell_connecting)
+        state.directDiscovering -> stringResource(R.string.shell_finding_devices)
         else -> null
     }
     val activeTransferCancelLabel = when {
-        state.receiving && (state.sending || state.sendActiveCount > 0) -> "Cancelar transferencias"
-        state.receiving -> "Cancelar recepción"
-        else -> "Cancelar envíos"
+        state.receiving && (state.sending || state.sendActiveCount > 0) -> stringResource(R.string.shell_cancel_transfers)
+        state.receiving -> stringResource(R.string.shell_cancel_receiving)
+        else -> stringResource(R.string.shell_cancel_sending)
     }
     fun runExperienceAction(action: P2pExperienceAction) {
         when (action.command) {
@@ -446,19 +457,11 @@ fun P2pScreen(
     val showSupportBanner = !focusEnabled &&
         supportCard != null &&
         supportCardKey != dismissedSupportCardKey &&
-        supportCard.action.label != quickActionLabel &&
+        supportCard.action.command != experience.primaryAction.command &&
         !suppressDirectInactiveBanner &&
         !suppressDirectConnectionBanner
     val activeSupportCard = supportCard.takeIf { showSupportBanner }
-    fun tabLabel(tab: P2pMainTab): String {
-        return when (tab) {
-            P2pMainTab.CONNECTION -> "Conectar"
-            P2pMainTab.SEND -> "Enviar"
-            P2pMainTab.MESSAGES -> "Chat"
-            P2pMainTab.CHANNEL -> "Canal"
-            P2pMainTab.HISTORY -> "Descargas"
-        }
-    }
+    fun tabLabel(tab: P2pMainTab): String = tab.title
 
     fun tabIcon(tab: P2pMainTab) = when (tab) {
         P2pMainTab.CONNECTION -> Icons.Rounded.Link
@@ -490,96 +493,96 @@ fun P2pScreen(
         state.knownServicePeers.any { it.ip.isNotBlank() }
     val directBusy = state.directDiscovering || state.directConnecting || state.directCreatingGroup
     val directFlowHeadline = when {
-        directReadyForExchange -> "Directo listo"
-        !state.permissionGranted -> "Falta permiso"
-        !state.p2pEnabled -> "Abre Wi-Fi del sistema"
-        state.directCreatingGroup -> "Creando enlace"
-        state.directConnecting -> "Uniéndote al enlace"
-        state.directDiscovering && state.peers.isNotEmpty() -> "Elige el equipo correcto"
-        state.directDiscovering -> "Buscando equipos"
-        else -> "Elige cómo iniciar"
+        directReadyForExchange -> stringResource(R.string.shell_direct_ready)
+        !state.permissionGranted -> stringResource(R.string.shell_permission_missing)
+        !state.p2pEnabled -> stringResource(R.string.shell_open_system_wifi)
+        state.directCreatingGroup -> stringResource(R.string.shell_creating_link)
+        state.directConnecting -> stringResource(R.string.shell_joining_link)
+        state.directDiscovering && state.peers.isNotEmpty() -> stringResource(R.string.shell_choose_correct_device)
+        state.directDiscovering -> stringResource(R.string.shell_finding_devices)
+        else -> stringResource(R.string.shell_choose_how_to_start)
     }
     val directFlowBody = when {
         directReadyForExchange ->
-            state.directTargetLabel?.let { "Todo quedó listo con $it. Ya puedes enviar y chatear." }
-                ?: "El equipo ya quedó listo para enviar y chatear."
+            state.directTargetLabel?.let { stringResource(R.string.shell_ready_to_send_chat_with, (it).toString()) }
+                ?: stringResource(R.string.shell_device_ready_to_send_chat)
         !state.permissionGranted ->
-            "Concede el permiso de red cercana. Sin eso, Android no deja usar Wi-Fi Direct."
+            stringResource(R.string.shell_grant_nearby_permission)
         !state.p2pEnabled ->
-            "La app no puede encender Wi-Fi Direct. Abre Wi-Fi del sistema y luego vuelve aquí."
+            stringResource(R.string.shell_cannot_enable_direct_wifi)
         state.directCreatingGroup ->
-            "Este equipo ya abrió el enlace. En el otro, toca Buscar enlace y luego Conectar."
+            stringResource(R.string.shell_link_open_find_on_other)
         state.directConnecting ->
-            "Mantén ambos equipos abiertos mientras Directo termina de prepararse."
+            stringResource(R.string.shell_keep_both_open_direct)
         state.directDiscovering && state.peers.isNotEmpty() ->
-            "Toca el equipo correcto para completar el enlace 1 a 1."
+            stringResource(R.string.shell_tap_correct_device)
         state.directDiscovering ->
-            "Mantén el otro equipo con el enlace abierto. La lista se actualizará sola."
+            stringResource(R.string.shell_keep_other_link_open)
         else ->
-            "Si este equipo empieza, toca Crear enlace. Si el otro ya empezó, toca Buscar enlace."
+            stringResource(R.string.shell_create_or_find_link_help)
     }
     val directFlowSteps = listOf(
         DirectFlowStepUi(
-            label = "1 Wi-Fi",
+            label = stringResource(R.string.shell_step_wifi),
             done = state.permissionGranted && state.p2pEnabled,
             active = !state.permissionGranted || !state.p2pEnabled
         ),
         DirectFlowStepUi(
-            label = "2 Crear o buscar",
+            label = stringResource(R.string.shell_step_create_or_find),
             done = directBusy || connected || directReadyForExchange,
             active = state.permissionGranted && state.p2pEnabled && !directBusy && !connected && !directReadyForExchange
         ),
         DirectFlowStepUi(
-            label = "3 Elegir equipo",
+            label = stringResource(R.string.shell_step_choose_device),
             done = directReadyForExchange,
             active = state.directConnecting || (state.directDiscovering && state.peers.isNotEmpty()) || (connected && !directReadyForExchange)
         ),
         DirectFlowStepUi(
-            label = "4 Listo",
+            label = stringResource(R.string.shell_step_ready),
             done = directReadyForExchange,
             active = connected && !directReadyForExchange
         )
     )
     val wifiDirectRoleHint = when {
         activeConnectionMode != ConnectionMode.WIFI_DIRECT -> null
-        directReadyForExchange -> "Este equipo ya quedó listo para usar Directo."
-        connected && isHost -> "Este equipo ya creó el enlace. En el otro, toca Buscar enlace."
-        connected && !isHost -> "Este equipo ya se unió al enlace. Espera un momento mientras Directo termina de prepararse."
-        state.directCreatingGroup -> "Este equipo está creando el enlace."
-        state.directConnecting -> "Este equipo se está uniendo al enlace."
-        state.directDiscovering && state.peers.isNotEmpty() -> "Elige el equipo correcto y toca Conectar."
-        state.directDiscovering -> "Mantén abierto el enlace en el otro equipo."
-        !state.permissionGranted -> "Primero concede el permiso para usar Wi‑Fi Direct."
-        !state.p2pEnabled -> "Primero abre Wi‑Fi del sistema. Luego vuelve aquí para crear o buscar un enlace."
-        else -> "Si este equipo inicia, toca Crear enlace. Si el otro ya inició, toca Buscar enlace."
+        directReadyForExchange -> stringResource(R.string.shell_device_direct_ready)
+        connected && isHost -> stringResource(R.string.shell_created_find_on_other)
+        connected && !isHost -> stringResource(R.string.shell_joined_preparing_direct)
+        state.directCreatingGroup -> stringResource(R.string.shell_device_creating_link)
+        state.directConnecting -> stringResource(R.string.shell_device_joining_link)
+        state.directDiscovering && state.peers.isNotEmpty() -> stringResource(R.string.shell_choose_correct_connect)
+        state.directDiscovering -> stringResource(R.string.shell_keep_link_open_on_other)
+        !state.permissionGranted -> stringResource(R.string.shell_grant_direct_permission_first)
+        !state.p2pEnabled -> stringResource(R.string.shell_open_wifi_first)
+        else -> stringResource(R.string.shell_initiator_create_or_find_help)
     }
     val connectionStepBody = when {
         activeConnectionMode == ConnectionMode.WIFI_DIRECT && directReadyForExchange ->
-            "Directo listo con ${state.directTargetLabel ?: "tu equipo"}."
+            stringResource(R.string.shell_direct_ready_with, (state.directTargetLabel ?: stringResource(R.string.shell_your_device)).toString())
         activeConnectionMode == ConnectionMode.WIFI_DIRECT && connected && isHost ->
-            "Enlace creado en este equipo. Falta que el otro equipo se una."
+            stringResource(R.string.shell_link_created_awaiting_other)
         activeConnectionMode == ConnectionMode.WIFI_DIRECT && connected ->
-            "Enlace detectado. Terminando de preparar Directo."
+            stringResource(R.string.shell_link_detected_preparing)
         activeConnectionMode == ConnectionMode.WIFI_DIRECT && state.directCreatingGroup ->
-            "Creando el enlace en este equipo."
+            stringResource(R.string.shell_creating_link_on_device)
         activeConnectionMode == ConnectionMode.WIFI_DIRECT && state.directConnecting ->
-            "Uniéndote al enlace del otro equipo."
+            stringResource(R.string.shell_joining_other_link)
         activeConnectionMode == ConnectionMode.WIFI_DIRECT && state.directDiscovering && state.peers.isNotEmpty() ->
-            "Elige el equipo que inició el enlace y toca Conectar."
+            stringResource(R.string.shell_choose_initiating_device)
         activeConnectionMode == ConnectionMode.WIFI_DIRECT && state.directDiscovering ->
-            "Buscando equipos con Wi‑Fi Direct."
+            stringResource(R.string.shell_finding_wifi_direct_devices)
         activeConnectionMode == ConnectionMode.WIFI_DIRECT && !state.p2pEnabled ->
-            "Abre Wi‑Fi del sistema para habilitar Wi‑Fi Direct."
+            stringResource(R.string.shell_open_wifi_enable_direct)
         activeConnectionMode == ConnectionMode.WIFI_DIRECT ->
-            "Crea un enlace o únete al del otro equipo."
+            stringResource(R.string.shell_create_or_join_link)
         activeConnectionMode == ConnectionMode.LAN && !state.lanConnected ->
-            "Conecta ambos equipos a la misma red Wi-Fi."
+            stringResource(R.string.shell_connect_same_wifi)
         activeConnectionMode == ConnectionMode.LAN && directReadyForExchange ->
-            "Ya hay un enlace directo listo con ${state.directTargetLabel ?: "tu equipo"}."
+            stringResource(R.string.shell_existing_direct_link, (state.directTargetLabel ?: stringResource(R.string.shell_your_device)).toString())
         activeConnectionMode == ConnectionMode.LAN && state.resolvedTargetIp.isNullOrBlank() ->
-            "Busca dispositivos o usa una IP sugerida."
+            stringResource(R.string.shell_find_devices_or_suggested_ip)
         else ->
-            "Equipo listo con ${resolvedTargetLabel ?: state.resolvedTargetIp}."
+            stringResource(R.string.shell_device_ready_with, (resolvedTargetLabel ?: state.resolvedTargetIp).toString())
     }
     val hideDirectConnectCard =
         activeConnectionMode == ConnectionMode.WIFI_DIRECT &&
@@ -588,8 +591,7 @@ fun P2pScreen(
             !connected &&
             !directReadyForExchange &&
             !directBusy
-    val requiresManualPairing = state.tokenSyncStatus.contains("manual", ignoreCase = true) ||
-        state.tokenSyncStatus.contains("secure_credentials_required", ignoreCase = true)
+    val requiresManualPairing = isSessionSyncManualPairingRequired(state.tokenSyncStatus)
     LaunchedEffect(requiresManualPairing) {
         if (requiresManualPairing) {
             securityExpanded = true
@@ -598,41 +600,37 @@ fun P2pScreen(
     }
     val compactSyncLabel = when {
         !state.sessionEnabled -> null
-        state.sessionExpired -> "Sesión expirada"
-        state.sessionSyncing -> "Sincronizando"
-        state.tokenSyncStatus.contains("reintent", ignoreCase = true) -> "Reintentando"
-        state.tokenSyncStatus.contains("aprob", ignoreCase = true) -> "Pendiente"
-        state.tokenSyncStatus.contains("no pude", ignoreCase = true) ||
-            state.tokenSyncStatus.contains("no se pudo", ignoreCase = true) -> "Reintentar"
+        state.sessionExpired -> stringResource(R.string.shell_session_expired)
+        state.sessionSyncing -> stringResource(R.string.shell_syncing)
+        isSessionSyncRetrying(state.tokenSyncStatus) -> stringResource(R.string.shell_retrying)
+        isSessionSyncApprovalRequired(state.tokenSyncStatus) -> stringResource(R.string.shell_pending)
+        isSessionSyncFailure(state.tokenSyncStatus) -> stringResource(R.string.shell_retry)
         else -> null
     }
     val sessionNeedsAttention = requiresManualPairing || state.sessionExpired ||
         state.pendingCredentialShare != null ||
-        state.tokenSyncStatus.contains("no pude", ignoreCase = true) ||
-        state.tokenSyncStatus.contains("no se pudo", ignoreCase = true) ||
-        state.tokenSyncStatus.contains("aprob", ignoreCase = true)
+        isSessionSyncFailure(state.tokenSyncStatus) ||
+        isSessionSyncApprovalRequired(state.tokenSyncStatus)
     val showSessionActionButton = requiresManualPairing || state.sessionExpired ||
-        state.tokenSyncStatus.contains("no pude", ignoreCase = true) ||
-        state.tokenSyncStatus.contains("no se pudo", ignoreCase = true) ||
-        state.tokenSyncStatus.contains("aprob", ignoreCase = true)
+        isSessionSyncFailure(state.tokenSyncStatus) ||
+        isSessionSyncApprovalRequired(state.tokenSyncStatus)
     val showMinimalSessionCard = !securityExpanded &&
         !sessionNeedsAttention &&
         connectionViewMode != ConnectionViewMode.ADVANCED
     val sessionActionLabel = when {
-        requiresManualPairing -> "Introducir credenciales"
-        state.sessionExpired -> "Renovar sesión"
-        state.tokenSyncStatus.contains("aprob", ignoreCase = true) -> "Reintentar sincronización"
-        else -> "Sincronizar ahora"
+        requiresManualPairing -> stringResource(R.string.shell_enter_credentials)
+        state.sessionExpired -> stringResource(R.string.shell_renew_session)
+        isSessionSyncApprovalRequired(state.tokenSyncStatus) -> stringResource(R.string.shell_retry_sync)
+        else -> stringResource(R.string.shell_sync_now)
     }
     val sessionStatusText = when {
         !state.sessionEnabled -> null
-        requiresManualPairing -> "Abre Qetara en el otro equipo. Copia aquí su token y su PIN para compartir la misma sesión."
-        state.sessionExpired -> "La sesión expiró. Renueva para continuar."
-        state.sessionSyncing -> "Sincronizando sesión..."
-        state.tokenSyncStatus.contains("reintent", ignoreCase = true) -> state.tokenSyncStatus
-        state.tokenSyncStatus.contains("aprob", ignoreCase = true) -> "El otro equipo debe aprobar la sesión."
-        state.tokenSyncStatus.contains("no pude", ignoreCase = true) ||
-            state.tokenSyncStatus.contains("no se pudo", ignoreCase = true) -> "No se pudo sincronizar la sesión."
+        requiresManualPairing -> stringResource(R.string.shell_manual_credentials_help)
+        state.sessionExpired -> stringResource(R.string.shell_expired_renew_to_continue)
+        state.sessionSyncing -> stringResource(R.string.shell_syncing_session)
+        isSessionSyncRetrying(state.tokenSyncStatus) -> state.tokenSyncStatus
+        isSessionSyncApprovalRequired(state.tokenSyncStatus) -> stringResource(R.string.shell_other_device_must_approve)
+        isSessionSyncFailure(state.tokenSyncStatus) -> stringResource(R.string.shell_session_sync_failed)
         else -> null
     }
     val showTrustedPeersPanel =
@@ -640,17 +638,17 @@ fun P2pScreen(
             state.pendingTrust != null ||
             (connectionViewMode == ConnectionViewMode.ADVANCED && state.trustedPeers.isNotEmpty())
     val headerActivityLabel = when {
-        isSyncingNow -> "Sincronizando"
+        isSyncingNow -> stringResource(R.string.shell_syncing)
         isDirectBusyNow -> directActivityLabel
-        state.receiving -> "Recibiendo"
+        state.receiving -> stringResource(R.string.shell_receiving)
         state.sending || queueRunningCount > 0 -> {
             if (state.sendBatchTotal > 0) {
-                "Envío ${state.sendBatchCompleted}/${state.sendBatchTotal}"
+                stringResource(R.string.shell_sending_batch_progress, state.sendBatchCompleted, state.sendBatchTotal)
             } else {
-                "Envío activo"
+                stringResource(R.string.shell_sending_active)
             }
         }
-        queuePendingCount > 0 -> "Cola $queuePendingCount"
+        queuePendingCount > 0 -> stringResource(R.string.shell_queue_count, queuePendingCount)
         else -> null
     }
     val headerIsQuiet = !sessionNeedsAttention &&
@@ -672,13 +670,13 @@ fun P2pScreen(
     val headerCardPadding = if (headerIsQuiet && headerMinimized) 12.dp else compactPadding
     val headerCardSpacing = if (headerIsQuiet && headerMinimized) 6.dp else compactSpacing
     val topActionMenuItems = buildList {
-        add(ActionMenuItem("Refrescar") { onRefreshState() })
+        add(ActionMenuItem(stringResource(R.string.shell_refresh)) { onRefreshState() })
         if (connected) {
-            add(ActionMenuItem("Desconectar") { onDisconnect() })
+            add(ActionMenuItem(stringResource(R.string.shell_disconnect)) { onDisconnect() })
         }
         add(
             ActionMenuItem(
-                label = if (state.paused) "Reanudar transferencias" else "Pausar transferencias"
+                label = if (state.paused) stringResource(R.string.shell_resume_transfers) else stringResource(R.string.shell_pause_transfers)
             ) {
                 if (state.paused) onResumeTransfers() else onPauseTransfers()
             }
@@ -691,8 +689,8 @@ fun P2pScreen(
                 onCancelActiveTransfer()
             }
         )
-        add(ActionMenuItem("Abrir Descargas") { onOpenDownloads() })
-        add(ActionMenuItem(if (showUxPreferences) "Ocultar ajustes UX" else "Ajustes UX") {
+        add(ActionMenuItem(stringResource(R.string.shell_open_downloads)) { onOpenDownloads() })
+        add(ActionMenuItem(if (showUxPreferences) stringResource(R.string.shell_hide_ux_settings) else stringResource(R.string.shell_ux_settings)) {
             showUxPreferences = !showUxPreferences
         })
     }
@@ -702,10 +700,9 @@ fun P2pScreen(
     )
     val quietPanelColor = MaterialTheme.colorScheme.surfaceContainerLow
     val sessionStatusIsError = state.sessionExpired ||
-        state.tokenSyncStatus.contains("no pude", ignoreCase = true) ||
-        state.tokenSyncStatus.contains("no se pudo", ignoreCase = true)
+        isSessionSyncFailure(state.tokenSyncStatus)
     val sessionStatusNeedsAttention = requiresManualPairing || state.pendingCredentialShare != null ||
-        state.tokenSyncStatus.contains("aprob", ignoreCase = true)
+        isSessionSyncApprovalRequired(state.tokenSyncStatus)
     val sessionStatusContainerColor = when {
         sessionStatusIsError -> MaterialTheme.colorScheme.errorContainer
         sessionStatusNeedsAttention -> MaterialTheme.colorScheme.tertiaryContainer
@@ -797,23 +794,27 @@ fun P2pScreen(
                 val peer = state.trustedPeers.firstOrNull { it.id == peerId }
                 AlertDialog(
                     onDismissRequest = { pendingForgetPeerId = null },
-                    title = { Text("¿Olvidar este equipo?") },
+                    title = { Text(stringResource(R.string.shell_forget_device_question)) },
                     text = {
-                        Text((peer?.let(TrustedPeerStore::displayName) ?: "Este equipo") +
-                            " dejará de estar recordado. Se cancelarán sus envíos activos y pendientes y tendrás que aprobar una nueva conexión. Los archivos ya recibidos se conservan.")
+                        Text(
+                            stringResource(
+                                R.string.shell_forget_device_body,
+                                peer?.let(TrustedPeerStore::displayName) ?: stringResource(R.string.shell_this_device)
+                            )
+                        )
                     },
                     confirmButton = {
                         TextButton(onClick = { pendingForgetPeerId = null; onForgetPeer(peerId) }) {
-                            Text("Olvidar equipo", color = MaterialTheme.colorScheme.error)
+                            Text(stringResource(R.string.shell_forget_device), color = MaterialTheme.colorScheme.error)
                         }
                     },
-                    dismissButton = { TextButton(onClick = { pendingForgetPeerId = null }) { Text("Cancelar") } }
+                    dismissButton = { TextButton(onClick = { pendingForgetPeerId = null }) { Text(stringResource(R.string.shell_cancel)) } }
                 )
             }
             if (showSelectedFilesReview) {
                 AlertDialog(
                     onDismissRequest = { showSelectedFilesReview = false },
-                    title = { Text("Archivos preparados") },
+                    title = { Text(stringResource(R.string.shell_prepared_files)) },
                     text = {
                         LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                             items(state.selectedFileNames) { name ->
@@ -824,7 +825,7 @@ fun P2pScreen(
                             }
                         }
                     },
-                    confirmButton = { TextButton(onClick = { showSelectedFilesReview = false }) { Text("Listo") } }
+                    confirmButton = { TextButton(onClick = { showSelectedFilesReview = false }) { Text(stringResource(R.string.shell_done)) } }
                 )
             }
             if (showUxPreferences) {
@@ -872,9 +873,9 @@ fun P2pScreen(
                     if (!headerMinimized) {
                         Text(
                             text = if (activeConnectionMode == ConnectionMode.WIFI_DIRECT) {
-                                "Entre tus equipos · sin internet"
+                                stringResource(R.string.shell_between_devices_offline)
                             } else {
-                                "Tu red local · sin cuentas"
+                                stringResource(R.string.shell_local_network_no_accounts)
                             },
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -906,7 +907,7 @@ fun P2pScreen(
                                 )
                             }
                             TextButton(onClick = { headerMinimized = false }) {
-                                Text("Ver")
+                                Text(stringResource(R.string.shell_view))
                             }
                         }
 
@@ -967,7 +968,7 @@ fun P2pScreen(
                                 if (showHeaderQuickAction || connectionViewMode == ConnectionViewMode.ADVANCED) {
                                     Box {
                                         TextButton(onClick = { headerQuietMenuExpanded = true }) {
-                                            Text("Más")
+                                            Text(stringResource(R.string.shell_more))
                                         }
                                         DropdownMenu(
                                             expanded = headerQuietMenuExpanded,
@@ -1031,7 +1032,7 @@ fun P2pScreen(
                         Row {
                             if (connectionViewMode == ConnectionViewMode.ADVANCED) {
                                 TextButton(onClick = { headerExpanded = !headerExpanded }) {
-                                    Text(if (headerExpanded) "Menos" else "Ver estado")
+                                    Text(if (headerExpanded) stringResource(R.string.shell_less) else stringResource(R.string.shell_view_status))
                                 }
                             }
                             TextButton(
@@ -1040,7 +1041,7 @@ fun P2pScreen(
                                     headerMinimized = true
                                 }
                             ) {
-                                Text("Ocultar")
+                                Text(stringResource(R.string.shell_hide))
                             }
                         }
                     }
@@ -1115,12 +1116,12 @@ fun P2pScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                "Modo foco: ${focusStage.title}",
+                                stringResource(R.string.shell_focus_mode_stage, (focusStage.title).toString()),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             TextButton(onClick = { headerExpanded = true }) {
-                                Text("Cambiar etapa")
+                                Text(stringResource(R.string.shell_change_stage))
                             }
                         }
                     }
@@ -1135,18 +1136,18 @@ fun P2pScreen(
                             }
                             if (connectionViewMode == ConnectionViewMode.ADVANCED) {
                                 Text(
-                                    "Disponibilidad de red",
+                                    stringResource(R.string.shell_network_availability),
                                     style = MaterialTheme.typography.bodySmall,
                                     fontWeight = FontWeight.SemiBold
                                 )
                                 Text(
-                                    "Completo permite tener Wi-Fi Direct y Wi-Fi LAN disponibles al mismo tiempo.",
+                                    stringResource(R.string.shell_full_mode_network_help),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                                 Box {
                                     OutlinedButton(onClick = { connectionModesExpanded = true }) {
-                                        Text("Gestionar disponibilidad")
+                                        Text(stringResource(R.string.shell_manage_availability))
                                     }
                                     DropdownMenu(
                                         expanded = connectionModesExpanded,
@@ -1156,9 +1157,9 @@ fun P2pScreen(
                                             text = {
                                                 Text(
                                                     if (state.wifiDirectModeEnabled) {
-                                                        "Ocultar Wi-Fi Direct"
+                                                        stringResource(R.string.shell_hide_wifi_direct)
                                                     } else {
-                                                        "Mostrar Wi-Fi Direct"
+                                                        stringResource(R.string.shell_show_wifi_direct)
                                                     }
                                                 )
                                             },
@@ -1172,9 +1173,9 @@ fun P2pScreen(
                                             text = {
                                                 Text(
                                                     if (state.lanModeEnabled) {
-                                                        "Ocultar Wi-Fi LAN"
+                                                        stringResource(R.string.shell_hide_wifi_lan)
                                                     } else {
-                                                        "Mostrar Wi-Fi LAN"
+                                                        stringResource(R.string.shell_show_wifi_lan)
                                                     }
                                                 )
                                             },
@@ -1201,7 +1202,7 @@ fun P2pScreen(
                                 )
                             }
                             Text(
-                                "Modo foco",
+                                stringResource(R.string.shell_focus_mode),
                                 style = MaterialTheme.typography.bodySmall,
                                 fontWeight = FontWeight.SemiBold
                             )
@@ -1224,7 +1225,7 @@ fun P2pScreen(
                             }
                             if (focusEnabled) {
                                 Text(
-                                    "Vista simplificada: solo etapa ${focusStage.title.lowercase()}.",
+                                    stringResource(R.string.shell_simplified_stage, (focusStage.title.lowercase()).toString()),
                                     style = MaterialTheme.typography.bodySmall
                                 )
                             }
@@ -1236,7 +1237,7 @@ fun P2pScreen(
                             ) {
                                 Text(
                                     text = if (isSyncingNow) {
-                                        "Sincronizando credenciales..."
+                                        stringResource(R.string.shell_syncing_credentials)
                                     } else {
                                         directActivityLabel.orEmpty()
                                     },
@@ -1264,18 +1265,18 @@ fun P2pScreen(
                     Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalArrangement = Arrangement.spacedBy(4.dp)) {
                             Text(
-                                if (state.sessionEnabled) "Sesión activa" else "Sesión cerrada",
+                                if (state.sessionEnabled) stringResource(R.string.shell_session_active) else stringResource(R.string.shell_session_closed),
                                 modifier = Modifier.align(Alignment.CenterVertically),
                                 style = MaterialTheme.typography.labelLarge,
                                 fontWeight = FontWeight.SemiBold
                             )
                             TextButton(onClick = { onSetSessionEnabled(!state.sessionEnabled) }) {
-                                Text(if (state.sessionEnabled) "Cerrar sesión" else "Activar sesión")
+                                Text(if (state.sessionEnabled) stringResource(R.string.shell_close_session) else stringResource(R.string.shell_activate_session))
                             }
                         }
                         Text(
-                            if (state.sessionEnabled) "Al cerrar se detienen las transferencias."
-                            else "Actívala para conectar o enviar. Tus archivos y borradores se conservan.",
+                            if (state.sessionEnabled) stringResource(R.string.shell_close_stops_transfers)
+                            else stringResource(R.string.shell_activate_session_help),
                             style = MaterialTheme.typography.bodySmall
                         )
                     }
@@ -1315,7 +1316,7 @@ fun P2pScreen(
                                     downloadsInitialSection = DownloadLibrarySection.ACTIVITY
                                     selectedTabIndex = allTabs.indexOf(P2pMainTab.HISTORY)
                                     applyFocusStage(FocusStage.OFF)
-                                }, colors = ButtonDefaults.textButtonColors(contentColor = LocalContentColor.current)) { Text("Actividad") }
+                                }, colors = ButtonDefaults.textButtonColors(contentColor = LocalContentColor.current)) { Text(stringResource(R.string.shell_activity)) }
                             }
                             if (summary.kind == P2pSendSummaryKind.ACTIVE) {
                                 LinearProgressIndicator(progress = { state.sendProgress.coerceIn(0f, 1f) }, modifier = Modifier.fillMaxWidth())
@@ -1368,7 +1369,12 @@ fun P2pScreen(
                             Text(activeSupportCard.action.label, maxLines = 1)
                         }
                         TextButton(onClick = { dismissedSupportCardKey = currentSupportCardKey }, colors = ButtonDefaults.textButtonColors(contentColor = LocalContentColor.current)) {
-                            Text("X")
+                            Text(
+                                stringResource(R.string.shell_close_symbol),
+                                modifier = Modifier.clearAndSetSemantics {
+                                    contentDescription = appString(R.string.shell_close)
+                                }
+                            )
                         }
                     }
                 }
@@ -1402,10 +1408,10 @@ fun P2pScreen(
                             .padding(UiSpaceM),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Text("Permiso requerido", fontWeight = FontWeight.Bold)
-                        Text("Concede ${state.permissionName} para usar Wi-Fi Direct.")
+                        Text(stringResource(R.string.shell_permission_required), fontWeight = FontWeight.Bold)
+                        Text(stringResource(R.string.shell_grant_named_permission, (state.permissionName).toString()))
                         Button(onClick = onRequestPermission) {
-                            Text("Conceder permiso")
+                            Text(stringResource(R.string.shell_grant_permission))
                         }
                     }
                 }
@@ -1460,26 +1466,26 @@ fun P2pScreen(
                             .padding(UiSpaceM),
                         verticalArrangement = Arrangement.spacedBy(UiSpaceS)
                     ) {
-                        Text("Cola de envío", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
-                        Text("Aquí verás lo que está en curso, en espera o con error.", style = MaterialTheme.typography.bodySmall)
+                        Text(stringResource(R.string.shell_send_queue), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                        Text(stringResource(R.string.shell_queue_help), style = MaterialTheme.typography.bodySmall)
 
                         FlowRow(
                             horizontalArrangement = Arrangement.spacedBy(UiSpaceS),
                             verticalArrangement = Arrangement.spacedBy(UiSpaceS)
                         ) {
                             StatusChip(
-                                label = "Pendientes $queuePendingCount",
+                                label = pluralStringResource(R.plurals.shell_pending_count, queuePendingCount, queuePendingCount),
                                 containerColor = MaterialTheme.colorScheme.surfaceVariant,
                                 contentColor = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             StatusChip(
-                                label = "Activos $queueRunningCount",
+                                label = pluralStringResource(R.plurals.shell_active_count, queueRunningCount, queueRunningCount),
                                 containerColor = MaterialTheme.colorScheme.primaryContainer,
                                 contentColor = MaterialTheme.colorScheme.onPrimaryContainer
                             )
                             if (queueFailedCount > 0) {
                                 StatusChip(
-                                    label = "Fallidos $queueFailedCount",
+                                    label = pluralStringResource(R.plurals.shell_failed_count, queueFailedCount, queueFailedCount),
                                     containerColor = MaterialTheme.colorScheme.errorContainer,
                                     contentColor = MaterialTheme.colorScheme.onErrorContainer
                                 )
@@ -1494,7 +1500,7 @@ fun P2pScreen(
                             Button(
                                 onClick = if (state.paused) onResumeTransfers else onPauseTransfers
                             ) {
-                                Text(if (state.paused) "Reanudar todo" else "Pausar todo")
+                                Text(if (state.paused) stringResource(R.string.shell_resume_all) else stringResource(R.string.shell_pause_all))
                             }
                             OutlinedButton(
                                 onClick = onCancelActiveTransfer,
@@ -1505,7 +1511,7 @@ fun P2pScreen(
                             OutlinedButton(
                                 onClick = { showQueueDetails = false }
                             ) {
-                                Text("Ocultar cola")
+                                Text(stringResource(R.string.shell_hide_queue))
                             }
                         }
 
@@ -1514,7 +1520,7 @@ fun P2pScreen(
                         }
                         if (!state.sendFailureCause.isNullOrBlank()) {
                             Text(
-                                friendlyTransferIssue(state.sendFailureCause, "No se pudo continuar con el envío.") ?: "No se pudo continuar con el envío.",
+                                friendlyTransferIssue(state.sendFailureCause, stringResource(R.string.shell_could_not_continue_sending)) ?: stringResource(R.string.shell_could_not_continue_sending),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.error
                             )
@@ -1530,9 +1536,9 @@ fun P2pScreen(
                             if (state.sendQueue.isEmpty()) {
                                 item("empty-queue") {
                                     EmptyStateBlock(
-                                        title = "No hay tareas en cola",
-                                        body = "Agrega archivos desde la pestaña Enviar para gestionarlos aqui.",
-                                        actionLabel = "Ir a Enviar",
+                                        title = stringResource(R.string.shell_no_queued_tasks),
+                                        body = stringResource(R.string.shell_add_files_send_tab),
+                                        actionLabel = stringResource(R.string.shell_go_to_send),
                                         onAction = {
                                             selectedTabIndex = allTabs.indexOf(P2pMainTab.SEND)
                                         }
@@ -1555,7 +1561,7 @@ fun P2pScreen(
                                             var itemActionsExpanded by rememberSaveable(item.id) { mutableStateOf(false) }
                                             Text(item.fileName, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                             Text(
-                                                "${queueStatusLabel(item.status)} · ${formatBytes(item.sentBytes)}/${formatBytes(item.totalBytes)}",
+                                                stringResource(R.string.shell_queue_item_progress, (queueStatusLabel(item.status)).toString(), (formatBytes(item.sentBytes)).toString(), (formatBytes(item.totalBytes)).toString()),
                                                 style = MaterialTheme.typography.bodySmall
                                             )
                                             if (item.totalBytes > 0L && !isTerminalQueueStatus(item.status)) {
@@ -1568,7 +1574,7 @@ fun P2pScreen(
                                             }
                                             if (!item.lastError.isNullOrBlank()) {
                                                 Text(
-                                                    item.lastError,
+                                                    runtimeFailureText(item.lastError),
                                                     style = MaterialTheme.typography.bodySmall,
                                                     color = MaterialTheme.colorScheme.error
                                                 )
@@ -1587,12 +1593,12 @@ fun P2pScreen(
                                             ) {
                                                 if (canPause) {
                                                     OutlinedButton(onClick = { onPauseQueueItem(item.id) }) {
-                                                        Text("Pausar")
+                                                        Text(stringResource(R.string.shell_pause))
                                                     }
                                                 }
                                                 if (canResume) {
                                                     OutlinedButton(onClick = { onResumeQueueItem(item.id) }) {
-                                                        Text("Reanudar")
+                                                        Text(stringResource(R.string.shell_resume))
                                                     }
                                                 }
                                                 if (canCancel || canPrioritize) {
@@ -1601,7 +1607,7 @@ fun P2pScreen(
                                                         onClick = { itemActionsExpanded = true },
                                                         enabled = true
                                                     ) {
-                                                        Text("Más")
+                                                        Text(stringResource(R.string.shell_more))
                                                     }
                                                     DropdownMenu(
                                                         expanded = itemActionsExpanded,
@@ -1609,14 +1615,14 @@ fun P2pScreen(
                                                     ) {
                                                         if (canPrioritize) {
                                                             DropdownMenuItem(
-                                                                text = { Text("Subir prioridad") },
+                                                                text = { Text(stringResource(R.string.shell_raise_priority)) },
                                                                 onClick = {
                                                                     itemActionsExpanded = false
                                                                     onMoveQueueItemUp(item.id)
                                                                 }
                                                             )
                                                             DropdownMenuItem(
-                                                                text = { Text("Bajar prioridad") },
+                                                                text = { Text(stringResource(R.string.shell_lower_priority)) },
                                                                 onClick = {
                                                                     itemActionsExpanded = false
                                                                     onMoveQueueItemDown(item.id)
@@ -1625,7 +1631,7 @@ fun P2pScreen(
                                                         }
                                                         if (canCancel) {
                                                             DropdownMenuItem(
-                                                                text = { Text("Cancelar tarea") },
+                                                                text = { Text(stringResource(R.string.shell_cancel_task)) },
                                                                 onClick = {
                                                                     itemActionsExpanded = false
                                                                     onCancelQueueItem(item.id)
@@ -1702,14 +1708,14 @@ fun P2pScreen(
                                 .padding(UiSpaceM),
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Text("Conexión nueva detectada", fontWeight = FontWeight.Bold)
-                            Text("¿Guardar $peerLabel como favorito?")
+                            Text(stringResource(R.string.shell_new_connection_detected), fontWeight = FontWeight.Bold)
+                            Text(stringResource(R.string.shell_save_favorite_question, (peerLabel).toString()))
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Button(onClick = { onSaveSuggestedFavorite(peerId) }) {
-                                    Text("Guardar favorito")
+                                    Text(stringResource(R.string.shell_save_favorite))
                                 }
                                 OutlinedButton(onClick = { onSkipSuggestedFavorite(peerId) }) {
-                                    Text("No ahora")
+                                    Text(stringResource(R.string.shell_not_now))
                                 }
                             }
                         }
@@ -1728,12 +1734,12 @@ fun P2pScreen(
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             Text(
-                                if (simpleWifiDirectMode) "Wi-Fi Direct" else "Conectar",
+                                if (simpleWifiDirectMode) stringResource(R.string.shell_wifi_direct) else stringResource(R.string.shell_connect),
                                 fontWeight = FontWeight.Bold
                             )
                             if (simpleWifiDirectMode) {
                                 Text(
-                                    "Comparte cerca, aunque no tengas internet.",
+                                    stringResource(R.string.shell_share_nearby_offline),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -1747,9 +1753,9 @@ fun P2pScreen(
                                 ConnectionViewModeRow()
                                 Text(
                                     when (connectionViewMode) {
-                                        ConnectionViewMode.WIFI_DIRECT -> "Enlace 1 a 1 entre dos equipos."
-                                        ConnectionViewMode.LAN -> "Usa la misma Wi-Fi para detectar equipos."
-                                        ConnectionViewMode.ADVANCED -> "Vista completa para ajustar rutas y respaldo."
+                                        ConnectionViewMode.WIFI_DIRECT -> stringResource(R.string.shell_one_to_one_link)
+                                        ConnectionViewMode.LAN -> stringResource(R.string.shell_same_wifi_find_devices)
+                                        ConnectionViewMode.ADVANCED -> stringResource(R.string.shell_full_view_routes_fallback)
                                     },
                                     style = MaterialTheme.typography.bodySmall
                                 )
@@ -1760,12 +1766,12 @@ fun P2pScreen(
                                     StatusChip(
                                         label = if (state.wifiDirectModeEnabled) {
                                             when {
-                                                directReadyForExchange -> "Direct · ${state.directTargetLabel ?: "enlazado"}"
-                                                state.p2pEnabled -> "Direct listo"
-                                                else -> "Direct apagado"
+                                                directReadyForExchange -> stringResource(R.string.shell_direct_target, (state.directTargetLabel ?: stringResource(R.string.shell_linked)).toString())
+                                                state.p2pEnabled -> stringResource(R.string.shell_direct_available)
+                                                else -> stringResource(R.string.shell_direct_off)
                                             }
                                         } else {
-                                            "Direct desactivado"
+                                            stringResource(R.string.shell_direct_disabled)
                                         },
                                         containerColor = if (state.wifiDirectModeEnabled && state.p2pEnabled) {
                                             MaterialTheme.colorScheme.primaryContainer
@@ -1782,13 +1788,13 @@ fun P2pScreen(
                                         label = if (state.lanModeEnabled) {
                                             when {
                                                 state.resolvedTargetMode == ConnectionMode.LAN && !state.resolvedTargetIp.isNullOrBlank() -> {
-                                                    "LAN · ${resolvedTargetLabel ?: state.resolvedTargetIp}"
+                                                    stringResource(R.string.shell_lan_target, (resolvedTargetLabel ?: state.resolvedTargetIp).toString())
                                                 }
-                                                state.lanConnected -> "LAN ${state.lanLocalIp ?: "lista"}"
-                                                else -> "LAN sin red"
+                                                state.lanConnected -> stringResource(R.string.shell_lan_local, (state.lanLocalIp ?: stringResource(R.string.shell_ready_lowercase)).toString())
+                                                else -> stringResource(R.string.shell_lan_no_network)
                                             }
                                         } else {
-                                            "LAN desactivada"
+                                            stringResource(R.string.shell_lan_disabled)
                                         },
                                         containerColor = if (state.lanModeEnabled && state.lanConnected) {
                                             MaterialTheme.colorScheme.primaryContainer
@@ -1837,9 +1843,9 @@ fun P2pScreen(
                                     ) {
                                         Text(
                                             when (state.resolvedTargetMode) {
-                                                ConnectionMode.WIFI_DIRECT -> "Ruta preferida: Directo"
-                                                ConnectionMode.LAN -> "Ruta lista: misma Wi-Fi"
-                                                else -> "Ruta lista"
+                                                ConnectionMode.WIFI_DIRECT -> stringResource(R.string.shell_preferred_route_direct)
+                                                ConnectionMode.LAN -> stringResource(R.string.shell_route_ready_same_wifi)
+                                                else -> stringResource(R.string.shell_route_ready)
                                             },
                                             fontWeight = FontWeight.SemiBold,
                                             style = MaterialTheme.typography.bodyMedium
@@ -1847,11 +1853,11 @@ fun P2pScreen(
                                         Text(
                                             when (state.resolvedTargetMode) {
                                                 ConnectionMode.WIFI_DIRECT ->
-                                                    state.resolvedTargetLabel?.let { "Con $it." } ?: "Lista para enviar y chatear."
+                                                    state.resolvedTargetLabel?.let { stringResource(R.string.shell_with_device, (it).toString()) } ?: stringResource(R.string.shell_ready_send_chat)
                                                 ConnectionMode.LAN ->
-                                                    state.resolvedTargetLabel?.let { "Con $it en esta Wi-Fi." } ?: "Lista para enviar y chatear."
+                                                    state.resolvedTargetLabel?.let { stringResource(R.string.shell_with_device_same_wifi, (it).toString()) } ?: stringResource(R.string.shell_ready_send_chat)
                                                 else ->
-                                                    "Lista para continuar."
+                                                    stringResource(R.string.shell_ready_continue)
                                             },
                                             style = MaterialTheme.typography.bodySmall
                                         )
@@ -1873,36 +1879,36 @@ fun P2pScreen(
                                 if (activeConnectionMode == ConnectionMode.WIFI_DIRECT) {
                                     if (directReadyForExchange) {
                                         OutlinedButton(onClick = onDisconnect) {
-                                            Text("Cerrar enlace")
+                                            Text(stringResource(R.string.shell_close_link))
                                         }
                                     } else if (connected) {
                                         OutlinedButton(onClick = onCancelConnect) {
-                                            Text(if (isHost) "Cancelar enlace" else "Salir del enlace")
+                                            Text(if (isHost) stringResource(R.string.shell_cancel_link) else stringResource(R.string.shell_leave_link))
                                         }
                                     } else if (!state.p2pEnabled) {
                                         OutlinedButton(onClick = onOpenWifiSettings) {
-                                            Text("Abrir Wi-Fi")
+                                            Text(stringResource(R.string.shell_open_wifi))
                                         }
                                     } else {
                                         Button(
                                             onClick = onStartHost,
                                             enabled = state.wifiDirectModeEnabled && state.permissionGranted && !directBusy
                                         ) {
-                                            Text("Crear enlace")
+                                            Text(stringResource(R.string.shell_create_link))
                                         }
                                         OutlinedButton(
                                             onClick = onStartClient,
                                             enabled = state.wifiDirectModeEnabled && state.permissionGranted && !directBusy
                                         ) {
-                                            Text(if (isCompactScreen) "Buscar" else "Buscar enlace")
+                                            Text(if (isCompactScreen) stringResource(R.string.shell_search) else stringResource(R.string.shell_find_link))
                                         }
                                     }
                                     if (directBusy && !connected && !directReadyForExchange) {
                                         OutlinedButton(onClick = onCancelConnect) {
                                             Text(
-                                                if (state.directCreatingGroup) "Cancelar enlace"
-                                                else if (isCompactScreen) "Cancelar"
-                                                else "Cancelar búsqueda"
+                                                if (state.directCreatingGroup) stringResource(R.string.shell_cancel_link)
+                                                else if (isCompactScreen) stringResource(R.string.shell_cancel)
+                                                else stringResource(R.string.shell_cancel_search)
                                             )
                                         }
                                     }
@@ -1913,9 +1919,9 @@ fun P2pScreen(
                                     ) {
                                         Text(
                                             if (state.lanScanning) {
-                                                "Cancelar búsqueda"
+                                                stringResource(R.string.shell_cancel_search)
                                             } else {
-                                                "Buscar dispositivos"
+                                                stringResource(R.string.shell_find_devices)
                                             }
                                         )
                                     }
@@ -1923,11 +1929,11 @@ fun P2pScreen(
                                         onClick = onUseSuggestedTarget,
                                         enabled = state.lanModeEnabled && !state.suggestedTargetIp.isNullOrBlank()
                                     ) {
-                                        Text(if (isCompactScreen) "Usar IP" else "Usar IP sugerida")
+                                        Text(if (isCompactScreen) stringResource(R.string.shell_use_ip) else stringResource(R.string.shell_use_suggested_ip))
                                     }
                                     if (connectionViewMode == ConnectionViewMode.ADVANCED && !state.lanConnected) {
                                         OutlinedButton(onClick = onOpenWifiSettings) {
-                                            Text(if (isCompactScreen) "Ajustes" else "Ajustes Wi-Fi")
+                                            Text(if (isCompactScreen) stringResource(R.string.shell_settings) else stringResource(R.string.shell_wifi_settings))
                                         }
                                     }
                                 }
@@ -1969,7 +1975,7 @@ fun P2pScreen(
                                 verticalArrangement = Arrangement.spacedBy(2.dp)
                             ) {
                                 Text(
-                                    if (state.sessionEnabled) "Sesión activa" else "Sesión cerrada",
+                                    if (state.sessionEnabled) stringResource(R.string.shell_session_active) else stringResource(R.string.shell_session_closed),
                                     fontWeight = FontWeight.SemiBold,
                                     style = MaterialTheme.typography.bodyMedium
                                 )
@@ -1994,12 +2000,12 @@ fun P2pScreen(
                         colors = sectionCardColors
                     ) {
                         StageHeader(
-                            title = "Sesión",
+                            title = stringResource(R.string.shell_session),
                             summary = when {
-                                !state.sessionEnabled -> "Cerrada. Puedes preparar las credenciales."
-                                state.sessionExpired -> "Sesión expirada. Renueva para continuar."
+                                !state.sessionEnabled -> stringResource(R.string.shell_closed_prepare_credentials)
+                                state.sessionExpired -> stringResource(R.string.shell_session_expired_renew)
                                 compactSyncLabel != null -> compactSyncLabel
-                                else -> "Activa y lista."
+                                else -> stringResource(R.string.shell_active_and_ready)
                             },
                             minimized = !securityExpanded,
                             expanded = securityExpanded,
@@ -2088,46 +2094,46 @@ fun P2pScreen(
                                         }
                                     }
                                     OutlinedButton(onClick = { sessionDetailsExpanded = !sessionDetailsExpanded }) {
-                                        Text(if (sessionDetailsExpanded) "Ocultar credenciales" else "Ver credenciales")
+                                        Text(if (sessionDetailsExpanded) stringResource(R.string.shell_hide_credentials) else stringResource(R.string.shell_view_credentials))
                                     }
                                     Box {
                                         OutlinedButton(onClick = { securityMoreExpanded = true }) {
-                                            Text("Más")
+                                            Text(stringResource(R.string.shell_more))
                                         }
                                         DropdownMenu(
                                             expanded = securityMoreExpanded,
                                             onDismissRequest = { securityMoreExpanded = false }
                                         ) {
                                             DropdownMenuItem(
-                                                text = { Text("Renovar 30m") },
+                                                text = { Text(stringResource(R.string.shell_renew_thirty_minutes)) },
                                                 onClick = {
                                                     securityMoreExpanded = false
                                                     onRenewSession()
                                                 }
                                             )
                                             DropdownMenuItem(
-                                                text = { Text("Copiar token") },
+                                                text = { Text(stringResource(R.string.shell_copy_token)) },
                                                 onClick = {
                                                     securityMoreExpanded = false
                                                     onCopyToken()
                                                 }
                                             )
                                             DropdownMenuItem(
-                                                text = { Text("Pegar token") },
+                                                text = { Text(stringResource(R.string.shell_paste_token)) },
                                                 onClick = {
                                                     securityMoreExpanded = false
                                                     onPasteToken()
                                                 }
                                             )
                                             DropdownMenuItem(
-                                                text = { Text("Nuevo token") },
+                                                text = { Text(stringResource(R.string.shell_new_token)) },
                                                 onClick = {
                                                     securityMoreExpanded = false
                                                     onGenerateToken()
                                                 }
                                             )
                                             DropdownMenuItem(
-                                                text = { Text("Nuevo PIN") },
+                                                text = { Text(stringResource(R.string.shell_new_pin)) },
                                                 onClick = {
                                                     securityMoreExpanded = false
                                                     onGeneratePin()
@@ -2139,7 +2145,7 @@ fun P2pScreen(
 
                                 if (sessionDetailsExpanded) {
                                     Text(
-                                        "Para conectar manualmente, introduce el código de sesión y el PIN que muestra el equipo receptor. Después confirma los datos.",
+                                        stringResource(R.string.shell_manual_session_help),
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -2147,7 +2153,7 @@ fun P2pScreen(
                                         value = state.authToken,
                                         onValueChange = onTokenChange,
                                         singleLine = true,
-                                        label = { Text("Código de sesión") },
+                                        label = { Text(stringResource(R.string.shell_session_code)) },
                                         modifier = Modifier.fillMaxWidth()
                                     )
 
@@ -2158,7 +2164,7 @@ fun P2pScreen(
                                             !state.sessionSyncing &&
                                             FileTransfer.isValidToken(state.authToken) && TransferSecurity.isValidPin(state.sessionPin) &&
                                             (if (state.activeConnectionMode == ConnectionMode.WIFI_DIRECT) !state.directTargetIp.isNullOrBlank() else !state.resolvedTargetIp.isNullOrBlank())
-                                    ) { Text("Usar esta sesión") }
+                                    ) { Text(stringResource(R.string.shell_use_this_session)) }
 
                                 }
                             }
@@ -2177,17 +2183,17 @@ fun P2pScreen(
                                 .padding(UiSpaceM),
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Text("Confianza", fontWeight = FontWeight.Bold)
+                            Text(stringResource(R.string.shell_trust), fontWeight = FontWeight.Bold)
 
                             if (state.pendingCredentialShare != null) {
                                 val req = state.pendingCredentialShare
-                                Text("Solicitud de sesión · ${req.label}")
+                                Text(stringResource(R.string.shell_session_request, (req.label).toString()))
                                 Text(req.ip, style = MaterialTheme.typography.bodySmall)
                                 credentialRequestFingerprint(req)?.let { fingerprint ->
-                                    Text("Huella: $fingerprint", style = MaterialTheme.typography.labelMedium)
+                                    Text(stringResource(R.string.shell_fingerprint, (fingerprint).toString()), style = MaterialTheme.typography.labelMedium)
                                 }
                                 Text(
-                                    "Confirma que reconoces este equipo antes de compartir la sesión.",
+                                    stringResource(R.string.shell_recognize_device_before_sharing),
                                     style = MaterialTheme.typography.bodySmall
                                 )
                                 FlowRow(
@@ -2195,10 +2201,10 @@ fun P2pScreen(
                                     verticalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
                                     Button(onClick = { onApproveCredentialShare(req) }, enabled = credentialRequestFingerprint(req) != null) {
-                                        Text("Aprobar")
+                                        Text(stringResource(R.string.shell_approve))
                                     }
                                     OutlinedButton(onClick = { onRejectCredentialShare(req) }) {
-                                        Text("Rechazar")
+                                        Text(stringResource(R.string.shell_reject))
                                     }
                                 }
                                 HorizontalDivider()
@@ -2206,14 +2212,14 @@ fun P2pScreen(
 
                             if (state.pendingTrust != null) {
                                 val req = state.pendingTrust
-                                Text("Pendiente de confianza · ${req.label}")
+                                Text(stringResource(R.string.shell_trust_pending_device, (req.label).toString()))
                                 Text(req.ip, style = MaterialTheme.typography.bodySmall)
                                 FlowRow(
                                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                                     verticalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
                                     Button(onClick = { onTrustPeer(req) }) {
-                                        Text("Confiar este dispositivo")
+                                        Text(stringResource(R.string.shell_trust_device))
                                     }
                                 }
                                 HorizontalDivider()
@@ -2226,12 +2232,12 @@ fun P2pScreen(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Text(
-                                        "${state.trustedPeers.size} equipos recordados",
+                                        pluralStringResource(R.plurals.shell_remembered_devices, state.trustedPeers.size, state.trustedPeers.size),
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                     OutlinedButton(onClick = { trustExpanded = !trustExpanded }) {
-                                        Text(if (trustExpanded) "Ocultar" else "Ver")
+                                        Text(if (trustExpanded) stringResource(R.string.shell_hide) else stringResource(R.string.shell_view))
                                     }
                                 }
                             }
@@ -2241,7 +2247,7 @@ fun P2pScreen(
                                     val displayName = TrustedPeerStore.displayName(peer)
                                     Text(displayName, fontWeight = FontWeight.SemiBold)
                                     if (!peer.lastKnownIp.isNullOrBlank()) {
-                                        Text("IP conocida: ${peer.lastKnownIp}", style = MaterialTheme.typography.bodySmall)
+                                        Text(stringResource(R.string.shell_known_ip, (peer.lastKnownIp).toString()), style = MaterialTheme.typography.bodySmall)
                                     }
                                     FlowRow(
                                         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -2250,7 +2256,7 @@ fun P2pScreen(
                                         OutlinedButton(
                                             onClick = { onSetPeerFavorite(peer.id, !peer.favorite) }
                                         ) {
-                                            Text(if (peer.favorite) "Quitar favorito" else "Favorito")
+                                            Text(if (peer.favorite) stringResource(R.string.shell_remove_favorite) else stringResource(R.string.shell_favorite))
                                         }
                                         OutlinedButton(
                                             onClick = {
@@ -2258,14 +2264,14 @@ fun P2pScreen(
                                                 aliasEditorValue = peer.alias
                                             }
                                         ) {
-                                            Text("Editar apodo")
+                                            Text(stringResource(R.string.shell_edit_nickname))
                                         }
                                         TextButton(onClick = { pendingForgetPeerId = peer.id }) {
-                                            Text("Olvidar equipo", color = MaterialTheme.colorScheme.error)
+                                            Text(stringResource(R.string.shell_forget_device), color = MaterialTheme.colorScheme.error)
                                         }
                                     }
                                     Text(
-                                        "Apodo: ${peer.alias.ifBlank { "sin definir" }}",
+                                        stringResource(R.string.shell_nickname_value, (peer.alias.ifBlank { stringResource(R.string.shell_undefined) }).toString()),
                                         style = MaterialTheme.typography.bodySmall
                                     )
                                     if (index < state.trustedPeers.take(8).lastIndex) {
@@ -2300,16 +2306,16 @@ fun P2pScreen(
                         ) {
                             Text(
                                 when {
-                                    state.peers.isNotEmpty() -> "Equipos encontrados"
-                                    state.directDiscovering -> "Buscando equipos"
-                                    else -> "Equipos cercanos"
+                                    state.peers.isNotEmpty() -> stringResource(R.string.shell_devices_found)
+                                    state.directDiscovering -> stringResource(R.string.shell_finding_devices)
+                                    else -> stringResource(R.string.shell_nearby_devices)
                                 },
                                 fontWeight = FontWeight.Bold
                             )
 
                             if (state.peers.isNotEmpty()) {
                                 Text(
-                                    "Elige el equipo que creó el enlace y toca Conectar.",
+                                    stringResource(R.string.shell_choose_creator_connect),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -2317,11 +2323,11 @@ fun P2pScreen(
 
                             if (state.peers.isEmpty()) {
                                 EmptyStateBlock(
-                                    title = if (state.directDiscovering) "Buscando equipos" else "Aún no hay equipos",
+                                    title = if (state.directDiscovering) stringResource(R.string.shell_finding_devices) else stringResource(R.string.shell_no_devices_yet),
                                     body = if (state.directDiscovering) {
-                                        "Mantén el otro equipo con el enlace abierto. La lista se actualizará sola."
+                                        stringResource(R.string.shell_keep_other_link_open)
                                     } else {
-                                        "Activa Wi-Fi Direct en ambos equipos y vuelve a buscar."
+                                        stringResource(R.string.shell_enable_direct_both_search)
                                     },
                                     actionLabel = null,
                                     onAction = null
@@ -2379,13 +2385,13 @@ fun P2pScreen(
                                                         }
                                                     )
                                                     StatusChip(
-                                                        label = if (trusted) "Confiable" else "No confiable",
+                                                        label = if (trusted) stringResource(R.string.shell_trusted) else stringResource(R.string.shell_not_trusted),
                                                         containerColor = if (trusted) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
                                                         contentColor = if (trusted) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
                                                     )
                                                     if (favorite) {
                                                         StatusChip(
-                                                            label = "Favorito",
+                                                            label = stringResource(R.string.shell_favorite),
                                                             containerColor = MaterialTheme.colorScheme.surfaceVariant,
                                                             contentColor = MaterialTheme.colorScheme.onSurfaceVariant
                                                         )
@@ -2393,10 +2399,10 @@ fun P2pScreen(
                                                 }
 
                                                 if (!peerIp.isNullOrBlank()) {
-                                                    Text("IP conocida: $peerIp", style = MaterialTheme.typography.bodySmall)
+                                                    Text(stringResource(R.string.shell_known_peer_ip, (peerIp).toString()), style = MaterialTheme.typography.bodySmall)
                                                 }
                                                 Text(
-                                                    "Última vez: ${formatRelativeSeen(lastSeenAtMs, state.nowMs)}",
+                                                    stringResource(R.string.shell_last_seen, (formatRelativeSeen(lastSeenAtMs, state.nowMs)).toString()),
                                                     style = MaterialTheme.typography.bodySmall
                                                 )
                                             } else {
@@ -2411,7 +2417,7 @@ fun P2pScreen(
                                                 onClick = { onConnectToPeer(peer.address) },
                                                 modifier = Modifier.fillMaxWidth()
                                             ) {
-                                                Text("Conectar")
+                                                Text(stringResource(R.string.shell_connect))
                                             }
                                         }
                                     }
@@ -2447,19 +2453,19 @@ fun P2pScreen(
                                 .padding(UiSpaceM),
                             verticalArrangement = Arrangement.spacedBy(UiSpaceS)
                         ) {
-                            Text("Equipos en esta Wi-Fi", fontWeight = FontWeight.Bold)
+                            Text(stringResource(R.string.shell_devices_on_wifi), fontWeight = FontWeight.Bold)
                             Text(
-                                "Equipos detectados por IP en la misma red.",
+                                stringResource(R.string.shell_devices_detected_ip),
                                 style = MaterialTheme.typography.bodySmall
                             )
                             if (lanPeers.isEmpty()) {
                                 EmptyStateBlock(
-                                    title = "Aún no hay equipos en esta Wi-Fi",
-                                    body = "Busca esta red o usa una IP sugerida para dejar un destino listo.",
+                                    title = stringResource(R.string.shell_no_devices_on_wifi_yet),
+                                    body = stringResource(R.string.shell_search_network_or_ip),
                                     actionLabel = when {
-                                        state.lanScanning -> "Cancelar búsqueda"
-                                        state.suggestedTargetIp.isNullOrBlank() -> "Buscar dispositivos"
-                                        else -> "Usar IP sugerida"
+                                        state.lanScanning -> stringResource(R.string.shell_cancel_search)
+                                        state.suggestedTargetIp.isNullOrBlank() -> stringResource(R.string.shell_find_devices)
+                                        else -> stringResource(R.string.shell_use_suggested_ip)
                                     },
                                     onAction = when {
                                         state.lanScanning -> onCancelLanScan
@@ -2487,7 +2493,7 @@ fun P2pScreen(
                                                 horizontalArrangement = Arrangement.spacedBy(UiSpaceS)
                                             ) {
                                                 StatusChip(
-                                                    label = if (peer.trusted) "Confiable" else "Por aprobar",
+                                                    label = if (peer.trusted) stringResource(R.string.shell_trusted) else stringResource(R.string.shell_awaiting_approval),
                                                     containerColor = if (peer.trusted) {
                                                         MaterialTheme.colorScheme.primaryContainer
                                                     } else {
@@ -2500,7 +2506,7 @@ fun P2pScreen(
                                                     }
                                                 )
                                                 StatusChip(
-                                                    label = "Visto ${formatRelativeSeen(peer.lastSeenAtMs, state.nowMs)}",
+                                                    label = stringResource(R.string.shell_seen_relative, (formatRelativeSeen(peer.lastSeenAtMs, state.nowMs)).toString()),
                                                     containerColor = MaterialTheme.colorScheme.surface,
                                                     contentColor = MaterialTheme.colorScheme.onSurface
                                                 )
@@ -2513,12 +2519,12 @@ fun P2pScreen(
                                                 Button(
                                                     onClick = { onSyncFromPeerIp(peer.ip) }
                                                 ) {
-                                                    Text("Sincronizar sesión")
+                                                    Text(stringResource(R.string.shell_sync_session))
                                                 }
                                                 OutlinedButton(
                                                     onClick = { onTargetIpChange(peer.ip) }
                                                 ) {
-                                                    Text("Usar como destino")
+                                                    Text(stringResource(R.string.shell_use_as_destination))
                                                 }
                                             }
                                         }
@@ -2544,9 +2550,9 @@ fun P2pScreen(
                             .padding(UiSpaceM),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Text("Comparte archivos", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.headlineSmall)
+                        Text(stringResource(R.string.shell_share_files), fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.headlineSmall)
                         Text(
-                            "Fotos, documentos y más. Puedes elegir varios archivos a la vez.",
+                            stringResource(R.string.shell_files_help),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -2576,7 +2582,7 @@ fun P2pScreen(
                                         modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
                                         Icon(imageVector = Icons.Rounded.AttachFile, contentDescription = null)
                                         Spacer(Modifier.width(8.dp))
-                                        Text("Elegir archivos")
+                                        Text(stringResource(R.string.shell_choose_files))
                                     }
                                 }
                             }
@@ -2586,75 +2592,75 @@ fun P2pScreen(
                         val resolvedLabel = state.resolvedTargetLabel ?: resolved
                         val hasResolvedRoute = !resolved.isNullOrBlank()
                         val routeTitle = when {
-                            hasResolvedRoute && !state.sessionReady -> "Sesión por confirmar"
+                            hasResolvedRoute && !state.sessionReady -> stringResource(R.string.shell_session_needs_confirmation)
                             simpleWifiDirectMode && hasResolvedRoute -> {
-                                "Directo listo"
+                                stringResource(R.string.shell_direct_ready)
                             }
                             simpleWifiDirectMode && !state.permissionGranted -> {
-                                "Falta permiso"
+                                stringResource(R.string.shell_permission_missing)
                             }
                             simpleWifiDirectMode && !state.p2pEnabled -> {
-                                "Abre Wi-Fi del sistema"
+                                stringResource(R.string.shell_open_system_wifi)
                             }
                             simpleWifiDirectMode && state.directCreatingGroup -> {
-                                "Creando enlace"
+                                stringResource(R.string.shell_creating_link)
                             }
                             simpleWifiDirectMode && state.directConnecting -> {
-                                "Uniéndote al enlace"
+                                stringResource(R.string.shell_joining_link)
                             }
                             simpleWifiDirectMode && state.directDiscovering && state.peers.isNotEmpty() -> {
-                                "Elige un equipo"
+                                stringResource(R.string.shell_choose_device)
                             }
                             simpleWifiDirectMode && state.directDiscovering -> {
-                                "Buscando equipos"
+                                stringResource(R.string.shell_finding_devices)
                             }
                             simpleWifiDirectMode -> {
-                                "Falta equipo"
+                                stringResource(R.string.shell_device_missing)
                             }
                             state.resolvedTargetMode == ConnectionMode.WIFI_DIRECT && !resolved.isNullOrBlank() -> {
-                                "Ruta preferida: Directo"
+                                stringResource(R.string.shell_preferred_route_direct)
                             }
                             state.resolvedTargetMode == ConnectionMode.LAN && !resolved.isNullOrBlank() -> {
-                                "Ruta lista: misma Wi-Fi"
+                                stringResource(R.string.shell_route_ready_same_wifi)
                             }
-                            else -> "Elige un equipo cuando estés listo"
+                            else -> stringResource(R.string.shell_choose_device_when_ready)
                         }
                         val routeBody = when {
-                            hasResolvedRoute && !state.sessionReady -> "El equipo está seleccionado. Confirma su sesión en Conectar antes de enviar."
+                            hasResolvedRoute && !state.sessionReady -> stringResource(R.string.shell_confirm_selected_device_session)
                             simpleWifiDirectMode && hasResolvedRoute -> {
-                                resolvedLabel?.let { "Enviarás directo a $it." } ?: "El equipo ya quedó listo para recibir."
+                                resolvedLabel?.let { stringResource(R.string.shell_send_directly_to, (it).toString()) } ?: stringResource(R.string.shell_device_ready_to_receive)
                             }
                             simpleWifiDirectMode && !state.permissionGranted -> {
-                                "Concede el permiso y luego vuelve a Conectar para dejar el enlace listo."
+                                stringResource(R.string.shell_grant_return_connect)
                             }
                             simpleWifiDirectMode && !state.p2pEnabled -> {
-                                "La app no puede activar Directo. Abre Wi-Fi del sistema y después crea o busca un enlace."
+                                stringResource(R.string.shell_cannot_activate_direct)
                             }
                             simpleWifiDirectMode && state.directCreatingGroup -> {
-                                "En el otro equipo toca Buscar enlace para terminar la conexión."
+                                stringResource(R.string.shell_other_find_finish_connection)
                             }
                             simpleWifiDirectMode && state.directConnecting -> {
-                                "Espera un momento mientras ambos equipos terminan de enlazarse."
+                                stringResource(R.string.shell_wait_devices_link)
                             }
                             simpleWifiDirectMode && state.directDiscovering && state.peers.isNotEmpty() -> {
-                                "Termina la selección en Conectar y luego vuelve aquí."
+                                stringResource(R.string.shell_finish_selection_connect)
                             }
                             simpleWifiDirectMode && state.directDiscovering -> {
-                                "Mantén el otro equipo con el enlace abierto para que aparezca."
+                                stringResource(R.string.shell_keep_other_link_to_appear)
                             }
                             simpleWifiDirectMode -> {
-                                "Puedes preparar los archivos ahora y conectar un equipo después."
+                                stringResource(R.string.shell_prepare_files_connect_later)
                             }
                             state.resolvedTargetMode == ConnectionMode.WIFI_DIRECT && !resolved.isNullOrBlank() -> {
-                                resolvedLabel?.let { "Directo listo con $it." } ?: "Directo listo para enviar."
+                                resolvedLabel?.let { stringResource(R.string.shell_direct_ready_named, (it).toString()) } ?: stringResource(R.string.shell_direct_ready_send)
                             }
                             state.resolvedTargetMode == ConnectionMode.LAN && !resolved.isNullOrBlank() -> {
-                                resolvedLabel?.let { "Equipo listo: $it." } ?: "Equipo listo en esta Wi-Fi."
+                                resolvedLabel?.let { stringResource(R.string.shell_ready_device_named, (it).toString()) } ?: stringResource(R.string.shell_device_ready_wifi)
                             }
                             !state.suggestedTargetIp.isNullOrBlank() -> {
-                                "Usa la IP sugerida o elige otro destino."
+                                stringResource(R.string.shell_suggested_ip_or_destination)
                             }
-                            else -> "Puedes preparar los archivos ahora y conectar un equipo después."
+                            else -> stringResource(R.string.shell_prepare_files_connect_later)
                         }
                         val showDestinationChooser = when {
                             connectionViewMode != ConnectionViewMode.ADVANCED -> false
@@ -2665,15 +2671,14 @@ fun P2pScreen(
                             !state.sessionExpired
                         val showSendMore = state.selectedFilesCount > 0
                         val sendSelectionLabel = when {
-                            state.selectedFilesCount <= 0 -> "Aún no hay archivos listos"
-                            state.selectedFilesCount == 1 -> "1 archivo listo"
-                            else -> "${state.selectedFilesCount} archivos listos"
+                            state.selectedFilesCount <= 0 -> stringResource(R.string.shell_no_files_ready_yet)
+                            else -> pluralStringResource(R.plurals.shell_files_ready, state.selectedFilesCount, state.selectedFilesCount)
                         }
                         val sendDisabledReason = when {
                             state.selectedFilesCount <= 0 -> null
-                            state.sessionExpired -> "Sesión expirada. Renueva la sesión antes de enviar."
-                            !hasResolvedRoute -> "Conecta un equipo para enviarlos. Tu selección se queda aquí."
-                            !state.sessionReady -> "Confirma la sesión con el receptor en Conectar antes de enviar."
+                            state.sessionExpired -> stringResource(R.string.shell_expired_renew_before_send)
+                            !hasResolvedRoute -> stringResource(R.string.shell_connect_to_send_selection_kept)
+                            !state.sessionReady -> stringResource(R.string.shell_confirm_receiver_session)
                             else -> null
                         }
                         val hasSendActivity = state.shareImportStatus.isNotBlank() ||
@@ -2683,10 +2688,10 @@ fun P2pScreen(
                             !state.sendFailureCause.isNullOrBlank() ||
                             state.sendStatus.isNotBlank()
                         val sendActivitySummary = buildList {
-                            if (state.sending) add("En curso")
-                            if (queuePendingCount > 0) add("$queuePendingCount pendientes")
-                            if (queueRunningCount > 0) add("$queueRunningCount activos")
-                            if (queueFailedCount > 0) add("$queueFailedCount para reintentar")
+                            if (state.sending) add(stringResource(R.string.shell_in_progress))
+                            if (queuePendingCount > 0) add(pluralStringResource(R.plurals.shell_pending_summary, queuePendingCount, queuePendingCount))
+                            if (queueRunningCount > 0) add(pluralStringResource(R.plurals.shell_active_summary, queueRunningCount, queueRunningCount))
+                            if (queueFailedCount > 0) add(pluralStringResource(R.plurals.shell_retry_summary, queueFailedCount, queueFailedCount))
                         }.joinToString(" · ")
 
                         Surface(
@@ -2738,10 +2743,10 @@ fun P2pScreen(
                                     selectedTabIndex = allTabs.indexOf(P2pMainTab.CONNECTION)
                                     applyFocusStage(FocusStage.OFF)
                                 }
-                            ) { Text(if (hasResolvedRoute) "Cambiar equipo" else "Conectar un equipo") }
+                            ) { Text(if (hasResolvedRoute) stringResource(R.string.shell_change_device) else stringResource(R.string.shell_connect_device)) }
                             if (connectionViewMode == ConnectionViewMode.ADVANCED) {
                                 TextButton(onClick = { showAdvancedTargetOptions = !showAdvancedTargetOptions }) {
-                                    Text(if (showDestinationChooser) "Ocultar direcciones" else "Elegir por IP")
+                                    Text(if (showDestinationChooser) stringResource(R.string.shell_hide_addresses) else stringResource(R.string.shell_choose_by_ip))
                                 }
                             }
                         }
@@ -2755,7 +2760,7 @@ fun P2pScreen(
                                 .distinctBy { it.second }
                                 .take(4)
                             if (favoriteDestinations.isNotEmpty()) {
-                                Text("Favoritos", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
+                                Text(stringResource(R.string.shell_favorites), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
                                 FlowRow(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -2763,7 +2768,7 @@ fun P2pScreen(
                                 ) {
                                     favoriteDestinations.forEach { (label, ip) ->
                                         OutlinedButton(onClick = { onTargetIpChange(ip) }) {
-                                            Text("$label · $ip")
+                                            Text(stringResource(R.string.shell_device_with_ip, (label).toString(), (ip).toString()))
                                         }
                                     }
                                 }
@@ -2774,7 +2779,7 @@ fun P2pScreen(
                                 .distinctBy { it.ip }
                                 .take(5)
                             if (quickPeers.isNotEmpty()) {
-                                Text("Equipos detectados", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
+                                Text(stringResource(R.string.shell_detected_devices), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
                                 FlowRow(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -2782,7 +2787,7 @@ fun P2pScreen(
                                 ) {
                                     quickPeers.forEach { kp ->
                                         OutlinedButton(onClick = { onTargetIpChange(kp.ip) }) {
-                                            Text("${kp.label} · ${kp.ip}")
+                                            Text(stringResource(R.string.shell_known_device_with_ip, (kp.label).toString(), (kp.ip).toString()))
                                         }
                                     }
                                 }
@@ -2792,18 +2797,18 @@ fun P2pScreen(
                                 value = state.targetIp,
                                 onValueChange = onTargetIpChange,
                                 singleLine = true,
-                                label = { Text("IP destino") },
+                                label = { Text(stringResource(R.string.shell_destination_ip)) },
                                 modifier = Modifier.fillMaxWidth()
                             )
                         }
 
                         if (!state.lastPeerLabel.isNullOrBlank() && showDestinationChooser) {
-                            Text("Último equipo: ${state.lastPeerLabel}")
+                            Text(stringResource(R.string.shell_last_device, (state.lastPeerLabel).toString()))
                         }
 
                         if (state.lastSendTargetIp != null && showDestinationChooser) {
                             Text(
-                                "Último destino: ${state.lastSendTargetLabel ?: state.lastSendTargetIp} (${state.lastSendTargetIp})",
+                                stringResource(R.string.shell_last_destination, (state.lastSendTargetLabel ?: state.lastSendTargetIp).toString(), (state.lastSendTargetIp).toString()),
                                 style = MaterialTheme.typography.bodySmall
                             )
                         }
@@ -2835,7 +2840,7 @@ fun P2pScreen(
                                     }
                                     if (state.selectedFilesCount > 3) {
                                         TextButton(onClick = { showSelectedFilesReview = true }) {
-                                            Text("Revisar ${state.selectedFilesCount} archivos")
+                                            Text(pluralStringResource(R.plurals.shell_review_files, state.selectedFilesCount, state.selectedFilesCount))
                                         }
                                     }
                                 }
@@ -2858,7 +2863,7 @@ fun P2pScreen(
                                         contentDescription = null
                                     )
                                     Spacer(Modifier.width(8.dp))
-                                    Text(if (state.selectedFilesCount == 1) "Enviar archivo" else "Enviar ${state.selectedFilesCount} archivos")
+                                    Text(pluralStringResource(R.plurals.shell_send_files, state.selectedFilesCount, state.selectedFilesCount))
                                 }
                                 OutlinedButton(onClick = pickFilesForContext) {
                                     Icon(
@@ -2866,20 +2871,20 @@ fun P2pScreen(
                                         contentDescription = null
                                     )
                                     Spacer(Modifier.width(8.dp))
-                                    Text(if (isCompactScreen) "Agregar" else "Agregar archivos")
+                                    Text(if (isCompactScreen) stringResource(R.string.shell_add) else stringResource(R.string.shell_add_files))
                                 }
                             }
                             if (showSendMore) {
                                 Box {
                                     OutlinedButton(onClick = { sendMoreExpanded = true }) {
-                                        Text("Más")
+                                        Text(stringResource(R.string.shell_more))
                                     }
                                     DropdownMenu(
                                         expanded = sendMoreExpanded,
                                         onDismissRequest = { sendMoreExpanded = false }
                                     ) {
                                         DropdownMenuItem(
-                                            text = { Text("Limpiar selección") },
+                                            text = { Text(stringResource(R.string.shell_clear_selection)) },
                                             enabled = state.selectedFilesCount > 0,
                                             onClick = {
                                                 sendMoreExpanded = false
@@ -2887,7 +2892,7 @@ fun P2pScreen(
                                             }
                                         )
                                         DropdownMenuItem(
-                                            text = { Text("Enviar al último destino") },
+                                            text = { Text(stringResource(R.string.shell_send_last_destination)) },
                                             enabled = canUseLastDestination,
                                             onClick = {
                                                 sendMoreExpanded = false
@@ -2927,7 +2932,7 @@ fun P2pScreen(
                                             verticalArrangement = Arrangement.spacedBy(2.dp)
                                         ) {
                                             Text(
-                                                "Actividad de envío",
+                                                stringResource(R.string.shell_send_activity),
                                                 fontWeight = FontWeight.SemiBold,
                                                 style = MaterialTheme.typography.bodyMedium
                                             )
@@ -2940,7 +2945,7 @@ fun P2pScreen(
                                             }
                                         }
                                         TextButton(onClick = { showSendActivityDetails = !showSendActivityDetails }) {
-                                            Text(if (showSendActivityDetails) "Ocultar" else "Ver")
+                                            Text(if (showSendActivityDetails) stringResource(R.string.shell_hide) else stringResource(R.string.shell_view))
                                         }
                                     }
 
@@ -2955,8 +2960,13 @@ fun P2pScreen(
 
                                             if (state.sendBatchTotal > 0) {
                                                 Text(
-                                                    "Lote: ${state.sendBatchCompleted}/${state.sendBatchTotal} OK · " +
-                                                        "${state.sendBatchFailed} fallidos · ${state.sendBatchCanceled} cancelados",
+                                                    stringResource(
+                                                        R.string.shell_batch_summary,
+                                                        state.sendBatchCompleted,
+                                                        state.sendBatchTotal,
+                                                        pluralStringResource(R.plurals.shell_failed_summary, state.sendBatchFailed, state.sendBatchFailed),
+                                                        pluralStringResource(R.plurals.shell_canceled_summary, state.sendBatchCanceled, state.sendBatchCanceled)
+                                                    ),
                                                     style = MaterialTheme.typography.bodySmall
                                                 )
                                             }
@@ -2967,7 +2977,7 @@ fun P2pScreen(
                                                     modifier = Modifier.fillMaxWidth()
                                                 )
                                                 val pct = (state.sendProgress * 100).roundToInt().coerceIn(0, 100)
-                                                Text("Progreso de envío: $pct%", style = MaterialTheme.typography.bodySmall)
+                                                Text(stringResource(R.string.shell_send_progress, pct), style = MaterialTheme.typography.bodySmall)
                                             }
 
                                             if (state.sending || state.sendQueue.isNotEmpty() || state.sendBatchTotal > 0) {
@@ -2976,17 +2986,17 @@ fun P2pScreen(
                                                     verticalArrangement = Arrangement.spacedBy(UiSpaceS)
                                                 ) {
                                                     StatusChip(
-                                                        label = "Inst ${formatRate(state.sendInstantBps)}",
+                                                        label = stringResource(R.string.shell_instant_rate, (formatRate(state.sendInstantBps)).toString()),
                                                         containerColor = MaterialTheme.colorScheme.surfaceVariant,
                                                         contentColor = MaterialTheme.colorScheme.onSurfaceVariant
                                                     )
                                                     StatusChip(
-                                                        label = "Media ${formatRate(state.sendAverageBps)}",
+                                                        label = stringResource(R.string.shell_average_rate, (formatRate(state.sendAverageBps)).toString()),
                                                         containerColor = MaterialTheme.colorScheme.surfaceVariant,
                                                         contentColor = MaterialTheme.colorScheme.onSurfaceVariant
                                                     )
                                                     StatusChip(
-                                                        label = "ETA ${formatEta(state.sendEtaSeconds)}",
+                                                        label = stringResource(R.string.shell_eta, (formatEta(state.sendEtaSeconds)).toString()),
                                                         containerColor = MaterialTheme.colorScheme.surfaceVariant,
                                                         contentColor = MaterialTheme.colorScheme.onSurfaceVariant
                                                     )
@@ -2995,8 +3005,8 @@ fun P2pScreen(
 
                                             if (!state.sendFailureCause.isNullOrBlank()) {
                                                 Text(
-                                                    friendlyTransferIssue(state.sendFailureCause, "No se pudo continuar con el envío.")
-                                                        ?: "No se pudo continuar con el envío.",
+                                                    friendlyTransferIssue(state.sendFailureCause, stringResource(R.string.shell_could_not_continue_sending))
+                                                        ?: stringResource(R.string.shell_could_not_continue_sending),
                                                     color = MaterialTheme.colorScheme.error,
                                                     style = MaterialTheme.typography.bodySmall
                                                 )
@@ -3011,20 +3021,20 @@ fun P2pScreen(
 
                                             if (state.sendQueue.isNotEmpty()) {
                                                 HorizontalDivider(Modifier.padding(vertical = UiSpaceS))
-                                                Text("Cola", fontWeight = FontWeight.SemiBold)
+                                                Text(stringResource(R.string.shell_queue), fontWeight = FontWeight.SemiBold)
                                                 Text(
-                                                    "Pendientes: $queuePendingCount · Activos: $queueRunningCount · Fallidos: $queueFailedCount",
+                                                    stringResource(R.string.shell_queue_totals, queuePendingCount, queueRunningCount, queueFailedCount),
                                                     style = MaterialTheme.typography.bodySmall
                                                 )
                                                 if (!focusEnabled) {
                                                     OutlinedButton(
                                                         onClick = { showQueueDetails = !showQueueDetails }
                                                     ) {
-                                                        Text(if (showQueueDetails) "Ocultar cola" else "Ver cola")
+                                                        Text(if (showQueueDetails) stringResource(R.string.shell_hide_queue) else stringResource(R.string.shell_view_queue))
                                                     }
                                                 } else {
                                                     Text(
-                                                        "Desactiva modo foco para abrir la cola.",
+                                                        stringResource(R.string.shell_disable_focus_open_queue),
                                                         style = MaterialTheme.typography.bodySmall
                                                     )
                                                 }
@@ -3071,7 +3081,7 @@ fun P2pScreen(
                 tabs = allTabs,
                 selectedTabIndex = selectedTabIndex,
                 statusLabel = if (focusEnabled) {
-                    "Foco ${focusStage.title}"
+                    stringResource(R.string.shell_focus_stage, (focusStage.title).toString())
                 } else {
                     connectionLabel
                 },
@@ -3114,22 +3124,22 @@ fun P2pScreen(
                         aliasEditorPeerId = null
                         aliasEditorValue = ""
                     },
-                    title = { Text("Editar apodo") },
+                    title = { Text(stringResource(R.string.shell_edit_nickname)) },
                     text = {
                         Column(verticalArrangement = Arrangement.spacedBy(UiSpaceS)) {
                             Text(
-                                "Equipo: ${editingPeer?.label ?: editingPeerId.take(8)}",
+                                stringResource(R.string.shell_device_label, (editingPeer?.label ?: editingPeerId.take(8)).toString()),
                                 style = MaterialTheme.typography.bodySmall
                             )
                             OutlinedTextField(
                                 value = aliasEditorValue,
                                 onValueChange = { aliasEditorValue = it.take(48) },
                                 singleLine = true,
-                                label = { Text("Apodo") },
+                                label = { Text(stringResource(R.string.shell_nickname)) },
                                 modifier = Modifier.fillMaxWidth()
                             )
                             Text(
-                                "Déjalo vacío para quitar el apodo.",
+                                stringResource(R.string.shell_empty_removes_nickname),
                                 style = MaterialTheme.typography.bodySmall
                             )
                         }
@@ -3145,7 +3155,7 @@ fun P2pScreen(
                             },
                             enabled = hasAliasChanges
                         ) {
-                            Text("Guardar")
+                            Text(stringResource(R.string.shell_save))
                         }
                     },
                     dismissButton = {
@@ -3155,7 +3165,7 @@ fun P2pScreen(
                                 aliasEditorValue = ""
                             }
                         ) {
-                            Text("Cancelar")
+                            Text(stringResource(R.string.shell_cancel))
                         }
                     }
                 )

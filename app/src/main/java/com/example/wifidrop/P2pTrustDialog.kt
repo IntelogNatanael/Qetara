@@ -42,7 +42,7 @@ internal fun QetaraCredentialRequestDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         icon = { Icon(Icons.Rounded.Devices, contentDescription = null) },
-        title = { Text("¿Conectar con este equipo?") },
+        title = { Text(appString(R.string.msg_connect_this_device)) },
         text = {
             Column(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
@@ -57,22 +57,22 @@ internal fun QetaraCredentialRequestDialog(
                         Text(request.label, fontWeight = FontWeight.Bold)
                         Text(request.ip, style = MaterialTheme.typography.bodySmall)
                         if (fingerprint != null) {
-                            Text("Huella del equipo", style = MaterialTheme.typography.labelSmall)
+                            Text(appString(R.string.msg_device_fingerprint), style = MaterialTheme.typography.labelSmall)
                             SelectionContainer {
                                 Text(fingerprint, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Medium)
                             }
                         }
                     }
                 }
-                Text("Al aprobar, este equipo podrá usar tu sesión para intercambiar archivos y mensajes contigo.")
+                Text(appString(R.string.msg_trust_approval_hint))
                 if (fingerprint != null) {
-                    Text("Comprueba que la huella coincide con la que aparece en Ajustes o Acerca de Qetara del otro equipo.", style = MaterialTheme.typography.bodySmall)
+                    Text(appString(R.string.msg_check_fingerprint_hint), style = MaterialTheme.typography.bodySmall)
                 } else {
-                    Text("No podemos comprobar la identidad de este equipo. Actualiza Qetara en el otro equipo y vuelve a conectar.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                    Text(appString(R.string.msg_identity_unverified_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
                 }
             }
         },
-        confirmButton = { TextButton(onClick = onApprove, enabled = fingerprint != null) { Text("Aprobar conexión") } },
-        dismissButton = { TextButton(onClick = onReject) { Text("Rechazar") } }
+        confirmButton = { TextButton(onClick = onApprove, enabled = fingerprint != null) { Text(appString(R.string.msg_approve_connection)) } },
+        dismissButton = { TextButton(onClick = onReject) { Text(appString(R.string.msg_reject)) } }
     )
 }

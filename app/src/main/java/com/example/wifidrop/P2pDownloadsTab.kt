@@ -127,7 +127,7 @@ internal fun P2pDownloadsTab(
     fun openFile(file: File) {
         runCatching { ExternalOpenUtils.openRoute(context, file.absolutePath) }
             .onFailure {
-                scope.launch { snackbar.showSnackbar("No se pudo abrir. Prueba Compartir y elige una aplicación.") }
+                scope.launch { snackbar.showSnackbar(appString(R.string.msg_open_failed_hint)) }
             }
     }
 
@@ -150,14 +150,14 @@ internal fun P2pDownloadsTab(
                     ) {
                         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Text(
-                                "Tus archivos",
+                                appString(R.string.msg_your_files),
                                 style = MaterialTheme.typography.headlineSmall,
                                 fontWeight = FontWeight.Bold,
                                 modifier = Modifier.semantics { heading() }
                             )
                             Text(
-                                if (files.isEmpty()) "Los archivos recibidos se guardan aquí."
-                                else "${files.size} ${if (files.size == 1) "archivo recibido" else "archivos recibidos"} · ${formatBytes(files.sumOf { it.bytes })}",
+                                if (files.isEmpty()) appString(R.string.msg_received_files_saved_here)
+                                else appQuantityString(R.plurals.msg_received_files_summary, files.size, files.size, formatBytes(files.sumOf { it.bytes })),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -168,11 +168,11 @@ internal fun P2pDownloadsTab(
                         ) {
                             OutlinedButton(onClick = onOpenDownloads, modifier = Modifier.heightIn(min = 48.dp)) {
                                 Icon(Icons.Rounded.FolderOpen, contentDescription = null, modifier = Modifier.size(20.dp))
-                                Text("Abrir carpeta", Modifier.padding(start = 8.dp))
+                                Text(appString(R.string.msg_open_folder), Modifier.padding(start = 8.dp))
                             }
                             TextButton(onClick = onRefresh, modifier = Modifier.heightIn(min = 48.dp)) {
                                 Icon(Icons.Rounded.Refresh, contentDescription = null, modifier = Modifier.size(20.dp))
-                                Text("Actualizar", Modifier.padding(start = 8.dp))
+                                Text(appString(R.string.msg_refresh), Modifier.padding(start = 8.dp))
                             }
                         }
                     }
@@ -190,13 +190,14 @@ internal fun P2pDownloadsTab(
                                 Modifier.padding(16.dp).semantics { liveRegion = LiveRegionMode.Polite },
                                 verticalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
-                                Text("La recepción necesita atención", fontWeight = FontWeight.SemiBold)
+                                Text(appString(R.string.msg_receive_needs_attention), fontWeight = FontWeight.SemiBold)
                                 Text(
-                                    friendlyTransferIssue(state.receiverFailureCause, "No se completó el archivo. Pide al otro equipo que vuelva a enviarlo.")
-                                        ?: "Pide al otro equipo que vuelva a enviar el archivo.",
+                                    friendlyTransferIssue(state.receiverFailureCause, appString(R.string.msg_incomplete_ask_resend))
+                                        ?.let(::runtimeFailureText)
+                                        ?: appString(R.string.msg_ask_resend),
                                     style = MaterialTheme.typography.bodySmall
                                 )
-                                TextButton(onClick = onOpenConnect, modifier = Modifier.heightIn(min = 48.dp)) { Text("Revisar conexión") }
+                                TextButton(onClick = onOpenConnect, modifier = Modifier.heightIn(min = 48.dp)) { Text(appString(R.string.msg_check_connection)) }
                             }
                         }
                     }
@@ -221,12 +222,12 @@ internal fun P2pDownloadsTab(
                             onValueChange = { query = it.take(160) },
                             modifier = Modifier.fillMaxWidth().onFocusChanged { searchFocused = it.isFocused },
                             singleLine = true,
-                            label = { Text(if (section == DownloadLibrarySection.FILES) "Buscar archivo" else "Buscar archivo o equipo") },
+                            label = { Text(if (section == DownloadLibrarySection.FILES) appString(R.string.msg_search_file) else appString(R.string.msg_search_file_device)) },
                             leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
                             trailingIcon = {
                                 if (query.isNotEmpty()) {
                                     IconButton(onClick = { query = "" }) {
-                                        Icon(Icons.Rounded.Close, contentDescription = "Borrar búsqueda")
+                                        Icon(Icons.Rounded.Close, contentDescription = appString(R.string.msg_clear_search))
                                     }
                                 }
                             },
@@ -237,7 +238,7 @@ internal fun P2pDownloadsTab(
                 item("library-filters") {
                     if (compactSearch) {
                         Text(
-                            "$resultCount ${if (resultCount == 1) "resultado" else "resultados"}" +
+                            appQuantityString(R.plurals.msg_results_count, resultCount, resultCount) +
                                 if (section == DownloadLibrarySection.ACTIVITY && historyFilter != DownloadHistoryFilter.ALL)
                                     " · ${historyFilter.title}" else "",
                             style = MaterialTheme.typography.labelLarge,
@@ -250,7 +251,7 @@ internal fun P2pDownloadsTab(
                             verticalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
                             Text(
-                                if (hasQuery) "$resultCount ${if (resultCount == 1) "resultado" else "resultados"}" else "Disponibles en este equipo",
+                                if (hasQuery) appQuantityString(R.plurals.msg_results_count, resultCount, resultCount) else appString(R.string.msg_available_here),
                                 style = MaterialTheme.typography.labelLarge,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.align(Alignment.CenterVertically)
@@ -266,7 +267,7 @@ internal fun P2pDownloadsTab(
                                             text = { Text(option.title) },
                                             onClick = { sort = option; showSortMenu = false },
                                             trailingIcon = {
-                                                if (sort == option) Icon(Icons.Rounded.CheckCircleOutline, contentDescription = "Seleccionado")
+                                                if (sort == option) Icon(Icons.Rounded.CheckCircleOutline, contentDescription = appString(R.string.msg_selected))
                                             }
                                         )
                                     }
@@ -292,10 +293,10 @@ internal fun P2pDownloadsTab(
                         item("files-empty") {
                             DownloadEmptyState(
                                 icon = if (hasQuery) Icons.Rounded.Search else Icons.Rounded.FolderOpen,
-                                title = if (hasQuery) "No encontramos ese archivo" else "Aún no has recibido archivos",
-                                body = if (hasQuery) "Prueba con otra parte del nombre o borra la búsqueda."
-                                    else "Conecta Qetara con otro equipo y recibe tu primer archivo. Después podrás abrirlo y compartirlo desde aquí, incluso sin conexión.",
-                                actionLabel = if (hasQuery) "Borrar búsqueda" else "Conectar un equipo",
+                                title = if (hasQuery) appString(R.string.msg_file_not_found) else appString(R.string.msg_no_received_files),
+                                body = if (hasQuery) appString(R.string.msg_try_file_query)
+                                    else appString(R.string.msg_receive_first_file_hint),
+                                actionLabel = if (hasQuery) appString(R.string.msg_clear_search) else appString(R.string.msg_connect_device),
                                 onAction = if (hasQuery) ({ query = "" }) else onOpenConnect
                             )
                         }
@@ -309,10 +310,10 @@ internal fun P2pDownloadsTab(
                             val filtered = hasQuery || historyFilter != DownloadHistoryFilter.ALL
                             DownloadEmptyState(
                                 icon = if (filtered) Icons.Rounded.Search else Icons.Rounded.CheckCircleOutline,
-                                title = if (filtered) "No hay actividad con estos filtros" else "Aún no hay transferencias",
-                                body = if (filtered) "Prueba con otro nombre o muestra toda la actividad."
-                                    else "Aquí verás qué enviaste, qué recibiste y si cada transferencia se completó.",
-                                actionLabel = if (filtered) "Ver toda la actividad" else "Enviar archivos",
+                                title = if (filtered) appString(R.string.msg_no_filtered_activity) else appString(R.string.msg_no_transfers_yet),
+                                body = if (filtered) appString(R.string.msg_try_activity_query)
+                                    else appString(R.string.msg_activity_hint),
+                                actionLabel = if (filtered) appString(R.string.msg_view_all_activity) else appString(R.string.msg_send_files),
                                 onAction = if (filtered) ({ query = ""; historyFilter = DownloadHistoryFilter.ALL }) else onOpenSend
                             )
                         }
@@ -411,16 +412,16 @@ private fun ReceivedFileRow(item: DownloadFileSnapshot, onOpen: () -> Unit, onSh
                 }
                 Box {
                     IconButton(onClick = { moreExpanded = true }, modifier = Modifier.size(48.dp)) {
-                        Icon(Icons.Rounded.MoreVert, contentDescription = "Acciones para ${item.file.name}")
+                        Icon(Icons.Rounded.MoreVert, contentDescription = appString(R.string.msg_file_actions, item.file.name))
                     }
                     DropdownMenu(expanded = moreExpanded, onDismissRequest = { moreExpanded = false }) {
                         DropdownMenuItem(
-                            text = { Text("Abrir archivo") },
+                            text = { Text(appString(R.string.msg_open_file)) },
                             leadingIcon = { Icon(Icons.Rounded.FolderOpen, contentDescription = null) },
                             onClick = { moreExpanded = false; onOpen() }
                         )
                         DropdownMenuItem(
-                            text = { Text("Compartir") },
+                            text = { Text(appString(R.string.msg_share)) },
                             leadingIcon = { Icon(Icons.Rounded.Share, contentDescription = null) },
                             onClick = { moreExpanded = false; onShare() }
                         )
@@ -479,14 +480,15 @@ private fun TransferActivityRow(item: TransferHistoryEntry, onOpen: () -> Unit) 
             )
             if (!successful) {
                 Text(
-                    if (item.outcome == TransferOutcome.CANCELED) "La transferencia se canceló antes de completarse."
-                    else friendlyTransferIssue(item.errorCause, "No se completó. Comprueba la conexión y vuelve a enviar el archivo.")
-                        ?: "No se completó. Comprueba la conexión y vuelve a enviar el archivo.",
+                    if (item.outcome == TransferOutcome.CANCELED) appString(R.string.msg_transfer_canceled)
+                    else friendlyTransferIssue(item.errorCause, appString(R.string.msg_incomplete_check_resend))
+                        ?.let(::runtimeFailureText)
+                        ?: appString(R.string.msg_incomplete_check_resend),
                     style = MaterialTheme.typography.bodySmall,
                     color = detailColor
                 )
             } else if (!item.route.isNullOrBlank()) {
-                TextButton(onClick = onOpen, modifier = Modifier.align(Alignment.End).heightIn(min = 48.dp)) { Text("Abrir archivo") }
+                TextButton(onClick = onOpen, modifier = Modifier.align(Alignment.End).heightIn(min = 48.dp)) { Text(appString(R.string.msg_open_file)) }
             }
         }
     }
@@ -503,9 +505,9 @@ private fun ReceivingFilePanel(state: P2pScreenState) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Icon(Icons.Rounded.Download, contentDescription = null)
-                Text("Recibiendo archivo", fontWeight = FontWeight.SemiBold)
+                Text(appString(R.string.msg_receiving_file), fontWeight = FontWeight.SemiBold)
             }
-            Text(state.receiverFileName ?: "Preparando la recepción…", maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(state.receiverFileName ?: appString(R.string.msg_preparing_receive), maxLines = 2, overflow = TextOverflow.Ellipsis)
             val progress = state.receiverProgress
             if (progress != null) {
                 LinearProgressIndicator(progress = { progress.coerceIn(0f, 1f) }, modifier = Modifier.fillMaxWidth())
@@ -514,10 +516,10 @@ private fun ReceivingFilePanel(state: P2pScreenState) {
             }
             Text(
                 buildList {
-                    progress?.let { add("${(it * 100).roundToInt().coerceIn(0, 100)} %") }
+                    progress?.let { add(appString(R.string.msg_progress_percent, (it * 100).roundToInt().coerceIn(0, 100))) }
                     if (state.receiverAverageBps > 0) add(formatRate(state.receiverAverageBps))
-                    state.receiverEtaSeconds?.let { add("Faltan ${formatEta(it)}") }
-                }.joinToString(" · ").ifBlank { "Puedes seguir usando Qetara mientras llega." },
+                    state.receiverEtaSeconds?.let { add(appString(R.string.msg_time_remaining, formatEta(it))) }
+                }.joinToString(" · ").ifBlank { appString(R.string.msg_use_while_receiving) },
                 style = MaterialTheme.typography.bodySmall
             )
         }

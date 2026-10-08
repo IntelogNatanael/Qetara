@@ -5,7 +5,7 @@ import com.example.wifidrop.presentation.resolveP2pRouting
 import org.junit.Assert.*
 import org.junit.Test
 
-class UxConnectionPreferenceMigrationTest {
+class UxConnectionPreferenceMigrationTest : com.example.wifidrop.LocalizedResourcesTest() {
     private fun normalized(preferences: UxPreferences) =
         UxPreferencesStore.prepareForSave(preferences, currentSessionEnabled = false)
 

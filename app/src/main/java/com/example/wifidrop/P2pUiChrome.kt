@@ -1,5 +1,7 @@
 package com.example.wifidrop
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.BorderStroke
@@ -146,7 +148,7 @@ internal fun DeveloperFooter(
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
-                    "Creado por Intelog Natanael",
+                    stringResource(R.string.shell_created_by),
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,

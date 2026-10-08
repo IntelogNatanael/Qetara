@@ -30,21 +30,21 @@ internal fun QetaraOpenSourceLicensesDialog(onDismiss: () -> Unit) {
     }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Licencias de código abierto") },
+        title = { Text(appString(R.string.msg_open_source_licenses)) },
         text = {
             Column(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 when {
-                    notices == null -> Text("Cargando licencias…")
-                    notices?.isFailure == true -> Text("No se pudieron abrir las licencias incluidas en esta instalación.")
+                    notices == null -> Text(appString(R.string.msg_loading_licenses))
+                    notices?.isFailure == true -> Text(appString(R.string.msg_licenses_open_failed))
                     else -> SelectionContainer {
                         Text(notices?.getOrNull().orEmpty(), style = MaterialTheme.typography.bodySmall)
                     }
                 }
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Volver a Acerca de Qetara") } }
+        confirmButton = { TextButton(onClick = onDismiss) { Text(appString(R.string.msg_back_to_about)) } }
     )
 }

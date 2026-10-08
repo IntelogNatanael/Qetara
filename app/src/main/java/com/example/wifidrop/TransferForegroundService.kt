@@ -8,6 +8,7 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.res.Configuration
 import android.net.Uri
 import android.os.Build
 import android.os.IBinder
@@ -87,7 +88,7 @@ class TransferForegroundService : Service() {
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
-        startForeground(NOTIFICATION_ID, buildNotification("Servicio listo"))
+        startForeground(NOTIFICATION_ID, buildNotification(getString(R.string.rt_service_ready)))
         directGroupMonitor = WifiDirectGroupMonitor(applicationContext) { group ->
             _state.update { state -> state.copy(
                 directGroup = group,
@@ -114,7 +115,7 @@ class TransferForegroundService : Service() {
                 chatMessages = ChatMessageStore.list(applicationContext),
                 pendingMessageCount = pending.size,
                 messageStatus = if (pending.isNotEmpty()) {
-                    "Mensajes pendientes: ${pending.size}"
+                    resources.getQuantityString(R.plurals.rt_pending_messages, pending.size, pending.size)
                 } else {
                     it.messageStatus
                 },
@@ -123,6 +124,12 @@ class TransferForegroundService : Service() {
                 lastSendTargetAtMs = lastTarget?.updatedAtMs
             )
         }
+    }
+
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        createNotificationChannel()
+        if (_state.value.serviceRunning && !shuttingDown) updateForegroundNotification()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -198,7 +205,7 @@ class TransferForegroundService : Service() {
             chatMessages = ChatMessageStore.list(applicationContext),
             pendingMessageCount = pending.size,
             messageStatus = if (pending.isNotEmpty()) {
-                "Mensajes pendientes: ${pending.size}"
+                resources.getQuantityString(R.plurals.rt_pending_messages, pending.size, pending.size)
             } else {
                 ""
             },
@@ -223,29 +230,29 @@ class TransferForegroundService : Service() {
         if (!FileTransfer.isValidToken(tokenRaw)) {
             _state.update {
                 it.copy(
-                    receiverStatus = "Token invalido para sesion.",
+                    receiverStatus = getString(R.string.rt_invalid_session_token),
                     activeToken = null
                 )
             }
-            updateForegroundNotification("Token invalido")
+            updateForegroundNotification(getString(R.string.rt_invalid_token))
             return
         }
 
         if (!TransferSecurity.isValidPin(pinRaw)) {
-            _state.update { it.copy(receiverStatus = "PIN invalido para sesion.") }
-            updateForegroundNotification("PIN invalido")
+            _state.update { it.copy(receiverStatus = getString(R.string.rt_invalid_session_pin)) }
+            updateForegroundNotification(getString(R.string.rt_invalid_pin))
             return
         }
 
         if (TransferSecurity.isExpired(expiresAtMs)) {
-            _state.update { it.copy(receiverStatus = "Sesion expirada. Renueva credenciales.") }
-            updateForegroundNotification("Sesion expirada")
+            _state.update { it.copy(receiverStatus = getString(R.string.rt_session_expired_renew)) }
+            updateForegroundNotification(getString(R.string.rt_session_expired))
             return
         }
 
         if (dirPath.isBlank()) {
-            _state.update { it.copy(receiverStatus = "Directorio de recepcion invalido.") }
-            updateForegroundNotification("Directorio invalido")
+            _state.update { it.copy(receiverStatus = getString(R.string.rt_invalid_receive_directory)) }
+            updateForegroundNotification(getString(R.string.rt_invalid_directory))
             return
         }
 
@@ -270,7 +277,7 @@ class TransferForegroundService : Service() {
         val previousStop = sessionStopBarrier
         previousReceiver?.cancel()
         // A startForegroundService request must be acknowledged even while old workers drain.
-        startForeground(NOTIFICATION_ID, buildNotification("Preparando sesion..."))
+        startForeground(NOTIFICATION_ID, buildNotification(getString(R.string.rt_preparing_session)))
         receiverJob = serviceScope.launch(start = CoroutineStart.LAZY) {
             if (!awaitSessionWorkers(listOfNotNull(previousReceiver, previousStop), sessionLifecycle, ticket)) {
                 return@launch
@@ -305,7 +312,7 @@ class TransferForegroundService : Service() {
                         trustedPeers = trusted,
                         favoritePeers = trusted.filter { it.favorite },
                         history = TransferHistoryStore.list(applicationContext),
-                        receiverStatus = "Preparando recepcion..."
+                        receiverStatus = getString(R.string.rt_preparing_receive)
                     ) }
                     if (messageTickerJob?.isActive != true) startMessageTicker()
                     syncWakeLockAndLifetime()
@@ -329,7 +336,7 @@ class TransferForegroundService : Service() {
             it.copy(
                 receiving = false,
                 receiverListening = false,
-                receiverStatus = "Preparando recepcion...",
+                receiverStatus = getString(R.string.rt_preparing_receive),
                 receiverProgress = null,
                 receiverFileName = null,
                 receiverInstantBps = 0L,
@@ -403,7 +410,7 @@ class TransferForegroundService : Service() {
                                     trustedPeers = updatedTrusted,
                                     favoritePeers = updatedTrusted.filter { p -> p.favorite },
                                     pendingCredentialShare = pendingAfter,
-                                    receiverStatus = "Preparando conexion con $label ($ip)."
+                                    receiverStatus = getString(R.string.rt_preparing_peer_connection, label, ip)
                                 )
                             }
                             onPeerSeen(peerId, ip, label, trusted = true)
@@ -431,10 +438,10 @@ class TransferForegroundService : Service() {
                                     _state.update { s ->
                                         s.copy(
                                             pendingCredentialShare = req,
-                                            receiverStatus = "Solicitud de conexion de $label ($ip). Compara su huella antes de aprobar."
+                                            receiverStatus = getString(R.string.rt_connection_request_verify, label, ip)
                                         )
                                     }
-                                    updateForegroundNotification("Confirma la conexion: $label")
+                                    updateForegroundNotification(getString(R.string.rt_confirm_connection, label))
                                     false
                                 }
                             }
@@ -451,7 +458,7 @@ class TransferForegroundService : Service() {
                                     credentialSharedPeers = (state.credentialSharedPeers.filterNot {
                                         it.peerId == peerId || it.peerIp == ip
                                     } + SessionCredentialShare(peerId, ip, System.currentTimeMillis())).takeLast(200),
-                                    receiverStatus = if (state.receiving) state.receiverStatus else "Credenciales compartidas con $label ($ip)."
+                                    receiverStatus = if (state.receiving) state.receiverStatus else getString(R.string.rt_credentials_shared, label, ip)
                                 )
                             }
                         }
@@ -466,10 +473,10 @@ class TransferForegroundService : Service() {
                         _state.update { s ->
                             s.copy(
                                 pendingTrust = req,
-                                receiverStatus = "Dispositivo no confiable detectado: $label ($ip)"
+                                receiverStatus = getString(R.string.rt_untrusted_device, label, ip)
                             )
                         }
-                        updateForegroundNotification("Confirma dispositivo: $label")
+                        updateForegroundNotification(getString(R.string.rt_confirm_device, label))
                     },
                     onMessageReceived = { peerId, ip, label, message, route ->
                         handleIncomingChatPayload(
@@ -488,7 +495,7 @@ class TransferForegroundService : Service() {
                                 receiving = true,
                                 receiverFileName = fileName,
                                 receiverFailureCause = null,
-                                receiverStatus = "Recibiendo $fileName",
+                                receiverStatus = getString(R.string.rt_receiving_file, fileName),
                                 receiverProgress = if (total > 0) {
                                     (received.toFloat() / total.toFloat()).coerceIn(0f, 1f)
                                 } else {
@@ -509,9 +516,9 @@ class TransferForegroundService : Service() {
                             }
                         }
                         val exportMessage = exported.fold(
-                            onSuccess = { "Guardado en Descargas/Qetara." },
+                            onSuccess = { getString(R.string.rt_saved_downloads) },
                             onFailure = {
-                                "No pude copiar a Descargas: ${it.message ?: it::class.java.simpleName}."
+                                getString(R.string.rt_copy_downloads_failed, runtimeFailureText(it.message ?: it::class.java.simpleName))
                             }
                         )
                         val route = exported.getOrNull()?.toString() ?: file.absolutePath
@@ -531,7 +538,7 @@ class TransferForegroundService : Service() {
                         _state.update { s ->
                             s.copy(
                                 receiving = false,
-                                receiverStatus = "Archivo recibido: ${file.name}. $exportMessage",
+                                receiverStatus = getString(R.string.rt_file_received, file.name, exportMessage),
                                 receiverProgress = null,
                                 receiverFileName = null,
                                 receiverInstantBps = 0L,
@@ -542,7 +549,7 @@ class TransferForegroundService : Service() {
                                 lastPeerLabel = peerLabel
                             )
                         }
-                        updateForegroundNotification("Recibido: ${file.name}")
+                        updateForegroundNotification(getString(R.string.rt_received_file, file.name))
                     },
                     awaitIfPaused = { awaitIfPaused() },
                     isCancelled = { cancelCurrentTransfer },
@@ -555,7 +562,7 @@ class TransferForegroundService : Service() {
                     it.copy(
                         receiving = false,
                         receiverListening = false,
-                        receiverStatus = "Error receptor: ${e.message ?: e::class.java.simpleName}. Reintentando...",
+                        receiverStatus = getString(R.string.rt_receiver_error_retrying, runtimeFailureText(e.message ?: e::class.java.simpleName)),
                         receiverProgress = null,
                         receiverFileName = null,
                         receiverFailureCause = e.message ?: e::class.java.simpleName,
@@ -563,7 +570,7 @@ class TransferForegroundService : Service() {
                         receiverEtaSeconds = null
                     )
                 }
-                updateForegroundNotification("Reintento de receptor")
+                updateForegroundNotification(getString(R.string.rt_receiver_retry))
                 delay(1_000)
             }
         }
@@ -574,7 +581,7 @@ class TransferForegroundService : Service() {
                 receiverListening = false,
                 receiverProgress = null,
                 receiverFileName = null,
-                receiverStatus = "Receptor detenido.",
+                receiverStatus = getString(R.string.rt_receiver_stopped),
                 receiverInstantBps = 0L,
                 receiverEtaSeconds = null
             )
@@ -591,22 +598,22 @@ class TransferForegroundService : Service() {
         val requestedName = intent.getStringExtra(EXTRA_FILE_NAME).orEmpty()
 
         if (uri == null) {
-            _state.update { it.copy(sendStatus = "No se recibio URI del archivo.") }
+            _state.update { it.copy(sendStatus = getString(R.string.rt_missing_file_uri)) }
             return
         }
 
         if (targetIp.isBlank()) {
-            _state.update { it.copy(sendStatus = "IP destino vacia.") }
+            _state.update { it.copy(sendStatus = getString(R.string.rt_empty_destination_ip)) }
             return
         }
 
         if (!FileTransfer.isValidToken(tokenRaw)) {
-            _state.update { it.copy(sendStatus = "Token invalido para envio.") }
+            _state.update { it.copy(sendStatus = getString(R.string.rt_invalid_send_token)) }
             return
         }
 
         if (!TransferSecurity.isValidPin(pinRaw)) {
-            _state.update { it.copy(sendStatus = "PIN invalido para envio.") }
+            _state.update { it.copy(sendStatus = getString(R.string.rt_invalid_send_pin)) }
             return
         }
 
@@ -665,11 +672,11 @@ class TransferForegroundService : Service() {
         }
 
         updateSendAggregateState(
-            statusOverride = "En cola: $effectiveFileName",
+            statusOverride = getString(R.string.rt_file_queued, effectiveFileName),
             clearFailure = true
         )
         pumpSendQueue()
-        updateForegroundNotification("Enviando archivo(s)")
+        updateForegroundNotification(getString(R.string.rt_sending_files))
         syncWakeLockAndLifetime()
     }
 
@@ -684,22 +691,22 @@ class TransferForegroundService : Service() {
             .take(2_000)
 
         if (targetIp.isBlank()) {
-            _state.update { it.copy(messageStatus = "IP destino vacia para mensaje.") }
+            _state.update { it.copy(messageStatus = getString(R.string.rt_empty_message_destination_ip)) }
             return
         }
 
         if (!FileTransfer.isValidToken(tokenRaw)) {
-            _state.update { it.copy(messageStatus = "Token invalido para mensaje.") }
+            _state.update { it.copy(messageStatus = getString(R.string.rt_invalid_message_token)) }
             return
         }
 
         if (!TransferSecurity.isValidPin(pinRaw)) {
-            _state.update { it.copy(messageStatus = "PIN invalido para mensaje.") }
+            _state.update { it.copy(messageStatus = getString(R.string.rt_invalid_message_pin)) }
             return
         }
 
         if (message.isBlank()) {
-            _state.update { it.copy(messageStatus = "Mensaje vacio.") }
+            _state.update { it.copy(messageStatus = getString(R.string.rt_empty_message)) }
             return
         }
 
@@ -752,7 +759,7 @@ class TransferForegroundService : Service() {
             )
         }
 
-        refreshMessageState("Mensaje en cola para $peerLabel")
+        refreshMessageState(getString(R.string.rt_message_queued_for, peerLabel))
         pumpMessageQueue()
         syncWakeLockAndLifetime()
     }
@@ -800,23 +807,23 @@ class TransferForegroundService : Service() {
             ?.trim()
             ?.takeIf { it.isNotBlank() }
             ?: when (messageScope) {
-                ChatMessageScope.GLOBAL_LAN -> "Global LAN"
-                ChatMessageScope.DIRECT_CHANNEL -> "Canal Wi‑Fi Direct"
-                ChatMessageScope.DIRECT -> "Canal"
+                ChatMessageScope.GLOBAL_LAN -> getString(R.string.rt_global_lan)
+                ChatMessageScope.DIRECT_CHANNEL -> getString(R.string.rt_direct_channel)
+                ChatMessageScope.DIRECT -> getString(R.string.rt_channel)
             }
 
         if (!FileTransfer.isValidToken(tokenRaw)) {
-            _state.update { it.copy(messageStatus = "Token invalido para $channelLabel.") }
+            _state.update { it.copy(messageStatus = getString(R.string.rt_invalid_channel_token, channelLabel)) }
             return
         }
 
         if (!TransferSecurity.isValidPin(pinRaw)) {
-            _state.update { it.copy(messageStatus = "PIN invalido para $channelLabel.") }
+            _state.update { it.copy(messageStatus = getString(R.string.rt_invalid_channel_pin, channelLabel)) }
             return
         }
 
         if (message.isBlank()) {
-            _state.update { it.copy(messageStatus = "Mensaje vacio.") }
+            _state.update { it.copy(messageStatus = getString(R.string.rt_empty_message)) }
             return
         }
 
@@ -877,14 +884,14 @@ class TransferForegroundService : Service() {
 
         refreshMessageState(
             if (targetIps.isEmpty()) {
-                "Mensaje publicado en $channelLabel."
+                getString(R.string.rt_channel_message_published, channelLabel)
             } else {
-                "Mensaje publicado en $channelLabel para ${if (targetIps.size == 1) "1 equipo" else "${targetIps.size} equipos"}."
+                resources.getQuantityString(R.plurals.rt_channel_message_published_for, targetIps.size, channelLabel, targetIps.size)
             }
         )
         if (targetIps.isNotEmpty()) {
             pumpMessageQueue()
-            updateForegroundNotification("Mensaje de canal en curso")
+            updateForegroundNotification(getString(R.string.rt_channel_message_sending))
             syncWakeLockAndLifetime()
         }
     }
@@ -996,7 +1003,7 @@ class TransferForegroundService : Service() {
                 status = ChatMessageStatus.QUEUED,
                 errorCause = null
             )
-            refreshMessageState("Reintento programado.")
+            refreshMessageState(getString(R.string.rt_retry_scheduled))
             pumpMessageQueue()
             return
         }
@@ -1004,18 +1011,18 @@ class TransferForegroundService : Service() {
         val chat = ChatMessageStore.list(applicationContext, limit = 300)
             .firstOrNull { it.id == messageId }
         if (chat == null || chat.direction != ChatMessageDirection.OUTGOING) {
-            _state.update { it.copy(messageStatus = "No encontré ese mensaje para reintentar.") }
+            _state.update { it.copy(messageStatus = getString(R.string.rt_retry_message_missing)) }
             return
         }
 
         val targetIp = chat.peerIp.orEmpty().trim()
         if (targetIp.isBlank()) {
-            _state.update { it.copy(messageStatus = "El mensaje no tiene IP destino.") }
+            _state.update { it.copy(messageStatus = getString(R.string.rt_message_missing_ip)) }
             return
         }
         if (!FileTransfer.isValidToken(currentToken) || !TransferSecurity.isValidPin(currentPin)) {
             _state.update {
-                it.copy(messageStatus = "Sesion invalida para reintentar. Renueva token/PIN.")
+                it.copy(messageStatus = getString(R.string.rt_retry_session_invalid))
             }
             return
         }
@@ -1049,7 +1056,7 @@ class TransferForegroundService : Service() {
             status = ChatMessageStatus.QUEUED,
             errorCause = null
         )
-        refreshMessageState("Mensaje reencolado para ${chat.peerLabel ?: targetIp}")
+        refreshMessageState(getString(R.string.rt_message_requeued, chat.peerLabel ?: targetIp))
         pumpMessageQueue()
     }
 
@@ -1073,9 +1080,9 @@ class TransferForegroundService : Service() {
                 status = ChatMessageStatus.CANCELED,
                 errorCause = "cancelado por usuario"
             )
-            refreshMessageState("Mensaje cancelado.")
+            refreshMessageState(getString(R.string.rt_message_canceled))
         } else {
-            refreshMessageState("El mensaje ya no estaba en cola.")
+            refreshMessageState(getString(R.string.rt_message_not_queued))
         }
     }
 
@@ -1098,7 +1105,7 @@ class TransferForegroundService : Service() {
         PendingMessageStore.removeByChatMessageId(applicationContext, messageId)
         GlobalLanOutboxStore.remove(applicationContext, messageId)
         ChatMessageStore.remove(applicationContext, messageId)
-        refreshMessageState("Mensaje borrado.")
+        refreshMessageState(getString(R.string.rt_message_deleted))
         pumpMessageQueue()
         syncWakeLockAndLifetime()
     }
@@ -1143,10 +1150,10 @@ class TransferForegroundService : Service() {
         }
         refreshMessageState(
             when (scope) {
-                ChatMessageScope.DIRECT -> "Chat directo limpiado."
-                ChatMessageScope.GLOBAL_LAN -> "Global LAN limpiado."
-                ChatMessageScope.DIRECT_CHANNEL -> "Canal Wi‑Fi Direct limpiado."
-                null -> "Mensajes borrados."
+                ChatMessageScope.DIRECT -> getString(R.string.rt_direct_chat_cleared)
+                ChatMessageScope.GLOBAL_LAN -> getString(R.string.rt_global_lan_cleared)
+                ChatMessageScope.DIRECT_CHANNEL -> getString(R.string.rt_direct_channel_cleared)
+                null -> getString(R.string.rt_messages_deleted)
             }
         )
         pumpMessageQueue()
@@ -1335,10 +1342,10 @@ class TransferForegroundService : Service() {
                         )
                     }
                     updateSendAggregateState(
-                        statusOverride = "Envio OK: ${payload.fileName}",
+                        statusOverride = getString(R.string.rt_send_success, payload.fileName),
                         clearFailure = true
                     )
-                    updateForegroundNotification("Envio OK: ${payload.fileName}")
+                    updateForegroundNotification(getString(R.string.rt_send_success, payload.fileName))
                 }
                 return
             }
@@ -1375,10 +1382,10 @@ class TransferForegroundService : Service() {
                         )
                     )
                     updateSendAggregateState(
-                        statusOverride = "Envio cancelado: ${payload.fileName}",
+                        statusOverride = getString(R.string.rt_send_file_canceled, payload.fileName),
                         failureCause = "cancelado por usuario"
                     )
-                    updateForegroundNotification("Envio cancelado")
+                    updateForegroundNotification(getString(R.string.rt_send_canceled))
                 }
                 return
             }
@@ -1404,10 +1411,10 @@ class TransferForegroundService : Service() {
                     )
                 }
                 updateSendAggregateState(
-                    statusOverride = "Reintentando ${payload.fileName}...",
+                    statusOverride = getString(R.string.rt_retrying_file, payload.fileName),
                     failureCause = errorCause
                 )
-                updateForegroundNotification("Reintento de envio")
+                updateForegroundNotification(getString(R.string.rt_send_retry))
                 delay(retryDelayMs)
                 synchronized(sendLock) {
                     val latest = sendSnapshots[transferId]
@@ -1452,10 +1459,10 @@ class TransferForegroundService : Service() {
                     )
                 )
                 updateSendAggregateState(
-                    statusOverride = "Error envio (${payload.fileName}): $errorCause",
+                    statusOverride = getString(R.string.rt_send_file_error, payload.fileName, runtimeFailureText(errorCause)),
                     failureCause = errorCause
                 )
-                updateForegroundNotification("Error de envio")
+                updateForegroundNotification(getString(R.string.rt_send_error))
             }
             return
         }
@@ -1497,10 +1504,10 @@ class TransferForegroundService : Service() {
         val aggregate = synchronized(sendLock) { buildSendAggregateLocked() }
         _state.update { current ->
             val statusText = statusOverride ?: when {
-                aggregate.activeCount > 0 -> "Enviando ${aggregate.activeCount} archivo(s)..."
-                aggregate.pendingCount > 0 -> "Cola pendiente: ${aggregate.pendingCount} archivo(s)."
+                aggregate.activeCount > 0 -> resources.getQuantityString(R.plurals.rt_sending_files, aggregate.activeCount, aggregate.activeCount)
+                aggregate.pendingCount > 0 -> resources.getQuantityString(R.plurals.rt_pending_files, aggregate.pendingCount, aggregate.pendingCount)
                 aggregate.batchTotal > 0 -> {
-                    "Lote finalizado: ${aggregate.completed} OK, ${aggregate.failed} fallidos, ${aggregate.canceled} cancelados."
+                    getString(R.string.rt_batch_finished, aggregate.completed, aggregate.failed, aggregate.canceled)
                 }
                 else -> current.sendStatus
             }
@@ -1710,7 +1717,7 @@ class TransferForegroundService : Service() {
                     id = UUID.randomUUID().toString(),
                     chatMessageId = entry.chatMessageId,
                     targetIp = ip,
-                    peerLabel = "Global · $peerDisplayLabel",
+                    peerLabel = getString(R.string.rt_global_peer, peerDisplayLabel),
                     scope = ChatMessageScope.GLOBAL_LAN,
                     message = entry.text,
                     token = currentToken,
@@ -1737,7 +1744,7 @@ class TransferForegroundService : Service() {
         }
 
         if (queuedAny) {
-            refreshMessageState("Global LAN listo para $peerDisplayLabel")
+            refreshMessageState(getString(R.string.rt_global_ready_for, peerDisplayLabel))
             syncWakeLockAndLifetime()
         }
     }
@@ -1778,7 +1785,7 @@ class TransferForegroundService : Service() {
                         scope = decoded.scope
                     )
                     ChatMessageStore.append(applicationContext, chatEntry)
-                    refreshMessageState("Mensaje recibido de $effectivePeerLabel")
+                    refreshMessageState(getString(R.string.rt_message_received_from, effectivePeerLabel))
                     _state.update { s ->
                         s.copy(
                             lastPeerIp = effectivePeerIp,
@@ -1815,7 +1822,7 @@ class TransferForegroundService : Service() {
                     scope = ChatMessageScope.DIRECT_CHANNEL
                 )
                 ChatMessageStore.append(applicationContext, chatEntry)
-                refreshMessageState("Mensaje recibido de ${decoded.senderLabel.ifBlank { label }}")
+                refreshMessageState(getString(R.string.rt_relayed_message_received_from, decoded.senderLabel.ifBlank { label }))
                 _state.update { s ->
                     s.copy(
                         lastPeerIp = ip,
@@ -1864,7 +1871,7 @@ class TransferForegroundService : Service() {
         if (offer.senderId == localDeviceId) return
 
         val senderIp = ip
-        val senderLabel = label.ifBlank { "Equipo" }
+        val senderLabel = label.ifBlank { getString(R.string.rt_device) }
         val effectiveOffer = offer.copy(
             senderIp = senderIp,
             senderLabel = senderLabel,
@@ -1897,7 +1904,7 @@ class TransferForegroundService : Service() {
             ChatMessageStore.append(applicationContext, chatEntry)
         }
 
-        refreshMessageState("$senderLabel compartió ${effectiveOffer.fileName}.")
+        refreshMessageState(getString(R.string.rt_file_shared, senderLabel, effectiveOffer.fileName))
         _state.update { s ->
             s.copy(
                 lastPeerIp = senderIp,
@@ -1943,7 +1950,7 @@ class TransferForegroundService : Service() {
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
         startSend(intent)
-        refreshMessageState("${request.requesterLabel.ifBlank { "Equipo" }} solicitó ${offer.fileName}.")
+        refreshMessageState(getString(R.string.rt_file_requested, request.requesterLabel.ifBlank { getString(R.string.rt_device) }, offer.fileName))
     }
 
     private fun queueChannelFileOfferRequest(
@@ -2010,7 +2017,7 @@ class TransferForegroundService : Service() {
         targets.forEach { peer ->
             queuedAny = queueSilentMessage(
                 targetIp = peer.ip,
-                peerLabel = "Canal · ${peer.label.ifBlank { peer.ip }}",
+                peerLabel = getString(R.string.rt_channel_peer, peer.label.ifBlank { peer.ip }),
                 scope = ChatMessageScope.DIRECT_CHANNEL,
                 message = encoded,
                 tokenRaw = currentToken,
@@ -2053,10 +2060,10 @@ class TransferForegroundService : Service() {
                 trustedPeers = peers,
                 favoritePeers = peers.filter { p -> p.favorite },
                 knownPeers = updatedKnown,
-                receiverStatus = "Dispositivo confiado: ${peerLabel.ifBlank { peerId }}"
+                receiverStatus = getString(R.string.rt_device_trusted_name, peerLabel.ifBlank { peerId })
             )
         }
-        updateForegroundNotification("Dispositivo confiado")
+        updateForegroundNotification(getString(R.string.rt_device_trusted))
     }
 
     private fun forgetPeer(intent: Intent) {
@@ -2097,7 +2104,7 @@ class TransferForegroundService : Service() {
                 pendingTrust = state.pendingTrust?.takeUnless { it.id == peerId },
                 pendingCredentialShare = state.pendingCredentialShare?.takeUnless { it.id == peerId },
                 credentialSharedPeers = state.credentialSharedPeers.filterNot { it.peerId == peerId },
-                receiverStatus = "Equipo olvidado. Confirma su identidad para volver a emparejar."
+                receiverStatus = getString(R.string.rt_device_forgotten)
             )
         }
         updateSendAggregateState()
@@ -2140,12 +2147,12 @@ class TransferForegroundService : Service() {
         val requestedAtMs = intent.getLongExtra(EXTRA_CREDENTIAL_REQUESTED_AT, -1L)
         val pending = claimCredentialShareRequest(_state, peerId, expectedKey, requestedAtMs)
         if (pending == null) {
-            _state.update { it.copy(receiverStatus = "La solicitud cambió. Revisa la huella del equipo antes de aprobar.") }
+            _state.update { it.copy(receiverStatus = getString(R.string.rt_request_changed)) }
             return
         }
         val peerLabel = pending.label.ifBlank { peerId }
         if (!TrustedPeerStore.trustWithNoiseKey(applicationContext, peerId, peerLabel, expectedKey)) {
-            _state.update { it.copy(receiverStatus = "La identidad del equipo cambió. Comprueba su huella.") }
+            _state.update { it.copy(receiverStatus = getString(R.string.rt_identity_changed)) }
             return
         }
         deniedCredentialShareUntilMs.remove(peerId)
@@ -2163,10 +2170,10 @@ class TransferForegroundService : Service() {
                 trustedPeers = peers,
                 favoritePeers = peers.filter { p -> p.favorite },
                 knownPeers = updatedKnown,
-                receiverStatus = "Conexion aprobada para $peerLabel. Vuelve a enviar desde ese equipo."
+                receiverStatus = getString(R.string.rt_connection_approved_for, peerLabel)
             )
         }
-        updateForegroundNotification("Conexion autorizada")
+        updateForegroundNotification(getString(R.string.rt_connection_authorized))
     }
 
     private fun rejectCredentialShare(intent: Intent) {
@@ -2178,10 +2185,10 @@ class TransferForegroundService : Service() {
         _state.update {
             it.copy(
                 pendingCredentialShare = if (pending.id == peerId) null else pending,
-                receiverStatus = "Solicitud de conexion rechazada para ${pending.label}."
+                receiverStatus = getString(R.string.rt_connection_request_rejected_for, pending.label)
             )
         }
-        updateForegroundNotification("Solicitud de conexion rechazada")
+        updateForegroundNotification(getString(R.string.rt_connection_request_rejected))
     }
 
     private fun setPeerFavorite(intent: Intent) {
@@ -2194,7 +2201,7 @@ class TransferForegroundService : Service() {
             it.copy(
                 trustedPeers = peers,
                 favoritePeers = peers.filter { p -> p.favorite },
-                receiverStatus = if (favorite) "Peer marcado como favorito." else "Peer removido de favoritos."
+                receiverStatus = if (favorite) getString(R.string.rt_peer_favorited) else getString(R.string.rt_peer_unfavorited)
             )
         }
     }
@@ -2211,7 +2218,7 @@ class TransferForegroundService : Service() {
             ?.alias
             .orEmpty()
         if (normalizeAlias(alias) == normalizeAlias(currentAlias)) {
-            _state.update { it.copy(receiverStatus = "Apodo sin cambios.") }
+            _state.update { it.copy(receiverStatus = getString(R.string.rt_alias_unchanged)) }
             return
         }
         TrustedPeerStore.setAlias(applicationContext, peerId, alias)
@@ -2220,7 +2227,7 @@ class TransferForegroundService : Service() {
             it.copy(
                 trustedPeers = peers,
                 favoritePeers = peers.filter { p -> p.favorite },
-                receiverStatus = "Apodo actualizado."
+                receiverStatus = getString(R.string.rt_alias_updated)
             )
         }
     }
@@ -2242,7 +2249,7 @@ class TransferForegroundService : Service() {
                 status = nextStatus
             )
         }
-        updateSendAggregateState(statusOverride = "Pausado en cola.")
+        updateSendAggregateState(statusOverride = getString(R.string.rt_queue_paused))
         updateForegroundNotification()
     }
 
@@ -2259,7 +2266,7 @@ class TransferForegroundService : Service() {
                 status = nextStatus
             )
         }
-        updateSendAggregateState(statusOverride = "Reanudado en cola.")
+        updateSendAggregateState(statusOverride = getString(R.string.rt_queue_resumed))
         pumpSendQueue()
         updateForegroundNotification()
     }
@@ -2318,7 +2325,7 @@ class TransferForegroundService : Service() {
             }
         }
 
-        updateSendAggregateState(statusOverride = "Elemento cancelado.")
+        updateSendAggregateState(statusOverride = getString(R.string.rt_queue_item_canceled))
         pumpSendQueue()
         updateForegroundNotification()
     }
@@ -2357,7 +2364,7 @@ class TransferForegroundService : Service() {
             sendPayloads.putAll(reorderedPayloads)
         }
 
-        updateSendAggregateState(statusOverride = "Cola reordenada.")
+        updateSendAggregateState(statusOverride = getString(R.string.rt_queue_reordered))
         pumpSendQueue()
         updateForegroundNotification()
     }
@@ -2367,8 +2374,8 @@ class TransferForegroundService : Service() {
         _state.update {
             it.copy(
                 paused = value,
-                sendStatus = if (value && it.sending) "Envio en pausa." else it.sendStatus,
-                receiverStatus = if (value && it.receiving) "Receptor en pausa." else it.receiverStatus
+                sendStatus = if (value && it.sending) getString(R.string.rt_send_paused) else it.sendStatus,
+                receiverStatus = if (value && it.receiving) getString(R.string.rt_receiver_paused) else it.receiverStatus
             )
         }
         updateForegroundNotification()
@@ -2403,12 +2410,12 @@ class TransferForegroundService : Service() {
         _state.update {
             it.copy(
                 paused = false,
-                sendStatus = if (it.sending) "Cancelando envios..." else it.sendStatus,
-                receiverStatus = if (it.receiving) "Cancelando transferencia recibida..." else it.receiverStatus
+                sendStatus = if (it.sending) getString(R.string.rt_canceling_sends) else it.sendStatus,
+                receiverStatus = if (it.receiving) getString(R.string.rt_canceling_receive) else it.receiverStatus
             )
         }
         updateSendAggregateState()
-        updateForegroundNotification("Cancelando transferencia...")
+        updateForegroundNotification(getString(R.string.rt_canceling_transfer))
 
         serviceScope.launch {
             delay(1_500)
@@ -2499,7 +2506,7 @@ class TransferForegroundService : Service() {
                 errorCause = null
             )
         }
-        refreshMessageState("Enviando mensaje a ${task.peerLabel ?: task.targetIp}...")
+        refreshMessageState(getString(R.string.rt_sending_message_to, task.peerLabel ?: task.targetIp))
 
         val directDelivery = requiresDirectGroupDelivery(task.message, task.scope, task.clientId)
         val groupAtSend = _state.value.directGroup
@@ -2546,8 +2553,8 @@ class TransferForegroundService : Service() {
                         lastSendTargetAtMs = System.currentTimeMillis()
                     )
                 }
-                refreshMessageState("Mensaje enviado a ${task.peerLabel ?: task.targetIp}")
-                updateForegroundNotification("Mensaje enviado")
+                refreshMessageState(getString(R.string.rt_message_sent_to, task.peerLabel ?: task.targetIp))
+                updateForegroundNotification(getString(R.string.rt_message_sent))
             },
             onFailure = { error ->
                 val cause = error.message ?: error::class.java.simpleName
@@ -2581,9 +2588,9 @@ class TransferForegroundService : Service() {
                         )
                     }
                     refreshMessageState(
-                        "Sin conexion a ${task.peerLabel ?: task.targetIp}. Reintento en ${(nextAttemptAt - now).coerceAtLeast(0L) / 1000}s."
+                        getString(R.string.rt_connection_retry_in, task.peerLabel ?: task.targetIp, (nextAttemptAt - now).coerceAtLeast(0L) / 1000)
                     )
-                    updateForegroundNotification("Mensaje en cola")
+                    updateForegroundNotification(getString(R.string.rt_message_queued))
                 } else {
                     synchronized(messageLock) {
                         pendingMessageTasks.remove(taskId)
@@ -2603,8 +2610,8 @@ class TransferForegroundService : Service() {
                             errorCause = finalCause
                         )
                     }
-                    refreshMessageState("Error enviando mensaje: $finalCause")
-                    updateForegroundNotification("Error de mensaje")
+                    refreshMessageState(getString(R.string.rt_message_send_error, runtimeFailureText(finalCause)))
+                    updateForegroundNotification(getString(R.string.rt_message_error))
                 }
             }
         )
@@ -2621,9 +2628,9 @@ class TransferForegroundService : Service() {
         _state.update { current ->
             val computed = statusOverride ?: when {
                 pendingCount > 0 && nextDelaySec != null && nextDelaySec > 0L ->
-                    "Mensajes pendientes: $pendingCount · reintento en ${nextDelaySec}s"
+                    resources.getQuantityString(R.plurals.rt_pending_messages_retry, pendingCount, pendingCount, nextDelaySec)
 
-                pendingCount > 0 -> "Mensajes pendientes: $pendingCount"
+                pendingCount > 0 -> resources.getQuantityString(R.plurals.rt_pending_messages, pendingCount, pendingCount)
                 else -> current.messageStatus.takeIf { it.isNotBlank() } ?: ""
             }
 
@@ -2636,7 +2643,7 @@ class TransferForegroundService : Service() {
     }
 
     private fun stopSession() {
-        startForeground(NOTIFICATION_ID, buildNotification("Cerrando sesion..."))
+        startForeground(NOTIFICATION_ID, buildNotification(getString(R.string.rt_closing_session)))
         val ticket = sessionLifecycle.beginStop()
         shuttingDown = true
         // Close admission before taking either lock. The only nested queue-lock order is
@@ -2679,7 +2686,7 @@ class TransferForegroundService : Service() {
             it.copy(
                 receiving = false,
                 receiverListening = false,
-                receiverStatus = "Sesion detenida.",
+                receiverStatus = getString(R.string.rt_session_stopped),
                 receiverProgress = null,
                 receiverFileName = null,
                 receiverInstantBps = 0L,
@@ -2711,7 +2718,7 @@ class TransferForegroundService : Service() {
                 chatMessages = ChatMessageStore.list(applicationContext),
                 pendingMessageCount = pending.size,
                 messageStatus = if (pending.isNotEmpty()) {
-                    "Mensajes pendientes: ${pending.size}"
+                    resources.getQuantityString(R.plurals.rt_pending_messages, pending.size, pending.size)
                 } else {
                     ""
                 },
@@ -2722,7 +2729,7 @@ class TransferForegroundService : Service() {
         }
 
         releaseWakeLock()
-        updateForegroundNotification("Sesion detenida")
+        updateForegroundNotification(getString(R.string.rt_session_stopped_notification))
         stopForeground(STOP_FOREGROUND_REMOVE)
         sessionStopBarrier = serviceScope.launch(start = CoroutineStart.LAZY) {
             drainingWorkers.forEach { it.join() }
@@ -2796,31 +2803,31 @@ class TransferForegroundService : Service() {
         val pauseOrResumeAction = if (state.paused) {
             NotificationCompat.Action(
                 0,
-                "Reanudar",
+                getString(R.string.rt_resume),
                 servicePendingIntent(ACTION_RESUME_TRANSFERS, 21)
             )
         } else {
             NotificationCompat.Action(
                 0,
-                "Pausar",
+                getString(R.string.rt_pause),
                 servicePendingIntent(ACTION_PAUSE_TRANSFERS, 22)
             )
         }
 
         val cancelAction = NotificationCompat.Action(
             0,
-            "Cancelar",
+            getString(R.string.rt_cancel),
             servicePendingIntent(ACTION_CANCEL_ACTIVE, 23)
         )
 
         val downloadsAction = NotificationCompat.Action(
             0,
-            "Descargas",
+            getString(R.string.rt_downloads),
             servicePendingIntent(ACTION_OPEN_DOWNLOADS, 24)
         )
 
         val builder = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("Qetara activo")
+            .setContentTitle(getString(R.string.rt_active_title))
             .setContentText(text)
             .setSmallIcon(android.R.drawable.stat_sys_upload)
             .setOngoing(true)
@@ -2854,10 +2861,10 @@ class TransferForegroundService : Service() {
         val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         val channel = NotificationChannel(
             CHANNEL_ID,
-            "Transferencias Qetara",
+            getString(R.string.rt_transfer_channel_name),
             NotificationManager.IMPORTANCE_LOW
         ).apply {
-            description = "Estado de transferencia Wi-Fi Direct"
+            description = getString(R.string.rt_transfer_channel_description)
         }
         manager.createNotificationChannel(channel)
     }

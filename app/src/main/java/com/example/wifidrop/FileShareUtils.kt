@@ -21,6 +21,6 @@ object FileShareUtils {
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
 
-        context.startActivity(Intent.createChooser(intent, "Compartir archivo"))
+        context.startActivity(Intent.createChooser(intent, context.getString(R.string.rt_share_file)))
     }
 }

@@ -1,0 +1,2 @@
+Añadimos traducciones al español e inglés de la interfaz, las notificaciones y los mensajes de error.
+Qetara sigue el idioma del dispositivo y permite elegir el idioma de la aplicación desde los ajustes de Android 13 y versiones posteriores.

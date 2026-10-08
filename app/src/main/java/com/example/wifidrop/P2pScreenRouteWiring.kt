@@ -208,7 +208,7 @@ fun buildP2pScreenEventWiring(
         onCancelLanScan = { lanDiscoveryPresenter.cancelScan() },
         onDisconnect = {
             backend.disconnectAll()
-            input.pushFeedback("Conexion finalizada.", false)
+            input.pushFeedback(appString(R.string.pr_connection_ended), false)
         },
         onRefreshState = {
             backend.refreshWifiDirectState()
@@ -227,7 +227,7 @@ fun buildP2pScreenEventWiring(
             sessionPresenter.markConnectingForSync()
             if (input.hasPermission) {
                 backend.connect(address)
-                input.pushFeedback("Conectando con ${address.take(8)}...", false)
+                input.pushFeedback(appString(R.string.pr_connecting_address, address.take(8)), false)
             } else {
                 input.requestWifiPermissions()
             }
@@ -242,7 +242,7 @@ fun buildP2pScreenEventWiring(
             input.persistUxPreferences(input.uxPreferences.copy(sessionEnabled = enabled))
             sessionPresenter.clearSessionConfirmation()
             if (!enabled) lanDiscoveryPresenter.cancelScan()
-            input.pushFeedback(if (enabled) "Sesión activada. Ya puedes conectar un equipo." else "Sesión cerrada. Recepción y operaciones detenidas.", false)
+            input.pushFeedback(if (enabled) appString(R.string.pr_session_enabled) else appString(R.string.pr_session_disabled), false)
         },
         onCopyToken = {
             val feedback = sessionPresenter.copyToken()
@@ -348,7 +348,7 @@ fun buildP2pScreenEventWiring(
         onForgetPeer = { peerId ->
             sessionPresenter.clearSessionConfirmation()
             backend.forgetPeer(peerId)
-            input.pushFeedback("Equipo olvidado. Tendrás que aprobarlo de nuevo para conectar.", false)
+            input.pushFeedback(appString(R.string.pr_peer_forgotten), false)
         },
         onPauseQueueItem = { transferId -> backend.pauseQueueItem(transferId) },
         onResumeQueueItem = { transferId -> backend.resumeQueueItem(transferId) },
@@ -368,9 +368,9 @@ fun buildP2pScreenEventWiring(
                 launchLanScanIfEnabled()
             }
             if (enabled) {
-                input.pushFeedback("Entraste al canal Wi‑Fi.", false)
+                input.pushFeedback(appString(R.string.pr_channel_joined), false)
             } else {
-                input.pushFeedback("Saliste del canal Wi‑Fi.", false)
+                input.pushFeedback(appString(R.string.pr_channel_left), false)
             }
         },
         onAutoDownloadChannelFilesChange = { enabled ->
@@ -411,11 +411,11 @@ fun buildP2pScreenEventWiring(
             val targetIp = offer?.senderIp?.trim()?.takeIf { it.isNotBlank() }
                 ?: item.peerIp?.trim()?.takeIf { it.isNotBlank() }
             when {
-                offer == null -> input.pushFeedback("No encontré los datos del archivo.", true)
-                targetIp == null -> input.pushFeedback("No encontré la IP del equipo que lo compartió.", true)
+                offer == null -> input.pushFeedback(appString(R.string.pr_file_details_missing), true)
+                targetIp == null -> input.pushFeedback(appString(R.string.pr_sender_ip_missing), true)
                 !FileTransfer.isValidToken(input.routeState.outboundInput.sessionToken) ||
                     !TransferSecurity.isValidPin(input.routeState.outboundInput.sessionPin) ->
-                    input.pushFeedback("Renueva la sesión antes de descargar.", true)
+                    input.pushFeedback(appString(R.string.pr_download_renew_session), true)
                 else -> {
                     backend.requestChannelFileOffer(
                         offer = offer,
@@ -424,7 +424,7 @@ fun buildP2pScreenEventWiring(
                         pin = input.routeState.outboundInput.sessionPin,
                         deviceLabel = input.routeState.localDeviceLabel
                     )
-                    input.pushFeedback("Descarga solicitada.", false)
+                    input.pushFeedback(appString(R.string.pr_download_requested), false)
                 }
             }
         },
@@ -484,7 +484,7 @@ fun buildP2pScreenEventWiring(
     )
     fun sessionAllowed(): Boolean {
         val enabled = UxPreferencesStore.load(input.appContext).sessionEnabled
-        if (!enabled) input.pushFeedback("Activa la sesión para conectar o enviar.", true)
+        if (!enabled) input.pushFeedback(appString(R.string.pr_enable_session_hint), true)
         return enabled
     }
     fun guardAction(action: () -> Unit): () -> Unit = { if (sessionAllowed()) action() }

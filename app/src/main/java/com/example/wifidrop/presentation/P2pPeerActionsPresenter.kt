@@ -1,5 +1,8 @@
 package com.example.wifidrop.presentation
 
+import com.example.wifidrop.R
+import com.example.wifidrop.appString
+
 import com.example.wifidrop.ConnectionSnapshot
 import com.example.wifidrop.KnownPeerSnapshot
 import com.example.wifidrop.TrustedPeer
@@ -100,14 +103,14 @@ class P2pPeerActionsPresenter(
         if (normalized.isBlank()) return null
         backend.setPeerFavorite(normalized, true)
         dismissFavoriteSuggestion(normalized)
-        return P2pFeedbackMessage("Equipo guardado como favorito.")
+        return P2pFeedbackMessage(appString(R.string.pr_peer_favorited))
     }
 
     fun skipSuggestedFavorite(peerId: String): P2pFeedbackMessage? {
         val normalized = peerId.trim()
         if (normalized.isBlank()) return null
         dismissFavoriteSuggestion(normalized)
-        return P2pFeedbackMessage("Equipo omitido por ahora.")
+        return P2pFeedbackMessage(appString(R.string.pr_peer_skipped))
     }
 
     fun updatePeerFavorite(peerId: String, favorite: Boolean): P2pPeerActionResult {
@@ -118,7 +121,7 @@ class P2pPeerActionsPresenter(
         return if (favorite) {
             dismissFavoriteSuggestion(normalized)
             P2pPeerActionResult(
-                feedback = P2pFeedbackMessage("Equipo guardado en favoritos.")
+                feedback = P2pFeedbackMessage(appString(R.string.pr_peer_saved_favorites))
             )
         } else {
             dismissFavoriteSuggestion(normalized)

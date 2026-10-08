@@ -19,7 +19,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-class P2pTransportSelectionTest {
+class P2pTransportSelectionTest : com.example.wifidrop.LocalizedResourcesTest() {
     private val directOwner = KnownPeerSnapshot("android-A", "Android A", "192.168.49.1", true, false, 100L)
     private val pc = KnownPeerSnapshot("pc", "PC", "192.168.1.8", true, false, 200L)
     private val connection = ConnectionSnapshot(true, false, directOwner.ip)

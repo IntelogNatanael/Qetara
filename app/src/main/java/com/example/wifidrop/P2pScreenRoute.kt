@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.ui.res.stringResource
+import com.example.wifidrop.presentation.matchesLocalizedStatus
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
@@ -205,8 +207,8 @@ fun P2pScreenRoute() {
         if (normalized.isBlank()) return
         if (!isError && uxPreferences.silentSuccessFeedback) return
         if (!feedbackDeduplicator.shouldShow(normalized, isError, System.currentTimeMillis())) return
-        val text = if (isError && !normalized.startsWith("Error:", ignoreCase = true)) {
-            "Error: $normalized"
+        val text = if (isError && !matchesLocalizedStatus(normalized, R.string.pr_error_prefix)) {
+            appString(R.string.pr_error_prefix, normalized)
         } else {
             normalized
         }
@@ -218,7 +220,7 @@ fun P2pScreenRoute() {
 
     suspend fun showUndoSnackbar(
         message: String,
-        actionLabel: String = "Deshacer"
+        actionLabel: String = appString(R.string.pr_undo)
     ): Boolean {
         val result = snackbarHostState.showSnackbar(
             message = message,
@@ -284,7 +286,7 @@ fun P2pScreenRoute() {
         }.getOrElse { false }
 
         if (!launchedFallback) {
-            pushFeedback("No pude abrir ajustes de Wi-Fi.", isError = true)
+            pushFeedback(appString(R.string.pr_wifi_settings_failed), isError = true)
         }
     }
 
@@ -477,7 +479,7 @@ fun P2pScreenRoute() {
                                 android.net.Uri.fromParts("package", appContext.packageName, null)
                             ))
                         }.onFailure {
-                            pushFeedback("Abre Ajustes de Android, Qetara y Permisos para permitir dispositivos cercanos.", true)
+                            pushFeedback(appString(R.string.pr_android_permissions_hint), true)
                         }
                     }
                 }
@@ -512,25 +514,25 @@ fun P2pScreenRoute() {
         }
         AlertDialog(
             onDismissRequest = { showAbout = false },
-            title = { Text("Qetara") },
+            title = { Text(stringResource(R.string.app_name)) },
             text = {
                 Column(
                     modifier = Modifier.verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Text("Comparte cerca. Conserva el control.", fontWeight = FontWeight.SemiBold)
-                    Text("Archivos y mensajes entre tus equipos, usando tu red local o Wi-Fi Direct. Las transferencias no necesitan una cuenta ni un servidor en la nube.")
-                    Text("Un proyecto de código abierto de Experience Lab, creado por Intelog Natanael.")
-                    Text("Código abierto · licencia MIT", style = MaterialTheme.typography.labelMedium)
-                    TextButton(onClick = { showLicenses = true }) { Text("Licencias") }
-                    Text("Versión "+BuildConfig.VERSION_NAME, style = MaterialTheme.typography.labelMedium)
+                    Text(stringResource(R.string.pr_about_tagline), fontWeight = FontWeight.SemiBold)
+                    Text(stringResource(R.string.pr_about_description))
+                    Text(stringResource(R.string.pr_about_credit))
+                    Text(stringResource(R.string.pr_about_license), style = MaterialTheme.typography.labelMedium)
+                    TextButton(onClick = { showLicenses = true }) { Text(stringResource(R.string.pr_licenses)) }
+                    Text(stringResource(R.string.pr_version, BuildConfig.VERSION_NAME), style = MaterialTheme.typography.labelMedium)
                     identityFingerprint?.let { fingerprint ->
-                        Text("Huella de este equipo: $fingerprint", style = MaterialTheme.typography.labelMedium)
+                        Text(stringResource(R.string.pr_fingerprint, fingerprint), style = MaterialTheme.typography.labelMedium)
                     }
-                    Text("Los archivos recibidos están en Descargas. La actividad y los mensajes se conservan en este equipo.", style = MaterialTheme.typography.bodySmall)
+                    Text(stringResource(R.string.pr_about_storage), style = MaterialTheme.typography.bodySmall)
                 }
             },
-            confirmButton = { TextButton(onClick = { showAbout = false }) { Text("Listo") } }
+            confirmButton = { TextButton(onClick = { showAbout = false }) { Text(stringResource(R.string.pr_done)) } }
         )
     }
 
@@ -565,19 +567,19 @@ fun P2pScreenRoute() {
                             Column {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     QetaraBrandIcon()
-                                    Text("Qetara", fontWeight = FontWeight.Bold, style = brandStyle,
+                                    Text(stringResource(R.string.app_name), fontWeight = FontWeight.Bold, style = brandStyle,
                                         color = MaterialTheme.colorScheme.onBackground, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                 }
                                 Row(modifier = Modifier.padding(start = 40.dp), verticalAlignment = Alignment.CenterVertically) {
                                     Text(
-                                        if (routeState.uiState.connectionViewMode == ConnectionViewMode.ADVANCED) "Conexión avanzada"
+                                        if (routeState.uiState.connectionViewMode == ConnectionViewMode.ADVANCED) stringResource(R.string.pr_advanced_connection)
                                         else routeState.uiState.activeConnectionMode.title,
                                         style = MaterialTheme.typography.labelSmall,
                                         maxLines = 1, overflow = TextOverflow.Ellipsis,
                                         modifier = Modifier.weight(1f, fill = false),
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
-                                    Icon(Icons.Rounded.ExpandMore, contentDescription = "Cambiar conexión", modifier = Modifier.size(16.dp))
+                                    Icon(Icons.Rounded.ExpandMore, contentDescription = stringResource(R.string.pr_change_connection), modifier = Modifier.size(16.dp))
                                 }
                             }
                         }
@@ -609,9 +611,9 @@ fun P2pScreenRoute() {
                                 )
                             }) {
                                 Icon(Icons.Rounded.Bolt, contentDescription = when {
-                                    flashState.engine?.approvals?.isNotEmpty() == true -> "Flash: solicitud pendiente"
-                                    flashState.active -> "Flash activo"
-                                    else -> "Abrir Flash"
+                                    flashState.engine?.approvals?.isNotEmpty() == true -> stringResource(R.string.pr_flash_pending)
+                                    flashState.active -> stringResource(R.string.pr_flash_active)
+                                    else -> stringResource(R.string.pr_flash_open)
                                 })
                             }
                         }
@@ -620,10 +622,10 @@ fun P2pScreenRoute() {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(Icons.Rounded.Bolt, contentDescription = null, modifier = Modifier.size(18.dp))
-                                Text("Flash")
+                                Text(stringResource(R.string.pr_flash))
                             }
                             if (flashState.active) Text(
-                                if (flashState.engine?.approvals?.isNotEmpty() == true) "solicitud" else "activo",
+                                if (flashState.engine?.approvals?.isNotEmpty() == true) stringResource(R.string.pr_request) else stringResource(R.string.pr_active),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = if (flashState.engine?.approvals?.isNotEmpty() == true)
                                     MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.primary
@@ -633,16 +635,16 @@ fun P2pScreenRoute() {
                     }
                     Box {
                         IconButton(onClick = { topOptionsExpanded = true }) {
-                            Icon(Icons.Rounded.MoreVert, contentDescription = "Opciones de Qetara")
+                            Icon(Icons.Rounded.MoreVert, contentDescription = stringResource(R.string.pr_qetara_options))
                         }
                         DropdownMenu(expanded = topOptionsExpanded, onDismissRequest = { topOptionsExpanded = false }) {
                             DropdownMenuItem(
-                                text = { Text("Ajustes de lectura y avisos") },
+                                text = { Text(stringResource(R.string.pr_reading_notifications)) },
                                 leadingIcon = { Icon(Icons.Rounded.Settings, contentDescription = null) },
                                 onClick = { topOptionsExpanded = false; showPreferences = true }
                             )
                             DropdownMenuItem(
-                                text = { Text("Acerca de Qetara") },
+                                text = { Text(stringResource(R.string.pr_about_qetara)) },
                                 leadingIcon = { Icon(Icons.Rounded.Info, contentDescription = null) },
                                 onClick = { topOptionsExpanded = false; showAbout = true }
                             )

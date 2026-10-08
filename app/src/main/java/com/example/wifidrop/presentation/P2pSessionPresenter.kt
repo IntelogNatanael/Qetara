@@ -1,5 +1,8 @@
 package com.example.wifidrop.presentation
 
+import com.example.wifidrop.R
+import com.example.wifidrop.appString
+
 import android.content.ClipboardManager
 import android.content.Context
 import com.example.wifidrop.ConnectionSnapshot
@@ -123,20 +126,20 @@ class P2pSessionPresenter(
         val current = _state.value
         if (target == null || !com.example.wifidrop.FileTransfer.isValidToken(current.token) ||
             !TransferSecurity.isValidPin(current.pin) || isSessionExpired(System.currentTimeMillis())) {
-            return P2pSessionFeedback("Revisa el equipo, el código y el PIN antes de continuar.", isError = true)
+            return P2pSessionFeedback(appString(R.string.pr_session_review), isError = true)
         }
         observeConnectionContext(networkKey, target)
         _state.update { state -> state.copy(
             confirmation = P2pSessionConfirmation(target.ip, target.peerId, networkKey, state.token, state.pin),
             lastAutoSyncedPeerIp = target.ip,
-            syncStatus = "Datos de sesión confirmados para "+ (target.label ?: target.ip) + "."
+            syncStatus = appString(R.string.pr_session_confirmed, target.label ?: target.ip)
         ) }
-        return P2pSessionFeedback("Sesión preparada con los datos que confirmaste.")
+        return P2pSessionFeedback(appString(R.string.pr_session_prepared))
     }
 
     fun copyToken(): P2pSessionFeedback {
-        copySensitiveText(appContext, "Código de sesión de Qetara", _state.value.token)
-        return P2pSessionFeedback("Código de sesión copiado.")
+        copySensitiveText(appContext, appString(R.string.pr_session_code_label), _state.value.token)
+        return P2pSessionFeedback(appString(R.string.pr_session_code_copied))
     }
 
     fun pasteToken(): P2pSessionFeedback {
@@ -147,9 +150,9 @@ class P2pSessionPresenter(
             .orEmpty()
         return if (pasted.isNotBlank()) {
             normalizeAndSetToken(pasted)
-            P2pSessionFeedback("Código de sesión pegado.")
+            P2pSessionFeedback(appString(R.string.pr_session_code_pasted))
         } else {
-            P2pSessionFeedback("No hay texto valido en el portapapeles.", isError = true)
+            P2pSessionFeedback(appString(R.string.pr_clipboard_empty), isError = true)
         }
     }
 
@@ -158,7 +161,7 @@ class P2pSessionPresenter(
             current.copy(
                 lastAutoSyncedPeerIp = null,
                 confirmation = null,
-                syncStatus = "Conectando con el otro equipo y preparando la sincronización..."
+                syncStatus = appString(R.string.pr_session_connecting)
             )
         }
     }

@@ -36,9 +36,9 @@ fun hasRequiredPermissions(context: Context): Boolean {
 
 fun requiredPermissionHumanLabel(): String {
     return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-        "NEARBY_WIFI_DEVICES"
+        appString(R.string.pr_permission_nearby)
     } else {
-        "ACCESS_FINE_LOCATION"
+        appString(R.string.pr_permission_location)
     }
 }
 

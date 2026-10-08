@@ -246,10 +246,11 @@ object ChatMessageScopeCodec {
                 KIND_FILE_OFFER -> DecodedChatPayload.FileOffer(
                     ChannelFileOffer(
                         id = payload.optString("offer_id").trim().take(120),
+                        // This fallback is file data that may be stored or sent, so keep it locale-independent.
                         fileName = payload.optString("file_name").trim().take(160).ifBlank { "archivo" },
                         fileSizeBytes = payload.optLong("file_size_bytes", -1L),
                         senderId = payload.optString("sender_id").trim().take(80),
-                        senderLabel = payload.optString("sender_label").trim().take(64).ifBlank { "Equipo" },
+                        senderLabel = payload.optString("sender_label").trim().take(64).ifBlank { appString(R.string.conn_device) },
                         senderIp = payload.optString("sender_ip").trim().takeIf { it.isNotBlank() }?.take(64),
                         uri = null,
                         createdAtMs = payload.optLong("created_at_ms", System.currentTimeMillis())
@@ -260,7 +261,7 @@ object ChatMessageScopeCodec {
                     ChannelFileRequest(
                         offerId = payload.optString("offer_id").trim().take(120),
                         requesterId = payload.optString("requester_id").trim().take(80),
-                        requesterLabel = payload.optString("requester_label").trim().take(64).ifBlank { "Equipo" },
+                        requesterLabel = payload.optString("requester_label").trim().take(64).ifBlank { appString(R.string.conn_device) },
                         requesterIp = payload.optString("requester_ip").trim().takeIf { it.isNotBlank() }?.take(64)
                     )
                 )

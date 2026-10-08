@@ -1,5 +1,8 @@
 package com.example.wifidrop.presentation
 
+import com.example.wifidrop.R
+import com.example.wifidrop.appString
+
 import com.example.wifidrop.ChatChannel
 import com.example.wifidrop.ChatMessageScope
 import com.example.wifidrop.ChatMessageScopeCodec
@@ -73,7 +76,7 @@ class P2pOutboundPresenter(
     fun sendToLastTarget(input: P2pOutboundOrchestrationInput): P2pOutboundOrchestrationResult {
         val lastIp = input.lastSendTargetIp?.trim().takeUnless { it.isNullOrBlank() }
         if (lastIp == null) {
-            shareImportPresenter.updateStatus("Aún no hay un último destino guardado.")
+            shareImportPresenter.updateStatus(appString(R.string.pr_last_target_missing))
             return P2pOutboundOrchestrationResult()
         }
         return sendSelectedFiles(
@@ -107,7 +110,7 @@ class P2pOutboundPresenter(
                 deviceLabel = selectionInput.deviceLabel,
                 message = message,
                 scope = ChatMessageScope.GLOBAL_LAN,
-                channelLabel = "Canal Wi‑Fi",
+                channelLabel = appString(R.string.pr_wifi_channel),
                 targetPeerIds = selectionInput.globalChatTargets.map { it.id },
                 targetIps = selectionInput.globalChatTargets.map { it.ip },
                 targetLabels = selectionInput.globalChatTargets.map { it.label.ifBlank { it.ip } }
@@ -126,7 +129,7 @@ class P2pOutboundPresenter(
                     deviceLabel = selectionInput.deviceLabel,
                     message = ChatMessageScopeCodec.encodeChannelFileOffer(offer),
                     scope = ChatMessageScope.GLOBAL_LAN,
-                    channelLabel = "Canal Wi‑Fi",
+                    channelLabel = appString(R.string.pr_wifi_channel),
                     targetPeerIds = selectionInput.globalChatTargets.map { it.id },
                     targetIps = selectionInput.globalChatTargets.map { it.ip },
                     targetLabels = selectionInput.globalChatTargets.map { it.label.ifBlank { it.ip } }
@@ -155,12 +158,12 @@ class P2pOutboundPresenter(
 
     fun retryMessage(messageId: String, deviceLabel: String): P2pFeedbackMessage {
         backend.retryMessage(messageId, deviceLabel)
-        return P2pFeedbackMessage("Reintento programado.")
+        return P2pFeedbackMessage(appString(R.string.pr_retry_scheduled))
     }
 
     fun cancelQueuedMessage(messageId: String): P2pFeedbackMessage {
         backend.cancelPendingMessage(messageId)
-        return P2pFeedbackMessage("Cancelacion solicitada para el mensaje.")
+        return P2pFeedbackMessage(appString(R.string.pr_message_cancel_requested))
     }
 
     private fun sendDirectChatPayload(
@@ -203,9 +206,9 @@ class P2pOutboundPresenter(
             return P2pOutboundOrchestrationResult(
                 feedback = P2pFeedbackMessage(
                     message = if (plan.targetIps.size > 1) {
-                        "Por ahora los archivos por Wi‑Fi Direct salen a un solo equipo desde el anfitrión."
+                        appString(R.string.pr_direct_host_file_limit)
                     } else {
-                        "Desde clientes, los archivos por Wi‑Fi Direct solo salen directo al anfitrión."
+                        appString(R.string.pr_direct_client_file_limit)
                     },
                     isError = true
                 )

@@ -1,5 +1,8 @@
 package com.example.wifidrop.presentation
 
+import com.example.wifidrop.R
+import com.example.wifidrop.appString
+
 import com.example.wifidrop.ConnectionMode
 import com.example.wifidrop.ConnectionSnapshot
 import com.example.wifidrop.FileTransfer
@@ -56,7 +59,7 @@ fun computeRenewedSessionExpiry(nowMs: Long, minutes: Int): Long {
     return nowMs + minutes * 60 * 1000L
 }
 
-fun buildSessionRenewedStatus(minutes: Int): String = "Sesión renovada por $minutes min."
+fun buildSessionRenewedStatus(minutes: Int): String = appString(R.string.pr_session_renewed, minutes)
 
 fun shouldStartBackendSession(input: P2pSessionServiceInput): Boolean {
     val connected = input.lanConnected || (input.permissionGranted && input.connection?.groupFormed == true)
@@ -113,7 +116,7 @@ fun resolveDirectAutoSyncPlan(
     return P2pAutoSyncPlan(
         hostIp = hostIp,
         maxAttempts = 4,
-        failureStatus = "No pude sincronizar automaticamente. Usa 'Sync token'."
+        failureStatus = appString(R.string.pr_sync_auto_failed_manual)
     )
 }
 
@@ -133,33 +136,33 @@ fun resolveLanAutoSyncPlan(
     return P2pAutoSyncPlan(
         hostIp = targetIp,
         maxAttempts = 3,
-        failureStatus = "No pude sincronizar la sesión automáticamente."
+        failureStatus = appString(R.string.pr_sync_auto_failed)
     )
 }
 
 fun buildSyncStartStatus(manual: Boolean): String {
     return if (manual) {
-        "Sincronizando la sesión..."
+        appString(R.string.pr_sync_start)
     } else {
-        "Sincronizando la sesión automáticamente..."
+        appString(R.string.pr_sync_auto_start)
     }
 }
 
-fun buildSyncBusyStatus(): String = "Ya hay una sincronización en curso."
+fun buildSyncBusyStatus(): String = appString(R.string.pr_sync_busy)
 
-fun buildMissingSyncHostStatus(): String = "No pude encontrar la IP del otro equipo."
+fun buildMissingSyncHostStatus(): String = appString(R.string.pr_sync_host_missing)
 
 fun buildManualSyncHintStatus(): String =
-    "Indica o detecta la IP del otro equipo para sincronizar la sesión."
+    appString(R.string.pr_sync_manual_hint)
 
 fun buildHostSharesSessionStatus(): String =
-    "Este equipo comparte la sesión. El otro la recibirá al conectarse."
+    appString(R.string.pr_sync_host_shares)
 
 fun buildInvalidPeerIpStatus(): String =
-    "La dirección del equipo no es válida."
+    appString(R.string.pr_sync_invalid_peer)
 
 fun buildSyncRetryStatus(attempt: Int, maxAttempts: Int): String {
-    return "Reintentando sincronizacion automatica ($attempt/$maxAttempts)..."
+    return appString(R.string.pr_sync_retry, attempt, maxAttempts)
 }
 
 fun buildSessionSyncSuccess(
@@ -176,9 +179,9 @@ fun buildSessionSyncSuccess(
         pin = normalizedPin.takeIf { TransferSecurity.isValidPin(it) },
         expiresAtMs = payload.expiresAtMs,
         statusMessage = if (tokenChanged || pinChanged) {
-            "Credenciales sincronizadas automáticamente."
+            appString(R.string.pr_sync_success)
         } else {
-            "Credenciales ya sincronizadas; sesión renovada."
+            appString(R.string.pr_sync_already_success)
         }
     )
 }

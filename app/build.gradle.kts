@@ -60,6 +60,13 @@ android {
         compose = true
     }
 
+    bundle {
+        language {
+            // Both supported languages remain available for offline app-language changes.
+            enableSplit = false
+        }
+    }
+
     packaging {
         resources.excludes += setOf(
             "META-INF/AL2.0",

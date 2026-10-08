@@ -7,7 +7,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 
-class P2pTrustPresenterTest {
+class P2pTrustPresenterTest : com.example.wifidrop.LocalizedResourcesTest() {
     @Test
     fun approvalCarriesTheExactDisplayedRequestProofInsteadOfOnlyItsPeerId() {
         var approved: List<Any?>? = null

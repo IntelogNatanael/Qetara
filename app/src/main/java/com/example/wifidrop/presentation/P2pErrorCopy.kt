@@ -1,5 +1,8 @@
 package com.example.wifidrop.presentation
 
+import com.example.wifidrop.R
+import com.example.wifidrop.appString
+
 import java.util.Locale
 
 fun actionableTransferIssue(cause: String?, fallback: String): String? {
@@ -8,38 +11,38 @@ fun actionableTransferIssue(cause: String?, fallback: String): String? {
 
     return when {
         normalized.contains("sesion_cerrada") -> {
-            "La sesión está cerrada. Toca Activar sesión para conectar o enviar otra vez."
+            appString(R.string.pr_error_session_closed)
         }
 
         normalized.contains("grupo_direct_no_acreditado") -> {
-            "Todavía no se ha confirmado el equipo en este enlace Wi-Fi Direct. Mantén Qetara abierto en ambos; si no avanza, desconecta y vuelve a unirlos."
+            appString(R.string.pr_error_direct_unconfirmed)
         }
 
         normalized.contains("grupo_direct_renovado") -> {
-            "El enlace Wi-Fi Direct cambió. Vuelve a Conectar, revisa el equipo de destino y repite el envío."
+            appString(R.string.pr_error_direct_changed)
         }
 
         normalized.contains("destino_fuera_grupo_direct") -> {
-            "Ese equipo no forma parte del enlace Wi-Fi Direct actual. Elige un equipo del grupo o cambia a Misma Wi-Fi para conectarlo por la red local."
+            appString(R.string.pr_error_direct_outside)
         }
 
         normalized.contains("secure_credentials_required") ||
             normalized.contains("emparejamiento_manual_requerido") -> {
-            "Este equipo necesita emparejamiento manual. En Conectar, abre Credenciales e introduce el código de sesión y el PIN que muestra el otro equipo."
+            appString(R.string.pr_error_manual_pairing)
         }
 
         normalized.contains("confirmacion_host_requerida") -> {
-            "El otro equipo debe aprobar la conexión. Compara la huella, espera la aprobación y vuelve a intentar."
+            appString(R.string.pr_error_approval_required)
         }
 
         normalized.contains("dispositivo_no_confiable") ||
             normalized.contains("no confiable") -> {
-            "El otro equipo aún no está confiado. Acepta la solicitud de confianza en Qetara y reintenta."
+            appString(R.string.pr_error_untrusted)
         }
 
         normalized.contains("noise_key_mismatch") ||
             normalized.contains("clave noise") -> {
-            "La identidad de este equipo cambió. Comprueba su huella en Acerca de Qetara. Si es tu equipo, ve a Conectar, Gestionar equipos recordados y olvídalo antes de volver a conectar."
+            appString(R.string.pr_error_identity_changed)
         }
 
         normalized.contains("auth_invalida") ||
@@ -47,54 +50,54 @@ fun actionableTransferIssue(cause: String?, fallback: String): String? {
             normalized.contains("mac noise") ||
             normalized.contains("token") ||
             normalized.contains("pin") -> {
-            "Token o PIN no coinciden. Sincroniza la sesión con el otro equipo y vuelve a enviar."
+            appString(R.string.pr_error_credentials)
         }
 
         normalized.contains("sesion_expirada") ||
             normalized.contains("sesion expirada") ||
             normalized.contains("sesión expirada") ||
             normalized.contains("expired") -> {
-            "La sesión expiró. Renuévala en Qetara antes de continuar."
+            appString(R.string.pr_error_expired)
         }
 
         normalized.contains("permission") ||
             normalized.contains("permiso") -> {
-            "Falta un permiso necesario. Revisa permisos de Wi-Fi cercano/notificaciones y vuelve a intentar."
+            appString(R.string.pr_error_permissions)
         }
 
         normalized.contains("connection refused") ||
             normalized.contains("refused") ||
             normalized.contains("rechaz") -> {
-            "El receptor del otro equipo no está activo o rechazó la conexión. Abre Qetara allí y activa la sesión."
+            appString(R.string.pr_error_refused)
         }
 
         normalized.contains("unknownhost") ||
             normalized.contains("no route") ||
             normalized.contains("unresolved") -> {
-            "No encuentro esa IP en la red. Verifica que ambos equipos estén en la misma Wi-Fi o usa Wi-Fi Direct."
+            appString(R.string.pr_error_no_route)
         }
 
         normalized.contains("timeout") ||
             normalized.contains("timed out") ||
             normalized.contains("tiempo") -> {
-            "El otro equipo no respondió a tiempo. Acércalos, revisa la red y vuelve a intentar."
+            appString(R.string.pr_error_timeout)
         }
 
         normalized.contains("broken pipe") ||
             normalized.contains("connection reset") ||
             normalized.contains("eof") ||
             normalized.contains("interrump") -> {
-            "La conexión se interrumpió durante la transferencia. Mantén ambas apps abiertas y reintenta."
+            appString(R.string.pr_error_interrupted)
         }
 
         normalized.contains("hash") ||
             normalized.contains("sha-256") ||
             normalized.contains("integridad") -> {
-            "La verificación del archivo falló. Qetara descartó la copia incompleta; vuelve a enviarlo."
+            appString(R.string.pr_error_integrity)
         }
 
-        normalized.contains("cancelad") -> {
-            "Operación cancelada."
+        normalized.contains("cancel") -> {
+            appString(R.string.pr_error_canceled)
         }
 
         normalized.contains("wifi") ||
@@ -102,7 +105,7 @@ fun actionableTransferIssue(cause: String?, fallback: String): String? {
             normalized.contains("socket") ||
             normalized.contains("host") ||
             normalized.contains("ip") -> {
-            "No se pudo completar la conexión. Revisa la IP, la red y que Qetara esté activo en el otro equipo."
+            appString(R.string.pr_error_connection)
         }
 
         else -> fallback
@@ -112,6 +115,6 @@ fun actionableTransferIssue(cause: String?, fallback: String): String? {
 fun actionableSessionSyncFailure(errorMessage: String?): String {
     return actionableTransferIssue(
         cause = errorMessage,
-        fallback = "No se pudieron sincronizar las credenciales. Verifica la conexión y vuelve a intentar."
-    ) ?: "No se pudieron sincronizar las credenciales. Verifica la conexión y vuelve a intentar."
+        fallback = appString(R.string.pr_error_sync)
+    ) ?: appString(R.string.pr_error_sync)
 }

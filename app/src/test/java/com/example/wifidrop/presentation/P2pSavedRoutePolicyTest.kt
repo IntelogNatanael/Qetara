@@ -3,7 +3,7 @@ package com.example.wifidrop.presentation
 import org.junit.Assert.*
 import org.junit.Test
 
-class P2pSavedRoutePolicyTest {
+class P2pSavedRoutePolicyTest : com.example.wifidrop.LocalizedResourcesTest() {
     private val now = 1_000_000L
     private fun session() = P2pSessionState(
         token = "QETARA88", pin = "123456", expiresAtMs = now + 60_000L, localDeviceIdShort = "local"

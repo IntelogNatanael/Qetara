@@ -14,16 +14,17 @@ Repo: https://github.com/IntelogNatanael/Qetara.git
 Binaries: https://github.com/IntelogNatanael/Qetara/releases/download/v%v/Qetara-%v.apk
 
 Builds:
-  - versionName: 1.4.3
-    versionCode: 10
-    commit: ee4c0aea8110f4ff8d11aa701cd93e1c7b3a3489
+  - versionName: 1.4.4
+    versionCode: 11
+    commit: v1.4.4
     subdir: app
     gradle:
       - yes
 
 AllowedAPKSigningKeys: 5f5cdbfb03c1f62f7dc42aee12a5ea4a347b767ccfc268eb450ca69c98ba7a3b
 
-AutoUpdateMode: None
-UpdateCheckMode: None
-CurrentVersion: 1.4.3
-CurrentVersionCode: 10
+AutoUpdateMode: Version
+UpdateCheckMode: Tags ^v[0-9]+\.[0-9]+\.[0-9]+$
+UpdateCheckData: gradle.properties|(?m)^qetaraVersionCode=([0-9]+)$|.|(?m)^qetaraVersion=([0-9]+\.[0-9]+\.[0-9]+)$
+CurrentVersion: 1.4.4
+CurrentVersionCode: 11

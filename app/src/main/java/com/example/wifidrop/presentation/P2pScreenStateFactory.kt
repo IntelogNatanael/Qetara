@@ -1,5 +1,8 @@
 package com.example.wifidrop.presentation
 
+import com.example.wifidrop.R
+import com.example.wifidrop.appString
+
 import com.example.wifidrop.ChatChannel
 import com.example.wifidrop.ConnectionMode
 import com.example.wifidrop.ConnectionSnapshot
@@ -8,6 +11,7 @@ import com.example.wifidrop.P2pScreenState
 import com.example.wifidrop.TransferRuntimeState
 import com.example.wifidrop.UxPreferences
 import com.example.wifidrop.WifiDirectState
+import com.example.wifidrop.localizeRuntimeStatus
 import java.io.File
 
 data class P2pResolvedTarget(
@@ -83,9 +87,9 @@ fun buildP2pScreenState(input: P2pScreenStateInput): P2pScreenState {
         p2pEnabled = input.wifiState.p2pEnabled,
         lanConnected = input.lanConnected,
         lanLocalIp = input.lanLocalIp,
-        lanScanStatus = input.lanScanStatus,
+        lanScanStatus = localizePresentationStatus(input.lanScanStatus),
         lanScanning = input.lanScanning,
-        statusMessage = input.wifiState.statusMessage,
+        statusMessage = localizeRuntimeStatus(input.wifiState.statusMessage),
         quickHint = buildQuickHint(
             permissionGranted = input.permissionGranted,
             p2pEnabled = input.wifiState.p2pEnabled,
@@ -110,7 +114,7 @@ fun buildP2pScreenState(input: P2pScreenStateInput): P2pScreenState {
         nowMs = input.session.nowMs,
         sessionExpired = input.session.sessionExpired,
         localDeviceIdShort = input.session.localDeviceIdShort,
-        tokenSyncStatus = input.session.tokenSyncStatus,
+        tokenSyncStatus = localizePresentationStatus(input.session.tokenSyncStatus),
         targetIp = input.draft.targetIp,
         suggestedTargetIp = input.targets.suggestedTargetIp,
         resolvedTargetIp = input.targets.resolvedTarget?.ip,
@@ -134,7 +138,7 @@ fun buildP2pScreenState(input: P2pScreenStateInput): P2pScreenState {
         lastSendTargetIp = input.transferState.lastSendTargetIp,
         lastSendTargetLabel = input.transferState.lastSendTargetLabel,
         receiving = input.transferState.receiving,
-        receiverStatus = input.transferState.receiverStatus,
+        receiverStatus = localizeRuntimeStatus(input.transferState.receiverStatus),
         receiverProgress = input.transferState.receiverProgress,
         receiverFileName = input.transferState.receiverFileName,
         receiverInstantBps = input.transferState.receiverInstantBps,
@@ -152,12 +156,12 @@ fun buildP2pScreenState(input: P2pScreenStateInput): P2pScreenState {
         sendBatchCanceled = input.transferState.sendBatchCanceled,
         sendQueue = input.transferState.sendQueue,
         sendProgress = input.transferState.sendProgress,
-        sendStatus = input.transferState.sendStatus,
+        sendStatus = localizeRuntimeStatus(input.transferState.sendStatus),
         sendInstantBps = input.transferState.sendInstantBps,
         sendAverageBps = input.transferState.sendAverageBps,
         sendEtaSeconds = input.transferState.sendEtaSeconds,
         sendFailureCause = input.transferState.sendFailureCause,
-        shareImportStatus = input.draft.shareImportStatus,
+        shareImportStatus = localizePresentationStatus(input.draft.shareImportStatus),
         paused = input.transferState.paused,
         history = input.transferState.history,
         chatChannel = input.chatChannel,
@@ -166,7 +170,7 @@ fun buildP2pScreenState(input: P2pScreenStateInput): P2pScreenState {
         directChannelPeerCount = input.targets.directChannelPeerCount,
         chatDraft = input.draft.chatDraft,
         chatMessages = input.transferState.chatMessages,
-        messageStatus = input.transferState.messageStatus,
+        messageStatus = localizeRuntimeStatus(input.transferState.messageStatus),
         activeConnectionMode = input.uxPreferences.activeConnectionMode,
         connectionViewMode = input.uxPreferences.connectionViewMode,
         wifiDirectModeEnabled = input.uxPreferences.wifiDirectModeEnabled,
@@ -197,31 +201,31 @@ private fun buildQuickHint(
     paused: Boolean,
     sessionExpired: Boolean
 ): String {
-    if (!permissionGranted && !lanConnected) return "Concede permisos para empezar."
-    if (sessionExpired) return "Renueva la sesión para seguir."
-    if (paused) return "Transferencias pausadas. Usa Reanudar."
+    if (!permissionGranted && !lanConnected) return appString(R.string.pr_hint_permissions)
+    if (sessionExpired) return appString(R.string.pr_hint_renew)
+    if (paused) return appString(R.string.pr_hint_paused)
 
     if (connection?.groupFormed == true) {
-        if (sending) return "Enviando en segundo plano."
-        if (receiving) return "Recibiendo en segundo plano."
+        if (sending) return appString(R.string.pr_hint_sending)
+        if (receiving) return appString(R.string.pr_hint_receiving)
         return if (connection.isGroupOwner) {
             if (directPeerReady) {
-                "Equipo directo listo. Ya puedes enviar o chatear."
+                appString(R.string.pr_hint_direct_ready)
             } else {
-                "Enlace Wi-Fi Direct listo. Esperando al otro equipo."
+                appString(R.string.pr_hint_direct_waiting)
             }
         } else {
-            "Conexión directa lista. La sesión se sincroniza sola."
+            appString(R.string.pr_hint_direct_sync)
         }
     }
 
     if (lanConnected) {
-        if (sending) return "Enviando por Wi-Fi normal."
-        if (receiving) return "Recibiendo por Wi-Fi normal."
-        return "Wi-Fi normal lista. Busca dispositivos y la sesión se sincronizará al dejar un equipo listo."
+        if (sending) return appString(R.string.pr_hint_lan_sending)
+        if (receiving) return appString(R.string.pr_hint_lan_receiving)
+        return appString(R.string.pr_hint_lan_ready)
     }
 
-    if (!p2pEnabled) return "Activa Wi-Fi o Wi-Fi Direct para detectar equipos."
+    if (!p2pEnabled) return appString(R.string.pr_hint_enable_wifi)
 
-    return "Rápido: 1) Un equipo crea el enlace. 2) El otro lo busca y conecta."
+    return appString(R.string.pr_hint_quick_start)
 }

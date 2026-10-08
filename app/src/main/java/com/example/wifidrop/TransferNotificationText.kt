@@ -1,46 +1,47 @@
 package com.example.wifidrop
 
-import java.util.Locale
-
 internal fun buildTransferNotificationText(
     state: TransferRuntimeState,
     overrideText: String? = null
 ): String {
     return overrideText ?: when {
-        state.paused -> "Transferencias en pausa."
+        state.paused -> appString(R.string.rt_transfers_paused)
         state.sending -> {
             if (state.sendActiveCount > 0) {
                 val pct = (state.sendProgress * 100).toInt().coerceIn(0, 100)
-                "Enviando ${state.sendActiveCount} archivo(s) · $pct% · ${formatTransferRate(state.sendAverageBps)}"
+                appQuantityString(
+                    R.plurals.rt_notification_sending_files, state.sendActiveCount,
+                    state.sendActiveCount, pct, formatTransferRate(state.sendAverageBps)
+                )
             } else {
                 val pending = state.sendQueue.count {
                     it.status == SendQueueStatus.QUEUED || it.status == SendQueueStatus.PAUSED
                 }
-                "Cola pendiente: $pending archivo(s)"
+                appQuantityString(R.plurals.rt_pending_files, pending, pending)
             }
         }
 
         state.receiving -> {
             val pct = state.receiverProgress?.let { (it * 100).toInt().coerceIn(0, 100) } ?: 0
-            "Recibiendo $pct% · ${formatTransferRate(state.receiverAverageBps)}"
+            appString(R.string.rt_notification_receiving, pct, formatTransferRate(state.receiverAverageBps))
         }
 
-        state.receiverListening -> "Esperando archivos."
+        state.receiverListening -> appString(R.string.rt_waiting_files)
 
         state.pendingMessageCount > 0 -> {
-            "Mensajes en cola: ${state.pendingMessageCount}"
+            appQuantityString(R.plurals.rt_queued_messages, state.pendingMessageCount, state.pendingMessageCount)
         }
 
-        else -> "Qetara lista."
+        else -> appString(R.string.rt_qetara_ready)
     }
 }
 
 internal fun formatTransferRate(bytesPerSec: Long): String {
-    if (bytesPerSec <= 0L) return "0 B/s"
+    if (bytesPerSec <= 0L) return appString(R.string.rt_rate_bytes, 0)
     val kb = bytesPerSec / 1024.0
-    if (kb < 1024) return String.format(Locale.getDefault(), "%.1f KB/s", kb)
+    if (kb < 1024) return appString(R.string.rt_rate_kilobytes, kb)
     val mb = kb / 1024.0
-    if (mb < 1024) return String.format(Locale.getDefault(), "%.1f MB/s", mb)
+    if (mb < 1024) return appString(R.string.rt_rate_megabytes, mb)
     val gb = mb / 1024.0
-    return String.format(Locale.getDefault(), "%.2f GB/s", gb)
+    return appString(R.string.rt_rate_gigabytes, gb)
 }

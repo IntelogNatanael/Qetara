@@ -50,7 +50,7 @@ object TransferHistoryStore {
                 val id = obj.optString("id").takeIf { it.isNotBlank() } ?: continue
                 val direction = parseDirection(obj.optString("direction"))
                 val outcome = parseOutcome(obj.optString("outcome"))
-                val name = obj.optString("file_name").ifBlank { "(sin nombre)" }
+                val name = obj.optString("file_name").ifBlank { context.getString(R.string.rt_unnamed) }
                 items.add(
                     TransferHistoryEntry(
                         id = id,

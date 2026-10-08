@@ -1,5 +1,7 @@
 package com.example.wifidrop
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -50,7 +52,7 @@ internal fun QetaraAppearanceControls() {
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Text(
-                "Apariencia",
+                stringResource(R.string.shell_appearance),
                 modifier = Modifier.semantics { heading() },
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold
@@ -61,7 +63,7 @@ internal fun QetaraAppearanceControls() {
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 QetaraAppearanceChoice(
-                    title = "Seguir sistema",
+                    title = stringResource(R.string.shell_follow_system),
                     selected = appearance == QetaraAppearance.SYSTEM,
                     onClick = { QetaraAppearanceStore.save(context, QetaraAppearance.SYSTEM) }
                 )

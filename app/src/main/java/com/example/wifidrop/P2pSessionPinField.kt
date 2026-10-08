@@ -127,7 +127,7 @@ internal fun P2pSessionPinField(
                 onValueChange(raw)
             },
             enabled = !state.sessionSyncing,
-            label = { Text("PIN de 6 dígitos") },
+            label = { Text(appString(R.string.msg_pin_six_digits)) },
             modifier = Modifier.fillMaxWidth().onFocusChanged { hasFocus = it.isFocused },
             singleLine = true,
             keyboardOptions = KeyboardOptions(
@@ -145,11 +145,11 @@ internal fun P2pSessionPinField(
                     },
                     enabled = !state.sessionSyncing,
                     modifier = Modifier.semantics {
-                        contentDescription = if (currentVisibility.revealed) "Ocultar PIN" else "Mostrar PIN"
-                        stateDescription = if (currentVisibility.revealed) "PIN visible" else "PIN oculto"
+                        contentDescription = if (currentVisibility.revealed) appString(R.string.msg_hide_pin) else appString(R.string.msg_show_pin)
+                        stateDescription = if (currentVisibility.revealed) appString(R.string.msg_pin_visible) else appString(R.string.msg_pin_hidden)
                     }
                 ) {
-                    Text(if (currentVisibility.revealed) "Ocultar" else "Mostrar")
+                    Text(if (currentVisibility.revealed) appString(R.string.msg_hide) else appString(R.string.msg_show))
                 }
             }
         )
