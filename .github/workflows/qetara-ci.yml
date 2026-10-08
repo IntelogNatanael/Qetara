@@ -32,7 +32,7 @@ jobs:
       - uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407 # v3
         with:
           packages: platform-tools
-      - uses: gradle/actions/setup-gradle@0b6dd653ba04f4f93bf581ec31e66cbd7dcb644d # v4
+      - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
       - name: Install Android SDK components
         run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0'
       - name: Build, lint and test Android and shared protocol
@@ -59,7 +59,7 @@ jobs:
           distribution: temurin
           # Adoptium SemVer for Temurin 21.0.12.1+1 (patch 1 * 100 + build 1).
           java-version: '21.0.12+101.0.LTS'
-      - uses: gradle/actions/setup-gradle@0b6dd653ba04f4f93bf581ec31e66cbd7dcb644d # v4
+      - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
       - name: Test and package desktop
         shell: bash
         run: ./gradlew -PqetaraDesktopOnly=true :protocol:test :pc:test :pc:packageUberJarForCurrentOS :pc:createDistributable --no-daemon --max-workers=2
