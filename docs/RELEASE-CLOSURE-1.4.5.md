@@ -1,16 +1,51 @@
-# Preparación del cierre de Qetara 1.4.5 / código 12
+# Procedimiento y estado del cierre de Qetara 1.4.5 / código 12
 
-Este documento define el procedimiento y los criterios de cierre local. No
-certifica una reconstrucción ejecutada, una firma nueva, una publicación o
-una revisión de Figma. Los resultados, hashes y límites de cada comprobación
-se registran en el [informe público de la candidata](VALIDATION-1.4.5.md).
+Este documento reúne el procedimiento, los criterios y el estado del cierre
+local. Los resultados, hashes y límites de cada comprobación se registran en
+el [informe público de la candidata](VALIDATION-1.4.5.md).
 El informe interno de la campaña anterior y sus originales se conservan
 como evidencia privada local; no forman parte de los archivos publicados.
 La publicación queda fuera de esta preparación.
 
-## Fuentes que se deben fijar
+## Fuentes fijadas y alcance del cierre
 
-El commit de fuentes debe incluir la implementación Android, escritorio y
+El 30 de octubre de 2026 se fijó el commit de fuentes **A**,
+`baec571b7c82b799848368f5e42027677695ae2c`, árbol
+`77befa99b93aeee295b2abcc0148d608fb429fe6`: 49 rutas revisadas, versión
+1.4.5/código 12 y árbol seguido limpio al confirmar. El informe privado quedó
+sin seguimiento. Los ensayos v9 son anteriores a la creación de A; no se
+presentan como builds de un clon limpio de ese commit.
+
+La receta pública preparada para A aprobó lectura, normalización estable y
+lint con fdroidserver 2.4.5. Windows, Linux y F-Droid produjeron tres APK sin
+firma idénticos byte a byte, SHA-256
+`a39a9dc9a336dfa224be297b64f6f843ec8f5e0e48d418ad1c8ce36ac15a0962`.
+Las reproducciones de firma sobre Linux y F-Droid coincidieron con el APK
+firmado de A, SHA-256
+`d449c2a7f5edb725e9095928c88a608d027722ff76e04be6bdc8890c16f933b6`,
+con firmas v2/v3 y alineación de 16 KiB verificadas.
+
+El comando de build F-Droid terminó con código 0; el guard posterior del
+runner falló porque exigía un checkout sin cambios seguidos. Una auditoría
+independiente aprobó la transformación exacta de F-Droid: retirada de tres
+wrappers y limpieza de 11 líneas de firma mediante la función instalada,
+sin otras modificaciones. Se conservaron el fallo y los originales. El
+informe distingue esos tres resultados; no declara un PASS del runner original.
+
+El APK firmado se instaló conservando los datos y aprobó una repetición física
+acotada: cinco archivos Flash PC → Android con hashes correctos, texto Unicode
+exacto en el XML receptor, texto de regreso confirmado visualmente y un archivo
+Compartir Android → PC con hash y estado terminal correctos. El informe
+precisa qué se midió en cada recorrido y separa los ensayos debug anteriores.
+F-01 y Wi-Fi Direct con un segundo teléfono siguen pendientes.
+
+Esta actualización documental y de receta se incorpora por separado de A,
+en una revisión **B** limitada a esos archivos.
+Los APK, su metadata VCS y la futura etiqueta de la entrega deben identificar
+A. Construir desde B produciría otra identidad VCS aunque el código no
+cambiara, y exigiría nueva evidencia para esos APK.
+
+El alcance del commit de fuentes incluye la implementación Android, escritorio y
 protocolo, sus recursos bilingües, las pruebas nuevas y modificadas,
 `gradle.properties` con 1.4.5/12, el changelog y las notas de tienda
 `fastlane/metadata/android/{es-ES,en-US}/changelogs/12.txt`. Los documentos de
@@ -23,13 +58,14 @@ volcados de portapapeles, direcciones de la LAN ni identificadores del teléfono
 Los fixtures sintéticos reutilizables pertenecen a las pruebas únicamente
 cuando sean necesarios para ejecutarlas, sin copiar una sesión privada.
 
-Antes de confirmar, revisar `git diff HEAD`, los archivos sin seguimiento y
+Antes de confirmar cualquier actualización, revisar `git diff HEAD`, los archivos sin seguimiento y
 el diff preparado completo. Los estados `MM` requieren especial atención:
 la copia preparada puede ser anterior a la que se probó. No basta revisar
 sólo `git diff --cached` si después se preparan cambios adicionales.
 
-Una vez creado el commit, registrar su SHA completo y `git rev-parse HEAD^{tree}`,
-comprobar que el árbol esté limpio y repetir las comprobaciones afectadas.
+Para cada nuevo commit de fuentes, registrar su SHA completo y
+`git rev-parse 'HEAD^{tree}'`, comprobar que el árbol esté limpio y repetir
+las comprobaciones afectadas.
 El APK construido previamente en un árbol modificado conserva su identidad
 histórica: un commit posterior no lo convierte en un APK de ese commit.
 Una modificación del SHA, aunque conserve los mismos archivos de compilación,
@@ -50,6 +86,15 @@ puede cambiar `META-INF/version-control-info.textproto` y el hash del APK.
 | Diseño | Revisión registrada contra el archivo y cuenta Figma autorizados, o limitación explícita con referencia local conservada. |
 | Entrega pública | Permanece pendiente: etiqueta, fuentes públicas, APK/sumas, descarga anónima y CI pertenecientes al commit final. |
 
+Si una herramienta modifica el checkout durante su preparación normal, un
+guard estricto puede fallar después de una build correcta. Conservar ambos
+resultados. Antes de aceptar el artefacto, generar la transformación esperada
+con la herramienta y versión identificadas y compararla exactamente con el
+diff completo. No restaurar el checkout, ampliar una lista de excepciones ni
+omitir comprobaciones para hacer pasar el guard. En este cierre, la auditoría
+se escribió en una carpeta nueva, no recompiló y verificó la conservación de
+las entradas originales antes y después de reproducir las firmas.
+
 El detalle funcional pendiente, incluido cualquier hallazgo de severidad
 menor, pertenece al informe de validación. Preparar esta lista no lo resuelve.
 
@@ -57,16 +102,17 @@ menor, pertenece al informe de validación. Preparar esta lista no lo resuelve.
 
 La inspección de sólo lectura del 30 de octubre de 2026 encontró Ubuntu
 24.04.3 en WSL, OpenJDK 21.0.10+7, fdroidserver 2.4.5 y apksigcopier 1.1.1.
-No se ejecutaron builds como parte de esa inspección. Las herramientas
-reutilizables están en estas rutas locales Linux:
+No se ejecutaron builds como parte de esa inspección. El preflight posterior
+aprobó esas herramientas. Sus ubicaciones concretas y los registros completos
+se conservan en la evidencia privada; estos son los recursos reutilizados:
 
-| Recurso | Ruta comprobada |
+| Recurso | Versión o alcance comprobado |
 | --- | --- |
-| SDK Android 36, revisión 2; Build Tools 36.0.0 | `/tmp/qetara-publication-linux-20260911/android-sdk` |
-| fdroidserver | `/tmp/qetara-publication-linux-20260911/fdroid-venv/bin/fdroid` |
-| apksigcopier CLI | `/tmp/qetara-publication-linux-20260911/apksigcopier-venv/bin/apksigcopier` |
-| Caché de Gradle Linux, alrededor de 1,1 GiB | `/tmp/qetara-bilingual-final-20261008/gradle-home-linux` |
-| Caché de Gradle F-Droid, alrededor de 890 MiB | `/tmp/qetara-bilingual-final-20261008/gradle-home-fdroid` |
+| SDK Android y Build Tools | Plataforma 36 revisión 2; Build Tools 36.0.0. |
+| fdroidserver | 2.4.5, entorno Python existente. |
+| apksigcopier CLI | 1.1.1, entorno existente separado. |
+| Caché de Gradle Linux | Caché previa dedicada, alrededor de 1,1 GiB. |
+| Caché de Gradle F-Droid | Otra caché previa dedicada, alrededor de 890 MiB. |
 
 El wrapper del proyecto fija Gradle 9.1.0 y su SHA-256. El `android.jar`
 comprobado en WSL tiene SHA-256
@@ -75,7 +121,7 @@ No se encontraron `init.d`, `init.gradle`, `init.gradle.kts` ni
 `gradle.properties` en los dos primeros niveles de esas dos cachés. Esto
 no demuestra ausencia de cualquier configuración externa: registrar el
 entorno realmente utilizado antes de compilar, sin mostrar secretos.
-Las rutas en `/tmp` se deben comprobar de nuevo antes de reutilizarlas.
+Las ubicaciones temporales se deben comprobar de nuevo antes de reutilizarlas.
 
 1. Compilar Windows con `scripts/build-android-release.ps1 -Ref <SHA-completo>
    -Offline -MaxWorkers 2`, usando JDK 21, el SDK existente y ninguna variable
@@ -121,20 +167,24 @@ absoluta y la conservación previa de la evidencia necesaria.
 
 ## Receta, firma y publicación posterior
 
-La receta versionada de referencia sigue siendo 1.4.4/11 durante esta
-preparación. La futura receta 1.4.5 debe fijar el SHA completo del commit de
-fuentes ya existente, actualizar `versionName`, `versionCode`,
-`CurrentVersion` y `CurrentVersionCode`, y conservar las claves permitidas y
-la configuración de actualización por etiquetas. `audit-release.ps1
--RequireCurrentRecipe` debe seguir detectando una receta anterior; su fallo
-en ese estado es un pendiente real, no un fallo que deba ocultarse.
+La receta almacenada dentro de A es la histórica 1.4.4/11. La
+[receta pública preparada para la actualización posterior](../fdroid/metadata/io.github.intelognatanael.qetara.yml)
+fija el SHA completo de A y 1.4.5/12. Conserva el origen HTTPS, `Binaries`,
+el certificado permitido y la configuración de actualización por etiquetas.
+Su versión canónica validada ocupa 859 bytes, SHA-256
+`e7f43c4c0de982ffc590d64f6a4ae158106097cdb39ce9e4ee9c4c23a106e39b`.
+Los únicos cambios semánticos frente a la receta de A son `versionName`,
+`versionCode`, `Builds[0].commit`, `CurrentVersion` y `CurrentVersionCode`.
+La lectura, normalización repetida y lint aprobaron con código 0. También
+aprobaron los comandos de escáner y build F-Droid; la condición estricta del
+runner y la auditoría posterior conservan los estados separados indicados arriba.
 
 No se puede incluir en un commit una receta que contenga el SHA de ese mismo
-commit. Fijar primero el commit de fuentes A; preparar después la receta que
-apunta a A, en el área local de ensayo o en un commit posterior limitado a
-documentación/metadata. Los APK, la metadata VCS y la futura etiqueta deben
-seguir identificando A. Si se elige otro commit como fuente definitiva,
-repetir las builds y la comparación con esa identidad.
+commit. Por eso se fijó primero A y se preparó después la receta que apunta
+a A. Si se elige otro commit como fuente definitiva, repetir las builds y
+la comparación con esa identidad. El guard
+`audit-release.ps1 -RequireCurrentRecipe` comprueba coherencia de fuentes y
+metadata; no demuestra que la URL declarada esté publicada.
 
 Antes de publicar, el ensayo local puede sustituir sólo `Repo` por el origen
 Git local y omitir `Binaries` en una copia de la receta. Guardar el diff y

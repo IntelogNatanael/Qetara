@@ -1,12 +1,19 @@
 # Validación de Qetara 1.4.5 / código 12
 
-**Estado al 30 de octubre de 2026: candidata local, no publicada.** Aprobaron
-los recorridos descritos de Flash, Chat normal y Compartir por LAN, con las
-versiones de ensayo diferenciadas en este informe. Los XML actuales registran
-426 pruebas JVM aprobadas y tres omitidas. Siguen pendientes el commit
-definitivo y sus reconstrucciones limpias. Las escenas corregidas aprobaron
-la repetición visual descrita abajo. Los resultados de los APK anteriores no se atribuyen
-automáticamente al próximo APK de un commit limpio.
+**Estado al 30 de octubre de 2026: candidata local, no publicada.** Las fuentes
+1.4.5/12 quedaron fijadas en el commit A
+`baec571b7c82b799848368f5e42027677695ae2c`. Aprobaron los recorridos descritos
+de Flash, Chat normal y Compartir por LAN, con sus versiones de ensayo
+diferenciadas. Los XML conservados registran 426 pruebas JVM aprobadas y tres
+omitidas; Chat v9 aprobó 48 comprobaciones y su revisión visual indicada abajo.
+Las reconstrucciones Windows, Linux y F-Droid de A produjeron APK sin firma
+idénticos byte a byte; Linux y F-Droid reprodujeron el APK firmado exacto.
+El comando de build F-Droid aprobó; su runner falló después por cambios
+estándar de preparación y una auditoría independiente validó exactamente
+esas transformaciones. El fallo original permanece registrado. El APK release
+R8 firmado de A se instaló conservando datos y aprobó los recorridos acotados
+de Flash y Compartir descritos abajo. Los APK anteriores conservan su propio
+alcance. F-01 y Wi-Fi Direct siguen abiertos; no se ha publicado 1.4.5.
 
 Este informe es un resumen público autocontenido. Los originales de los ensayos
 —manifiestos, registros, XML y capturas— se conservan como evidencia
@@ -17,7 +24,24 @@ define la evidencia que debe añadirse para cada nueva comprobación.
 
 ## Identidad de las fuentes y estado del cierre
 
-La integración anterior partió del commit
+El commit de fuentes **A** es
+`baec571b7c82b799848368f5e42027677695ae2c`, árbol
+`77befa99b93aeee295b2abcc0148d608fb429fe6`. Incluye 49 rutas revisadas y declara
+`qetaraVersion=1.4.5` y `qetaraVersionCode=12` en
+[gradle.properties](../gradle.properties). Al fijarlo, el árbol de archivos
+seguidos estaba limpio; el informe privado quedó sin seguimiento y fuera del
+commit. El registro local de fijación tiene SHA-256
+`85366747b9bdc96be5b507bb74358a10886d2823667a097333ad1f960913430c`.
+
+Este documento y la receta que apunta a A se incorporan por separado de A,
+en una actualización **B** limitada a documentación y metadata. Los APK del cierre se
+compilaron explícitamente desde A y registran A en su metadata VCS; la revisión
+posterior de este informe no sustituye esa identidad. La receta contenida
+dentro de A sigue siendo la histórica 1.4.4/11;
+la [receta preparada para 1.4.5/12](../fdroid/metadata/io.github.intelognatanael.qetara.yml)
+fija A desde esta actualización posterior.
+
+La campaña anterior partió del commit
 `9436eddefa3eae607e59cc4266190700fbc4f332` y declaró `qetaraVersion=1.4.5` y
 `qetaraVersionCode=12` en [gradle.properties](../gradle.properties). Sus cambios
 no tenían un commit propio durante la campaña física. Se conservó un
@@ -25,23 +49,26 @@ manifiesto de 285 archivos de fuentes, SHA-256
 `7682aa99c1beae3b19ab2c6d2d4c64541e5b93a539c7c11c6e9936f3e2933b00`.
 Ese inventario identifica la instantánea ensayada y no sustituye un commit.
 
-Los cambios posteriores en implementación y pruebas requieren nuevas
-comprobaciones. No se trasladan automáticamente a esas fuentes los resultados
-ni los hashes de la campaña anterior.
+Los pases v6 y v9 descritos abajo precedieron a la creación de A. No se
+presentan como compilaciones de un clon limpio de A ni se les trasladan los
+hashes de la campaña anterior.
 
 | Control del nuevo cierre | Estado de este corte documental |
 | --- | --- |
-| Commit definitivo de fuentes y árbol limpio | Pendiente de registrar. |
-| Repetición de pruebas JVM afectadas | 429 registradas: 426 aprobadas, tres omitidas; cero fallos/errores. Android volvió a ejecutarse en el pase v9. |
-| Debug, instrumentación y lint del cierre | Pase v9 terminado correctamente; informe de lint release conservado con cero errores y 44 advertencias. La compilación de instrumentación no sustituye sus recorridos. |
-| APK desde un clon nuevo del commit definitivo | Pendiente de registrar artefacto, procedencia y hash. |
-| Reconstrucción Linux y comparación con Windows | Pendiente; preflight de herramientas WSL aprobado, sin build de la candidata. |
-| Receta 1.4.5/12, build y escáneres F-Droid | Pendiente; la receta versionada de referencia sigue en 1.4.4/11. |
-| Firma del APK definitivo y reproducción de su firma | Pendiente. |
+| Commit definitivo de fuentes y árbol limpio | A y su árbol identificados arriba; 49 rutas revisadas y árbol seguido limpio al fijarlo. |
+| Repetición de pruebas JVM afectadas | 429 registradas: 426 aprobadas, tres omitidas; cero fallos/errores. Android volvió a ejecutarse en v9, antes de crear A. |
+| Debug, instrumentación y lint del cierre | Pase v9 terminado correctamente antes de A; lint release conservado con cero errores y 44 advertencias. La compilación de instrumentación no sustituye sus recorridos. |
+| APK Windows desde un clon nuevo de A | Aprobado en 3 min 19 s: 50 tareas ejecutadas de 50. APK sin firma, procedencia, hash y metadata VCS de A comprobados. |
+| Reconstrucción Linux y comparación con Windows | Aprobada: 150,0 s del comando; Gradle registra 2 min 29 s y 50 tareas ejecutadas. APK idéntico byte a byte a Windows. |
+| Receta pública 1.4.5/12 fijada a A | Lectura, normalización estable y lint aprobados; receta canónica y hash registrados abajo. |
+| Build y escáneres F-Droid de A | Comandos aprobados. El guard posterior del runner falló; la auditoría independiente de las cuatro transformaciones exactas aprobó y preservó el fallo original. APK idéntico a Windows/Linux. |
+| Firma e instalación del APK de A | Firmas v2/v3 y alineación de 16 KiB aprobadas; instalado como actualización conservando los datos. |
+| Reproducción de firma sobre Linux/F-Droid | Ambas aprobadas con apksigcopier y `fdroidserver.common.verify_apks`; copias idénticas al APK firmado de A. |
+| Recorridos físicos del release R8 de A | Flash: cinco archivos PC → Android con SHA-256 correctos, texto Unicode exacto en el XML receptor y texto de regreso confirmado visualmente. Compartir: un archivo Android → PC con SHA-256 correcto y estado terminal completado. Límites detallados abajo. |
 | Revisión contra Figma | Referencias autorizadas Flash 4:22 y Chat 22:24; revisión acotada de consentimiento y estructura de conversación, no de todas las pantallas. |
 | Publicación, descarga anónima y CI remota | No realizadas para esta candidata. |
 
-## Comprobaciones del cierre antes del commit definitivo
+## Comprobaciones anteriores a la fijación de A
 
 ### Chat normal y Compartir por LAN
 
@@ -99,8 +126,9 @@ La entrega de archivos aprobada no ocultó un defecto de presentación:
 la actividad podía conservar «Enviando» después de terminar el lote.
 `P2pSendSummary` y `P2pUi` ahora sustituyen ese estado transitorio por el
 resumen terminal. El pase JVM v6 aprobó los tres casos nuevos de regresión,
-incluida la resolución en ambos idiomas; la comprobación visual posterior
-del estado corregido debe registrarse por separado.
+incluida la resolución en ambos idiomas. La comprobación visual posterior
+del estado corregido se registra en el recorrido de Compartir del APK de A:
+un archivo por LAN, sin extrapolar ese alcance a todos los tamaños de lote.
 
 ### Instrumentación visual Android y correcciones
 
@@ -158,7 +186,7 @@ Las comprobaciones bilingües corresponden a Android. **La interfaz de
 escritorio de esta entrega está en español**; no se declara una validación
 equivalente del escritorio en inglés.
 
-### Pruebas JVM, lint y preparación WSL
+### Pruebas JVM y lint
 
 Los XML actuales, posteriores al pase Android v9, contienen:
 
@@ -181,18 +209,178 @@ y el XML conservado registra **cero errores y 44 advertencias**, SHA-256
 `7c91ae717dbbd76a876b8be2fd17d3f9086404192cde76401cf93d5e77ca0040`.
 No se declara un informe regenerado ni cero advertencias.
 
-El preflight WSL aprobó con OpenJDK 21.0.10, Gradle 9.1.0, fdroidserver 2.4.5,
-apksigcopier 1.1.1, plataforma Android 36 revisión 2 y Build Tools 36.0.0.
-Fue una comprobación de herramientas; aún no compiló la candidata, no creó
-el commit definitivo y no reprodujo un APK. La receta del repositorio sigue
-en 1.4.4/11 hasta poder fijar el nuevo commit existente.
-
 ### Comprobación de la ficha móvil F-Droid
 
 En la comprobación móvil de esta sesión, buscar Qetara permitió abrir su ficha
 y observar el icono clásico. La versión publicada que mostraba la ficha era
 1.4.4; tener 1.4.5 instalada localmente no acredita su publicación. Se conserva
 el fondo marfil `#FFF7ED`, el símbolo azul marino `#102A43` y su geometría.
+
+## Reconstrucciones y receta del commit A
+
+El preflight WSL aprobó con OpenJDK 21.0.10, Gradle 9.1.0, fdroidserver 2.4.5,
+apksigcopier 1.1.1, plataforma Android 36 revisión 2 y Build Tools 36.0.0.
+Ese resultado comprueba herramientas; por sí solo no acredita una compilación
+ni reproducción de un APK. Se reutilizaron el SDK y las cachés de dependencias;
+las builds usaron clones nuevos y desactivaron la caché de resultados.
+No son aprovisionamientos independientes de herramientas.
+
+La compilación Windows desde un clon nuevo de A aprobó en **3 min 19 s**, con
+**50 tareas ejecutadas de 50**. Se usó
+`scripts/build-android-release.ps1 -Ref baec571b7c82b799848368f5e42027677695ae2c`
+en modo sin conexión. El script ejecutó
+`:app:assembleRelease --no-build-cache --no-daemon --max-workers=2 --console=plain --offline`;
+el log registra `minifyReleaseWithR8`. La procedencia confirma el commit A,
+árbol limpio antes y después, versión 1.4.5/código 12, paquete
+`io.github.intelognatanael.qetara` y ausencia de variables de firma durante
+la build. El registro de procedencia tiene SHA-256
+`6da054aba56ecab5f1f89f7efb2129e96fc760c98582b090db3c40f4b473341b`.
+
+| Artefacto del commit A | Bytes | SHA-256 |
+| --- | ---: | --- |
+| APK release R8 sin firma de Windows, Linux y F-Droid, cada uno | 3 735 556 | `a39a9dc9a336dfa224be297b64f6f843ec8f5e0e48d418ad1c8ce36ac15a0962` |
+| APK release firmado e instalado | 3 778 967 | `d449c2a7f5edb725e9095928c88a608d027722ff76e04be6bdc8890c16f933b6` |
+| APK firmado reproducido desde Linux y desde F-Droid, cada uno | 3 778 967 | `d449c2a7f5edb725e9095928c88a608d027722ff76e04be6bdc8890c16f933b6` |
+
+La metadata `META-INF/version-control-info.textproto` de los APK comprobados
+identifica exactamente A y no contiene `NO_VALID_GIT_FOUND`. El APK firmado
+aprobó firma y alineación con el certificado SHA-256
+`5f5cdbfb03c1f62f7dc42aee12a5ea4a347b767ccfc268eb450ca69c98ba7a3b`.
+Se instaló en el teléfono de ensayo como actualización, reemplazando el APK
+debug v9 y conservando los datos. Los recorridos físicos de este APK R8 se
+describen en su apartado propio, separados de la instalación y de los ensayos
+debug anteriores.
+
+La build Linux ejecutó
+`./gradlew :app:assembleRelease --no-daemon --no-build-cache --no-configuration-cache --max-workers=2 --console=plain`
+desde otro clon nuevo de A. Terminó con código 0 en 150,0 s; Gradle registra
+2 min 29 s y 50 tareas ejecutadas. La igualdad con Windows se comprobó por
+comparación directa de bytes, además del SHA-256.
+
+### Ensayo F-Droid y auditoría del fallo posterior
+
+`fdroid scanner --refresh --json --exit-code io.github.intelognatanael.qetara:12`
+terminó con código 0 en 9,17 s, sin errores ni advertencias. Sus tres mensajes
+informativos registran la retirada de `gradlew`, `gradlew.bat` y
+`gradle/wrapper/gradle-wrapper.jar`. Después,
+`fdroid build --verbose --test --no-tarball --scan-binary --stop --no-refresh io.github.intelognatanael.qetara:12`
+terminó con código 0 en 175,1 s; la compilación Gradle registró 2 min 30 s y
+50 tareas ejecutadas. El log acredita R8, escaneo DEX y comprobación de bloques
+de firma adicionales. No se usaron `--force`, `--skip-scan` ni exclusiones nuevas.
+
+El runner falló **después** de ese comando: su guard exigía que no hubiera
+cambios en archivos seguidos. F-Droid había retirado los tres wrappers y
+11 líneas de configuración de firma en `app/build.gradle.kts`. Ese FAIL
+permanece conservado; no se declara que el runner original terminara bien.
+
+Una auditoría posterior, con salida nueva y sin recompilar, generó la
+transformación esperada mediante la función instalada
+`fdroidserver.common.remove_signing_keys`, ejecutada exclusivamente en memoria.
+El resultado coincidió byte a byte con el archivo preparado por F-Droid.
+Se verificaron la regla instalada de retirada de wrappers, las cuatro rutas
+exactas del diff completo, HEAD/árbol de A, recetas, comandos, escáneres,
+identidad del APK y coincidencia directa de los tres APK sin firma.
+Los originales, el checkout modificado por F-Droid y el fallo del guard se
+conservaron. Esta **auditoría independiente aprobó**; no restauró ni alteró el
+checkout para hacer pasar la condición original.
+
+La build usó el Gradle externo 9.1.0 configurado por F-Droid, JDK 21 y el SDK
+comprobado. La caché de usuario no contenía configuración ni scripts de
+inicialización adicionales; el directorio de inicialización de la distribución
+contenía sólo su archivo informativo. La base de escaneo reutilizada tras
+`--refresh` tenía 104 firmas y SHA-256
+`5114edc83a6fbe52cae34ff38add8b33f20e651e43e31475d36314d6eb06a991`.
+Sus timestamps se conservaron; no se deduce de ello que todos los datos de
+herramientas o categorías sean los últimos disponibles.
+
+La copia de firma sobre Linux y F-Droid aprobó con apksigcopier 1.1.1 y
+`fdroidserver.common.verify_apks` 2.4.5. Ambas reproducciones coincidieron
+byte a byte con el APK firmado de A, con certificado permitido, firmas v2/v3
+y alineación de 16 KiB verificadas. La reproducción no accedió a la clave
+privada ni descargó un APK público. El registro conjunto de auditoría y
+reproducción tiene SHA-256
+`d72b92c82552309f11621662ac85fb42a2c8bc17c352303d937f1376804457b0`.
+
+Los diagnósticos R8 tienen un alcance distinto de la igualdad de APK:
+
+| Diagnóstico | Comparación |
+| --- | --- |
+| `mapping.txt` | Mismo SHA-256 en Windows, Linux y F-Droid: `c241c5c07f61bba80c3054a0303e857287ddbc00fd713e9aa50c8ad1147528de`. |
+| `configuration.txt` | Difiere entre las tres builds. |
+| `seeds.txt` | Difiere entre las tres builds. |
+| `usage.txt` | Linux y F-Droid coinciden; Windows difiere. |
+
+Se conservaron tamaños y hashes de cada diagnóstico. La igualdad de los APK
+no se presenta como igualdad de todos los archivos auxiliares.
+
+### Receta pública y límites de publicación
+
+La receta pública preparada fija A, versión 1.4.5/código 12, conserva el origen
+Git HTTPS, `Binaries`, el certificado permitido y la actualización por
+etiquetas. Sobre esa receta se ejecutaron estas comprobaciones con
+fdroidserver 2.4.5, todas con código de salida **0**:
+
+| Comando | Resultado |
+| --- | --- |
+| `fdroid readmeta` | Lectura aprobada. |
+| `fdroid rewritemeta io.github.intelognatanael.qetara` | Normalización aprobada sin cambios semánticos. |
+| `fdroid lint --force-yamllint io.github.intelognatanael.qetara` | Lint aprobado. |
+| Segunda ejecución de `rewritemeta` | Formato estable. |
+
+La receta canónica incorporada en esta actualización ocupa **859 bytes**,
+SHA-256 `e7f43c4c0de982ffc590d64f6a4ae158106097cdb39ce9e4ee9c4c23a106e39b`.
+El registro local de las comprobaciones tiene SHA-256
+`75ffea870d15ee32561e2971a92782ddc2688dd5e712769aad8cec16d15130ab`.
+La configuración de categorías reutilizada se verificó por hash contra la
+revisión histórica de fdroiddata
+`7f3fb82b398ef8537ff478e97f2ea44c83b7b0a9`; no se afirma que sea la última.
+
+Para el ensayo local previo a publicación se preparó otra copia con exactamente
+dos cambios: `Repo` apunta al repositorio local y se omite `Binaries`. Su
+SHA-256 es `3c950ba2fc12545ea3d762e8f5be0d4e954ea55e09fbf6e43419f67e74dda670`.
+Esa copia no forma parte del YAML público. La lectura y el lint de metadata
+no equivalen a los escáneres de fuentes/APK, a la build F-Droid ni a una
+comparación con un APK público. No se descargó la URL de referencia de 1.4.5
+y no se declara su publicación, una etiqueta ni una CI remota.
+
+## Recorridos físicos del APK release de A
+
+Esta repetición utilizó el APK firmado de A, SHA-256
+`d449c2a7f5edb725e9095928c88a608d027722ff76e04be6bdc8890c16f933b6`, y el
+JAR de escritorio de ensayo ya identificado, SHA-256
+`8e0f72af6a0769b57bb30fac387bfd4cc38001435339a9b79bbb34c3a3536b11`.
+Las transferencias circularon por LAN real; USB se usó para control y
+evidencia. La identidad reconstruida desde A corresponde al APK Android;
+el JAR conserva su propia procedencia de ensayo.
+
+| Recorrido | Resultado y límite |
+| --- | --- |
+| Flash, cinco archivos PC → Android | Una aprobación por lado para el lote. Los cinco archivos de 97, 4 096, 65 537, 1 048 576 y 3 145 728 bytes coincidieron con los SHA-256 de los fixtures documentados abajo. |
+| Flash, texto Unicode PC → Android | Fixture de 46 bytes UTF-8. El texto recibido extraído del XML de interfaz coincidió exactamente con el esperado; no se presenta como una nueva prueba de Copiar/Pegar. |
+| Flash, texto Android → PC | Se observó el texto sintético de 21 bytes `QA145FINAL_ANDROID_PC` y la entrega confirmada. La comprobación fue visual: en este corte no se calculó un hash del contenido recibido ni se repitió Copiar/Pegar exacto. |
+| Compartir normal, un archivo Android → PC | Archivo de 97 bytes, SHA-256 recibido `cec76e27c7fda765bfe09acaa5be3a8d75c0341ac682904255eda770cc295717`, idéntico al origen. La interfaz mostró «Último envío completado» y «1 archivo entregado», sin «Enviando» persistente. Actividad mostró «Enviado · Completado» y el nombre correcto. |
+
+En Compartir se mantuvo denegado el permiso de notificaciones cuando Android
+lo solicitó; la entrega terminó correctamente. Esto acredita ese recorrido
+con un archivo y el estado terminal corregido en el release R8. Los lotes
+de cinco en ambas direcciones y la cobertura visual bilingüe conservan las
+versiones de ensayo anteriores indicadas en sus respectivos apartados.
+
+Los resúmenes locales de esta repetición tienen estos SHA-256:
+
+| Resumen | SHA-256 |
+| --- | --- |
+| Flash, lote de cinco PC → Android | `438505dfeedce5cdb3b88b5a4397b638b3f3a28fba537877244d545bc1066ae1` |
+| Flash, texto Unicode PC → Android | `fa7fed8d7e4830d3a1db3b2fc6d82d0f87c8df1e6ee0ca3d7e9c002634cac709` |
+| Compartir normal, un archivo Android → PC | `83ebb910111a767143f62cfb7ca551cd886bf010ae6449a6e353e19090a40961` |
+
+Al cerrar los ensayos, el teléfono conservó Qetara 1.4.5/código 12 sin el
+indicador `DEBUGGABLE`. La escala global quedó en 1,0 y los idiomas de la app
+en seguir al sistema. Los permisos de notificaciones y dispositivos Wi-Fi
+cercanos permanecieron denegados. Se cerró la sesión normal y Flash quedó
+desactivado en ambos equipos. En PC se desactivó la recepción y se cerró la
+ventana. Las listas de reenvíos ADB quedaron vacías y se desinstaló únicamente
+el paquete de instrumentación; la aplicación principal permaneció instalada.
 
 ## Artefactos de la campaña anterior
 
@@ -345,9 +533,11 @@ escritorio se validó en español; no se extiende a él la cobertura bilingüe
 de Android.
 
 La revisión Figma acreditada cubre el consentimiento Flash 4:22 y la estructura
-de Chat 22:24; no se afirma una revisión final completa de todas las pantallas. Falta fijar las
-fuentes definitivas, reconstruirlas, comparar los artefactos y atribuir a
-sus hashes cualquier comprobación física que se repita después.
+de Chat 22:24; no se afirma una revisión final completa de todas las pantallas.
+Las fuentes quedaron fijadas en A. Se acreditan las tres builds, su comparación
+y reproducción con los límites del ensayo F-Droid y sus transformaciones
+auditadas. Los recorridos físicos posteriores se atribuyen al hash del APK
+firmado de A; no amplían automáticamente el alcance de pruebas anteriores.
 
 Los resultados históricos de [1.4.4](VALIDATION-1.4.4.md) y sus pipelines
 no acreditan la nueva versión. No se declara una release, una etiqueta pública,

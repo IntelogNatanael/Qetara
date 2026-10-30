@@ -2,12 +2,39 @@
 
 ## Candidata local 1.4.5 / código 12
 
-Las fuentes de trabajo preparan 1.4.5/12. La receta versionada conserva
-1.4.4/11 y el commit `e379ccc9519514ef3f091821b333502c954cae54` hasta fijar
-el commit de la nueva entrega. No debe interpretarse como una receta ya
-actualizada o validada para 1.4.5. El [informe de la candidata](../docs/VALIDATION-1.4.5.md)
-y la [preparación del cierre](../docs/RELEASE-CLOSURE-1.4.5.md) separan las
-pruebas realizadas de la reconstrucción y publicación pendientes.
+Las fuentes 1.4.5/12 quedaron fijadas en el commit **A**
+`baec571b7c82b799848368f5e42027677695ae2c`, árbol
+`77befa99b93aeee295b2abcc0148d608fb429fe6`. La
+[receta pública preparada](metadata/io.github.intelognatanael.qetara.yml)
+apunta a A y forma parte de una actualización posterior limitada a documentación
+y metadata. La receta incluida dentro de A sigue siendo la histórica 1.4.4/11;
+la actualización documental B se incorpora por separado y no cambia la
+identidad de las fuentes del APK.
+
+Con fdroidserver 2.4.5 aprobaron `readmeta`, `rewritemeta`,
+`lint --force-yamllint` y una segunda normalización estable, todos con código 0.
+La receta canónica ocupa **859 bytes**, SHA-256
+`e7f43c4c0de982ffc590d64f6a4ae158106097cdb39ce9e4ee9c4c23a106e39b`.
+Conserva `Repo` HTTPS, `Binaries`, el certificado permitido y la actualización
+por etiquetas. El overlay local separado cambia únicamente `Repo` y omite
+`Binaries` para el ensayo previo a publicación; no se incorpora al YAML público.
+
+Windows, Linux y el ensayo local F-Droid produjeron APK sin firma idénticos
+byte a byte. El escáner de fuentes con `--refresh` y el comando de build con
+R8 y escaneo binario terminaron con código 0. Después falló el guard del
+runner, que exigía un checkout sin modificaciones: F-Droid retiró los tres
+wrappers y 11 líneas de configuración de firma. Una auditoría independiente
+generó la limpieza con la función instalada, verificó el diff exacto y los
+APK, y aprobó sin modificar ni recompilar las fuentes. El fallo original
+permanece registrado y no se presenta como un PASS del runner.
+
+Las copias de firma desde Linux y F-Droid reprodujeron byte a byte el APK
+firmado de A, con apksigcopier y `fdroidserver.common.verify_apks`; aprobaron
+certificado, firmas v2/v3 y alineación de 16 KiB. No se declara publicación de
+1.4.5, etiqueta, descarga pública, CI remota ni aceptación de F-Droid. El
+[informe de la candidata](../docs/VALIDATION-1.4.5.md) y el
+[procedimiento de cierre](../docs/RELEASE-CLOSURE-1.4.5.md) detallan la evidencia
+y los límites de cada paso.
 
 La [validación de 1.4.4](../docs/VALIDATION-1.4.4.md) registra la entrega
 anterior y su CI; los párrafos siguientes conservan el historial de 1.4.3
@@ -214,15 +241,16 @@ y no se ha adoptado aquí esa alternativa.
 La ficha editable está en `fastlane/metadata/android/en-US` y
 `fastlane/metadata/android/es-ES`, con nombre, resumen y descripción. Las capturas
 y el icono de tienda deben corresponder a la candidata final y conservar la
-geometría de la marca. Las notas actuales están en `changelogs/10.txt`; se conservan las históricas del código 9 en `changelogs/9.txt` de ambos
-idiomas. Las capturas y el icono de tienda siguen pendientes; no se presentan
-capturas históricas como imágenes del APK nuevo.
+geometría de la marca. Las notas de 1.4.5 están en `changelogs/12.txt` de ambos
+idiomas y se conservan las de versiones anteriores. La existencia de capturas
+o iconos en la ficha no acredita una revisión contra el APK final; no se
+presentan capturas históricas como imágenes del APK nuevo.
 
-Las actualizaciones continúan manuales durante la preparación. Si después se
-habilitan por tags estables, hay que configurar `UpdateCheckData` para extraer
-`qetaraVersionCode` y `qetaraVersion` de `gradle.properties`: F-Droid no ejecuta
-Gradle para resolver esas propiedades. El patrón debe excluir tags RC y no
-debe anunciar una actualización hasta que sus fuentes estén publicadas.
+La receta configura `AutoUpdateMode: Version` y etiquetas estables mediante
+`UpdateCheckMode`; `UpdateCheckData` extrae `qetaraVersionCode` y
+`qetaraVersion` de `gradle.properties`, sin ejecutar Gradle. El patrón excluye
+etiquetas RC. Preparar esa configuración no publica las fuentes ni crea una
+etiqueta de 1.4.5.
 
 La revisión de inclusión, el escáner y la build del entorno oficial F-Droid
 siguen siendo procesos independientes del ensayo local. Consulta las
