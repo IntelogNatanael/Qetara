@@ -71,12 +71,42 @@ internal fun reconcileP2pEnabledState(
     )
 }
 
+internal fun runWifiDirectCancellation(
+    state: WifiDirectState,
+    removeGroup: () -> Unit,
+    stopDiscovery: () -> Unit,
+    cancelConnect: () -> Unit
+) {
+    when {
+        state.connection?.groupFormed == true || state.group != null || state.creatingGroup -> removeGroup()
+        state.discoveringPeers -> stopDiscovery()
+        else -> cancelConnect()
+    }
+}
+
+internal fun reconcileWifiDirectDiscoveryResult(
+    current: WifiDirectState,
+    currentVersion: Long,
+    resultVersion: Long,
+    discovering: Boolean,
+    statusMessage: String
+): WifiDirectState {
+    if (currentVersion != resultVersion) return current
+    return current.copy(
+        discoveringPeers = discovering,
+        connectingToPeer = if (discovering) false else current.connectingToPeer,
+        creatingGroup = if (discovering) false else current.creatingGroup,
+        statusMessage = statusMessage
+    )
+}
+
 class WifiDirectController(context: Context) {
 
     private val appContext = context.applicationContext
     private val manager = appContext.getSystemService(Context.WIFI_P2P_SERVICE) as? WifiP2pManager
     private val channel = manager?.initialize(appContext, appContext.mainLooper, null)
     private var p2pStateRequestVersion = 0L
+    private var discoveryRequestVersion = 0L
 
     private val _state = MutableStateFlow(
         WifiDirectState(
@@ -92,6 +122,7 @@ class WifiDirectController(context: Context) {
 
     fun markPermissionMissing() {
         p2pStateRequestVersion++
+        discoveryRequestVersion++
         _state.update {
             it.copy(
                 discoveringPeers = false,
@@ -109,6 +140,7 @@ class WifiDirectController(context: Context) {
     }
 
     private fun applyP2pEnabledState(enabled: Boolean) {
+        if (!enabled) discoveryRequestVersion++
         _state.update {
             reconcileP2pEnabledState(
                 current = it,
@@ -163,13 +195,15 @@ class WifiDirectController(context: Context) {
     @SuppressLint("MissingPermission")
     fun discoverPeers() {
         withManagerAndPermission { mgr, ch ->
+            val requestVersion = ++discoveryRequestVersion
             mgr.discoverPeers(ch, object : WifiP2pManager.ActionListener {
                 override fun onSuccess() {
                     _state.update {
-                        it.copy(
-                            discoveringPeers = true,
-                            connectingToPeer = false,
-                            creatingGroup = false,
+                        reconcileWifiDirectDiscoveryResult(
+                            current = it,
+                            currentVersion = discoveryRequestVersion,
+                            resultVersion = requestVersion,
+                            discovering = true,
                             statusMessage = appContext.getString(R.string.rt_wifi_searching)
                         )
                     }
@@ -177,8 +211,11 @@ class WifiDirectController(context: Context) {
 
                 override fun onFailure(reason: Int) {
                     _state.update {
-                        it.copy(
-                            discoveringPeers = false,
+                        reconcileWifiDirectDiscoveryResult(
+                            current = it,
+                            currentVersion = discoveryRequestVersion,
+                            resultVersion = requestVersion,
+                            discovering = false,
                             statusMessage = appContext.getString(R.string.rt_wifi_search_failed, reasonToText(reason))
                         )
                     }
@@ -226,6 +263,7 @@ class WifiDirectController(context: Context) {
                 updateStatus(appContext.getString(R.string.rt_wifi_invalid_peer_address))
                 return@withManagerAndPermission
             }
+            discoveryRequestVersion++
             val config = WifiP2pConfig().apply {
                 this.deviceAddress = normalizedAddress
                 wps.setup = WpsInfo.PBC
@@ -258,6 +296,7 @@ class WifiDirectController(context: Context) {
     @SuppressLint("MissingPermission")
     fun cancelConnect() {
         withManagerAndPermission { mgr, ch ->
+            discoveryRequestVersion++
             mgr.cancelConnect(ch, object : WifiP2pManager.ActionListener {
                 override fun onSuccess() {
                     _state.update {
@@ -282,8 +321,41 @@ class WifiDirectController(context: Context) {
     }
 
     @SuppressLint("MissingPermission")
+    private fun stopPeerDiscovery() {
+        withManagerAndPermission { mgr, ch ->
+            val requestVersion = ++discoveryRequestVersion
+            mgr.stopPeerDiscovery(ch, object : WifiP2pManager.ActionListener {
+                override fun onSuccess() {
+                    _state.update {
+                        reconcileWifiDirectDiscoveryResult(
+                            current = it,
+                            currentVersion = discoveryRequestVersion,
+                            resultVersion = requestVersion,
+                            discovering = false,
+                            statusMessage = appContext.getString(R.string.rt_wifi_search_canceled)
+                        )
+                    }
+                }
+
+                override fun onFailure(reason: Int) {
+                    _state.update {
+                        reconcileWifiDirectDiscoveryResult(
+                            current = it,
+                            currentVersion = discoveryRequestVersion,
+                            resultVersion = requestVersion,
+                            discovering = it.discoveringPeers,
+                            statusMessage = appContext.getString(R.string.rt_wifi_cancel_failed, reasonToText(reason))
+                        )
+                    }
+                }
+            })
+        }
+    }
+
+    @SuppressLint("MissingPermission")
     fun stopDiscoveryAndNegotiation() {
         withManagerAndPermission { mgr, ch ->
+            discoveryRequestVersion++
             // These requests stop discovery/negotiation while leaving an established network intact.
             mgr.stopPeerDiscovery(ch, null)
             mgr.cancelConnect(ch, null)
@@ -296,20 +368,13 @@ class WifiDirectController(context: Context) {
     }
 
     fun cancelDirectAttempt() {
-        val snapshot = state.value
-        val hasGroupToUndo = snapshot.connection?.groupFormed == true ||
-            snapshot.group != null ||
-            snapshot.creatingGroup
-        if (hasGroupToUndo) {
-            removeGroup()
-        } else {
-            cancelConnect()
-        }
+        runWifiDirectCancellation(state.value, ::removeGroup, ::stopPeerDiscovery, ::cancelConnect)
     }
 
     @SuppressLint("MissingPermission")
     fun createGroup() {
         withManagerAndPermission { mgr, ch ->
+            discoveryRequestVersion++
             mgr.createGroup(ch, object : WifiP2pManager.ActionListener {
                 override fun onSuccess() {
                     _state.update {
@@ -337,6 +402,7 @@ class WifiDirectController(context: Context) {
     @SuppressLint("MissingPermission")
     fun removeGroup() {
         withManagerAndPermission { mgr, ch ->
+            discoveryRequestVersion++
             mgr.removeGroup(ch, object : WifiP2pManager.ActionListener {
                 override fun onSuccess() {
                     _state.update {
