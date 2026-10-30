@@ -1,6 +1,7 @@
 package com.example.wifidrop
 
 import android.Manifest
+import android.content.ClipboardManager
 import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.os.Build
@@ -46,6 +47,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import com.example.wifidrop.protocol.flash.FlashApproval
+import com.example.wifidrop.protocol.flash.FLASH_TEXT_MAX_BYTES
+import com.example.wifidrop.protocol.flash.FlashText as FlashTextAttachment
 import kotlinx.coroutines.*
 import java.io.File
 import java.util.Locale
@@ -65,7 +68,9 @@ class FlashActivity : ComponentActivity() {
             val readingScale = remember { UxPreferencesStore.load(this).fontScale.coerceIn(0.85f, 1.25f) }
             QetaraTheme {
                 CompositionLocalProvider(LocalDensity provides Density(baseDensity.density, baseDensity.fontScale * readingScale)) {
-                    FlashScreen(this, onBack = ::finish)
+                    ProvidePrivateClipboard {
+                        FlashScreen(this, onBack = ::finish)
+                    }
                 }
             }
         }
@@ -74,7 +79,7 @@ class FlashActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-private fun FlashScreen(activity: FlashActivity, onBack: () -> Unit) {
+internal fun FlashScreen(activity: FlashActivity, onBack: () -> Unit) {
     val state by FlashAndroidRuntime.state.collectAsState()
     val listState = rememberLazyListState()
     var previousPhase by remember { mutableStateOf(state.phase) }
@@ -89,7 +94,7 @@ private fun FlashScreen(activity: FlashActivity, onBack: () -> Unit) {
     var manualAddress by rememberSaveable { mutableStateOf("") }
     var manualExpanded by rememberSaveable { mutableStateOf(false) }
     var historyExpanded by rememberSaveable { mutableStateOf(false) }
-    var filesExpanded by rememberSaveable { mutableStateOf(false) }
+    var reviewingFiles by rememberSaveable { mutableStateOf(false) }
     var editName by rememberSaveable { mutableStateOf(false) }
     var choosingPeer by rememberSaveable { mutableStateOf(false) }
     var showStopConfirmation by rememberSaveable { mutableStateOf(false) }
@@ -142,7 +147,7 @@ private fun FlashScreen(activity: FlashActivity, onBack: () -> Unit) {
     }
     val selectedPeer = resolveSelectedFlashPeer(state.selectedPeer, state.engine?.peers.orEmpty(), now)
     val operations = state.engine?.operations.orEmpty()
-    val busy = state.importing || operations.isNotEmpty()
+    val busy = state.importing || state.sendingText || operations.isNotEmpty()
     val imeVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
     val status = state.statusText.localized()
     val showStatus = status.isNotBlank() &&
@@ -157,10 +162,10 @@ private fun FlashScreen(activity: FlashActivity, onBack: () -> Unit) {
 
     // The service also owns pending outgoing work. Prepared files protect the interval
     // between two operations without inventing another transfer state in the UI.
-    val confirmBeforeStopping = busy || approval != null || state.selectedFiles.isNotEmpty()
+    val confirmBeforeStopping = busy || approval != null || state.selectedFiles.isNotEmpty() || state.textDraft.isNotBlank()
     LaunchedEffect(state.active, approval?.requestId) {
         if (!state.active || approval != null) showStopConfirmation = false
-        if (!state.active) choosingPeer = false
+        if (!state.active) { choosingPeer = false; reviewingFiles = false }
     }
     if (showStopConfirmation && state.active && approval == null) {
         AlertDialog(
@@ -187,12 +192,127 @@ private fun FlashScreen(activity: FlashActivity, onBack: () -> Unit) {
         )
     }
 
+    // Destination selection is an immediate overlay; dismissing it never changes prepared content.
+    if (state.active && choosingPeer && approval == null) {
+        AlertDialog(
+            onDismissRequest = { choosingPeer = false },
+            containerColor = MaterialTheme.colorScheme.surface,
+            title = { Text(stringResource(R.string.flash_receiver)) },
+            text = {
+                Column(Modifier.fillMaxWidth().heightIn(max = 420.dp).verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(stringResource(R.string.flash_discovery_description),
+                        style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        TextButton(onClick = { FlashForegroundService.discoverPeers() }, enabled = !busy,
+                            modifier = Modifier.heightIn(min = 48.dp)) { Text(stringResource(R.string.flash_search_again)) }
+                        if (selectedPeer != null) {
+                            TextButton(onClick = { choosingPeer = false }, modifier = Modifier.heightIn(min = 48.dp)) {
+                                Text(stringResource(R.string.flash_keep_device))
+                            }
+                        }
+                    }
+                    if (state.selectedPeer != null && selectedPeer == null) {
+                        Surface(color = MaterialTheme.colorScheme.tertiaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onTertiaryContainer, shape = RoundedCornerShape(12.dp)) {
+                            Text(stringResource(R.string.flash_selected_device_unavailable),
+                                modifier = Modifier.fillMaxWidth().padding(12.dp), style = MaterialTheme.typography.bodyMedium)
+                        }
+                    }
+                    val peers = state.engine?.peers.orEmpty().filter { it.expiresAtMs > now }
+                    if (peers.isEmpty()) {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Icon(Icons.Rounded.Devices, contentDescription = null, tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(28.dp))
+                            Text(stringResource(R.string.flash_activate_other_device), style = MaterialTheme.typography.titleSmall)
+                            Text(stringResource(R.string.flash_check_same_wifi),
+                                style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    } else {
+                        Column(Modifier.fillMaxWidth().selectableGroup(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            peers.forEach { peer ->
+                                key(peer.id, peer.address, peer.port) {
+                                    val selected = selectedPeer?.let {
+                                        it.id == peer.id && it.address == peer.address && it.port == peer.port
+                                    } == true
+                                    FlashPeerChoice(peer, selected, enabled = !busy, onSelect = {
+                                        FlashForegroundService.selectPeer(peer)
+                                        choosingPeer = false
+                                        manualExpanded = false
+                                    })
+                                }
+                            }
+                        }
+                    }
+                    TextButton(onClick = { manualExpanded = !manualExpanded }, enabled = !busy,
+                        modifier = Modifier.heightIn(min = 48.dp)) {
+                        Text(if (manualExpanded) stringResource(R.string.flash_hide_manual_address) else stringResource(R.string.flash_search_by_ip))
+                    }
+                    if (manualExpanded) {
+                        OutlinedTextField(value = manualAddress, onValueChange = { manualAddress = it.take(64) },
+                            label = { Text(stringResource(R.string.flash_other_device_ip)) }, singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii, autoCorrectEnabled = false),
+                            enabled = !busy, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp))
+                        Text(stringResource(R.string.flash_manual_address_help),
+                            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        OutlinedButton(onClick = { FlashForegroundService.discoverPeers(manualAddress) },
+                            enabled = !busy && manualAddress.isNotBlank(),
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp), shape = RoundedCornerShape(16.dp)) {
+                            Text(stringResource(R.string.flash_search_address), textAlign = TextAlign.Center)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { choosingPeer = false }, modifier = Modifier.heightIn(min = 48.dp)) {
+                    Text(stringResource(R.string.flash_close))
+                }
+            }
+        )
+    }
+    if (state.active && reviewingFiles && approval == null) {
+        AlertDialog(
+            onDismissRequest = { reviewingFiles = false },
+            containerColor = MaterialTheme.colorScheme.surface,
+            title = { Text(stringResource(R.string.flash_attached_files_title, state.selectedFiles.size)) },
+            text = {
+                Column(Modifier.fillMaxWidth().heightIn(max = 420.dp).verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    if (state.selectedFiles.isEmpty()) Text(stringResource(R.string.flash_no_attached_files))
+                    state.selectedFiles.forEachIndexed { index, file ->
+                        if (index > 0) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                        FlashFileSummary(file.name, android.text.format.Formatter.formatFileSize(activity, file.length()),
+                            showFullName = true)
+                    }
+                    Text(stringResource(R.string.flash_text_files_separate),
+                        style = MaterialTheme.typography.bodySmall)
+                    if (state.selectedFiles.isNotEmpty()) {
+                        TextButton(onClick = {
+                            FlashForegroundService.clearFiles()
+                            reviewingFiles = false
+                        }, enabled = !busy, modifier = Modifier.heightIn(min = 48.dp)) { Text(stringResource(R.string.flash_remove_all)) }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { reviewingFiles = false }, modifier = Modifier.heightIn(min = 48.dp)) { Text(stringResource(R.string.flash_close)) }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    reviewingFiles = false
+                    notice = null
+                    chooseFiles.launch(arrayOf("*/*"))
+                }, enabled = !busy, modifier = Modifier.heightIn(min = 48.dp)) { Text(stringResource(R.string.flash_add_files)) }
+            }
+        )
+    }
+
     Scaffold(
         modifier = Modifier.imePadding(),
         containerColor = MaterialTheme.colorScheme.background,
         contentWindowInsets = WindowInsets.safeDrawing,
         topBar = {
-            TopAppBar(
+            if (!imeVisible) TopAppBar(
                 title = { Text(stringResource(R.string.flash_title), fontWeight = FontWeight.SemiBold) },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.background,
@@ -204,20 +324,42 @@ private fun FlashScreen(activity: FlashActivity, onBack: () -> Unit) {
             )
         },
         bottomBar = {
-            if (state.active && operations.isEmpty() && !imeVisible) {
-                FlashSendBar(
+            if (state.active) {
+                FlashTextComposer(
+                    draft = state.textDraft,
                     importing = state.importing,
                     selectedPeer = selectedPeer,
                     selectedFileCount = state.selectedFiles.size,
-                    enabled = !busy && approval == null,
+                    busy = busy || approval != null,
+                    sendingText = state.sendingText,
+                    compact = imeVisible || LocalDensity.current.fontScale >= 1.5f,
+                    onDraftChange = FlashForegroundService::updateTextDraft,
+                    onPaste = {
+                        // Read the clipboard only in response to this explicit action.
+                        val clipboardText = runCatching {
+                            activity.getSystemService(ClipboardManager::class.java).primaryClip
+                                ?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.text
+                        }.getOrNull()
+                        if (clipboardText == null) {
+                            notice = R.string.flash_clipboard_empty
+                            null
+                        } else if (clipboardText.length > FLASH_TEXT_MAX_BYTES) {
+                            notice = R.string.flash_text_too_large_unchanged
+                            null
+                        } else {
+                            notice = null
+                            clipboardText.toString()
+                        }
+                    },
                     onChoosePeer = {
                         choosingPeer = true
-                        // The active, idle prefix contains session, optional status and optional notice.
-                        val receiverIndex = 1 + (if (showStatus) 1 else 0) + (if (notice != null) 1 else 0)
-                        scope.launch { listState.animateScrollToItem(receiverIndex) }
+                        FlashForegroundService.discoverPeers()
                     },
                     onChooseFiles = { notice = null; chooseFiles.launch(arrayOf("*/*")) },
-                    onSend = {
+                    onReviewFiles = { reviewingFiles = true },
+                    onCancelImport = FlashForegroundService::cancelImport,
+                    onSend = { notice = null; FlashForegroundService.sendText() },
+                    onSendFiles = {
                         if (!busy && approval == null && selectedPeer != null && state.selectedFiles.isNotEmpty()) {
                             FlashForegroundService.send()
                         }
@@ -250,9 +392,13 @@ private fun FlashScreen(activity: FlashActivity, onBack: () -> Unit) {
             // Active work takes precedence over choosing another destination or file.
             items(operations, key = { "operation:" + it.id }) { operation ->
                 FlashCard {
-                    Text(if (operation.outgoing) stringResource(R.string.flash_sending_to, operation.peer?.label ?: stringResource(R.string.flash_other_device)) else stringResource(R.string.flash_receiving_file),
+                    val isText = FlashTextAttachment.isTextFileName(operation.fileName) && operation.totalBytes <= FLASH_TEXT_MAX_BYTES
+                    Text(if (operation.outgoing) {
+                        stringResource(if (isText) R.string.flash_sending_text_to else R.string.flash_sending_to,
+                            operation.peer?.label ?: stringResource(R.string.flash_other_device))
+                    } else stringResource(if (isText) R.string.flash_receiving_text else R.string.flash_receiving_file),
                         style = MaterialTheme.typography.titleMedium, modifier = Modifier.semantics { heading() })
-                    Text(operation.fileName, style = MaterialTheme.typography.bodyMedium)
+                    if (!isText) Text(operation.fileName, style = MaterialTheme.typography.bodyMedium)
                     val progress = state.progress[operation.id]
                     if (progress == null) {
                         LinearProgressIndicator(Modifier.fillMaxWidth())
@@ -314,124 +460,6 @@ private fun FlashScreen(activity: FlashActivity, onBack: () -> Unit) {
                 }
                 FlashAndroidPhase.ACTIVE -> Unit
             }
-            if (state.active && operations.isEmpty()) {
-                item("receiver") {
-                    FlashCard {
-                        FlashSectionHeading(stringResource(R.string.flash_receiver), "1")
-                        if (selectedPeer != null && !choosingPeer) {
-                            Surface(color = MaterialTheme.colorScheme.primaryContainer,
-                                contentColor = MaterialTheme.colorScheme.onPrimaryContainer, shape = RoundedCornerShape(12.dp)) {
-                                Row(Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                    verticalAlignment = Alignment.Top) {
-                                    Icon(Icons.Rounded.Devices, contentDescription = null, modifier = Modifier.size(24.dp))
-                                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                        Text(selectedPeer.label, style = MaterialTheme.typography.titleSmall)
-                                        Text(selectedPeer.address, style = MaterialTheme.typography.bodySmall)
-                                    }
-                                }
-                            }
-                            TextButton(onClick = { choosingPeer = true }, enabled = !busy, modifier = Modifier.heightIn(min = 48.dp)) {
-                                Text(stringResource(R.string.flash_change_device))
-                            }
-                        } else {
-                            Text(stringResource(R.string.flash_discovery_description),
-                                style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                TextButton(onClick = { FlashForegroundService.discoverPeers() }, enabled = !busy,
-                                    modifier = Modifier.heightIn(min = 48.dp)) { Text(stringResource(R.string.flash_search_again)) }
-                                if (selectedPeer != null) {
-                                    TextButton(onClick = { choosingPeer = false }, modifier = Modifier.heightIn(min = 48.dp)) {
-                                        Text(stringResource(R.string.flash_keep_device))
-                                    }
-                                }
-                            }
-                            if (state.selectedPeer != null && selectedPeer == null) {
-                                Surface(color = MaterialTheme.colorScheme.tertiaryContainer,
-                                    contentColor = MaterialTheme.colorScheme.onTertiaryContainer, shape = RoundedCornerShape(12.dp)) {
-                                    Text(stringResource(R.string.flash_selected_device_unavailable),
-                                        modifier = Modifier.fillMaxWidth().padding(12.dp), style = MaterialTheme.typography.bodyMedium)
-                                }
-                            }
-                            val peers = state.engine?.peers.orEmpty().filter { it.expiresAtMs > now }
-                            if (peers.isEmpty()) {
-                                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    Icon(Icons.Rounded.Devices, contentDescription = null, tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(28.dp))
-                                    Text(stringResource(R.string.flash_activate_other_device), style = MaterialTheme.typography.titleSmall)
-                                    Text(stringResource(R.string.flash_check_same_wifi),
-                                        style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                }
-                            } else {
-                                Column(Modifier.fillMaxWidth().selectableGroup(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    peers.forEach { peer ->
-                                        key(peer.id, peer.address, peer.port) {
-                                            val selected = selectedPeer?.let {
-                                                it.id == peer.id && it.address == peer.address && it.port == peer.port
-                                            } == true
-                                            FlashPeerChoice(peer, selected, enabled = !busy, onSelect = {
-                                                FlashForegroundService.selectPeer(peer)
-                                                choosingPeer = false
-                                                manualExpanded = false
-                                            })
-                                        }
-                                    }
-                                }
-                            }
-                            TextButton(onClick = { manualExpanded = !manualExpanded }, enabled = !busy,
-                                modifier = Modifier.heightIn(min = 48.dp)) {
-                                Text(if (manualExpanded) stringResource(R.string.flash_hide_manual_address) else stringResource(R.string.flash_search_by_ip))
-                            }
-                            if (manualExpanded) {
-                                OutlinedTextField(value = manualAddress, onValueChange = { manualAddress = it.take(64) },
-                                    label = { Text(stringResource(R.string.flash_other_device_ip)) }, singleLine = true,
-                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii, autoCorrectEnabled = false),
-                                    enabled = !busy, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp))
-                                Text(stringResource(R.string.flash_manual_address_help),
-                                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                OutlinedButton(onClick = { FlashForegroundService.discoverPeers(manualAddress) },
-                                    enabled = !busy && manualAddress.isNotBlank(),
-                                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp), shape = RoundedCornerShape(16.dp)) {
-                                    Text(stringResource(R.string.flash_search_address), textAlign = TextAlign.Center)
-                                }
-                            }
-                        }
-                    }
-                }
-                item("files") {
-                    FlashCard {
-                        FlashSectionHeading(stringResource(R.string.flash_files_to_share), "2")
-                        if (state.selectedFiles.isEmpty()) {
-                            Text(stringResource(R.string.flash_choose_files_description), style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                        (if (filesExpanded) state.selectedFiles else state.selectedFiles.take(3)).forEachIndexed { index, file ->
-                            if (index > 0) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                            FlashFileSummary(file.name, android.text.format.Formatter.formatFileSize(activity, file.length()),
-                                showFullName = filesExpanded || state.selectedFiles.size <= 3)
-                        }
-                        if (state.selectedFiles.size > 3) {
-                            TextButton(onClick = { filesExpanded = !filesExpanded }, modifier = Modifier.heightIn(min = 48.dp)) {
-                                Text(if (filesExpanded) stringResource(R.string.flash_show_less) else pluralStringResource(R.plurals.flash_view_files, state.selectedFiles.size, state.selectedFiles.size))
-                            }
-                        }
-                        if (state.importing) {
-                            LinearProgressIndicator(Modifier.fillMaxWidth())
-                            Text(stringResource(R.string.flash_preparing_selection), style = MaterialTheme.typography.bodyMedium)
-                            TextButton(onClick = FlashForegroundService::cancelImport,
-                                modifier = Modifier.heightIn(min = 48.dp)) { Text(stringResource(R.string.flash_cancel_selection)) }
-                        } else {
-                            OutlinedButton(onClick = { notice = null; chooseFiles.launch(arrayOf("*/*")) }, enabled = !busy,
-                                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp), shape = RoundedCornerShape(16.dp)) {
-                                Text(if (state.selectedFiles.isEmpty()) stringResource(R.string.flash_choose_files) else stringResource(R.string.flash_add_files), textAlign = TextAlign.Center)
-                            }
-                            if (state.selectedFiles.isNotEmpty()) {
-                                TextButton(onClick = FlashForegroundService::clearFiles, enabled = !busy,
-                                    modifier = Modifier.heightIn(min = 48.dp)) { Text(stringResource(R.string.flash_remove_all)) }
-                            }
-                        }
-                    }
-                }
-            }
             if (state.results.isNotEmpty()) item("results-title") {
                 Text(stringResource(R.string.flash_recent_activity), style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onBackground, modifier = Modifier.semantics { heading() })
@@ -439,8 +467,8 @@ private fun FlashScreen(activity: FlashActivity, onBack: () -> Unit) {
             items(if (historyExpanded) state.results else state.results.take(3), key = { "result:" + it.id }) { result ->
                 FlashCard {
                     Text(when (result.kind) {
-                        FlashResultKind.DELIVERED -> stringResource(R.string.flash_delivered_title)
-                        FlashResultKind.RECEIVED -> stringResource(R.string.flash_received_title)
+                        FlashResultKind.DELIVERED -> stringResource(if (result.textBody != null) R.string.flash_text_delivered_title else R.string.flash_delivered_title)
+                        FlashResultKind.RECEIVED -> stringResource(if (result.textBody != null) R.string.flash_text_received_title else R.string.flash_received_title)
                         FlashResultKind.CANCELLED -> stringResource(R.string.flash_cancelled_title)
                         FlashResultKind.FAILED -> stringResource(R.string.flash_failed_title)
                     }, style = MaterialTheme.typography.labelLarge,
@@ -449,9 +477,23 @@ private fun FlashScreen(activity: FlashActivity, onBack: () -> Unit) {
                             FlashResultKind.CANCELLED -> MaterialTheme.colorScheme.onSurfaceVariant
                             FlashResultKind.FAILED -> MaterialTheme.colorScheme.error
                         })
-                    Text(result.fileName.ifEmpty { stringResource(R.string.flash_file) }, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+                    val textBody = result.textBody
+                    if (textBody != null) {
+                        SelectionContainer {
+                            Text(textBody, modifier = Modifier.fillMaxWidth().heightIn(max = 320.dp)
+                                .verticalScroll(rememberScrollState()), style = MaterialTheme.typography.bodyMedium)
+                        }
+                        OutlinedButton(onClick = {
+                            runCatching {
+                                copySensitiveText(activity, activity.getString(R.string.flash_text_clipboard_label), textBody)
+                            }.onSuccess { notice = R.string.flash_text_copied }
+                                .onFailure { notice = R.string.flash_text_copy_failed }
+                        }, modifier = Modifier.heightIn(min = 48.dp), shape = RoundedCornerShape(16.dp)) { Text(stringResource(R.string.flash_copy)) }
+                    } else {
+                        Text(result.fileName.ifEmpty { stringResource(R.string.flash_file) }, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+                    }
                     Text(result.detailText.localized(), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    result.file?.let { file ->
+                    result.file?.takeIf { textBody == null }?.let { file ->
                         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                             OutlinedButton(onClick = {
                                 runCatching { ExternalOpenUtils.openRoute(activity, result.downloadUri ?: file.absolutePath) }
@@ -492,6 +534,7 @@ private fun FlashApprovalDialog(approval: FlashApproval, nowMs: Long, onAnswer: 
     val isBatch = fileCount > 1
     val verificationDescription = stringResource(R.string.flash_verification_description,
         approval.verificationCode.toCharArray().joinToString(" "))
+    val isText = !isBatch && FlashTextAttachment.isTextFileName(approval.fileName) && approval.totalBytes <= FLASH_TEXT_MAX_BYTES
     AlertDialog(
         onDismissRequest = { onAnswer(false) },
         shape = RoundedCornerShape(20.dp),
@@ -508,14 +551,17 @@ private fun FlashApprovalDialog(approval: FlashApproval, nowMs: Long, onAnswer: 
                 Surface(color = MaterialTheme.colorScheme.surfaceContainer,
                     contentColor = MaterialTheme.colorScheme.onSurface, shape = RoundedCornerShape(16.dp)) {
                     Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Text(pluralStringResource(R.plurals.flash_approval_files_total, fileCount, fileCount, flashFileSize(approval.totalBytes)),
+                        Text(if (isText) stringResource(R.string.flash_text_with_size, flashFileSize(approval.totalBytes)) else
+                            pluralStringResource(R.plurals.flash_approval_files_total, fileCount, fileCount, flashFileSize(approval.totalBytes)),
                             style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold,
                             modifier = Modifier.semantics { heading() })
                         SelectionContainer {
                             Column(Modifier.fillMaxWidth().heightIn(max = 144.dp).verticalScroll(filesScroll),
                                 verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 approval.files.forEach { file ->
-                                    Text(stringResource(R.string.flash_file_with_size, file.fileName, flashFileSize(file.totalBytes)), style = MaterialTheme.typography.bodyMedium)
+                                    Text(if (isText) stringResource(R.string.flash_text_message) else
+                                        stringResource(R.string.flash_file_with_size, file.fileName, flashFileSize(file.totalBytes)),
+                                        style = MaterialTheme.typography.bodyMedium)
                                 }
                             }
                         }
@@ -531,7 +577,9 @@ private fun FlashApprovalDialog(approval: FlashApproval, nowMs: Long, onAnswer: 
                 }
                 if (isBatch) Text(pluralStringResource(R.plurals.flash_batch_approval_scope, fileCount, fileCount),
                     style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
-                Text(if (isBatch) stringResource(R.string.flash_reject_unknown_batch)
+                if (isText) Text(stringResource(R.string.flash_text_confirm_each_send), style = MaterialTheme.typography.bodyMedium)
+                Text(if (isText) stringResource(R.string.flash_reject_unknown_text)
+                    else if (isBatch) stringResource(R.string.flash_reject_unknown_batch)
                     else stringResource(R.string.flash_reject_unknown_file), style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text(stringResource(R.string.flash_request_remaining, flashRemaining(approval.expiresAtMs, nowMs)), style = MaterialTheme.typography.labelMedium,
@@ -539,14 +587,22 @@ private fun FlashApprovalDialog(approval: FlashApproval, nowMs: Long, onAnswer: 
             }
         },
         confirmButton = {
-            Button(onClick = { onAnswer(true) }, enabled = approval.expiresAtMs > nowMs,
-                modifier = Modifier.heightIn(min = 48.dp), shape = RoundedCornerShape(16.dp)) {
-                Text(if (isBatch) {
-                    if (approval.outgoing) pluralStringResource(R.plurals.flash_matches_send_files, fileCount, fileCount) else pluralStringResource(R.plurals.flash_matches_receive_files, fileCount, fileCount)
-                } else if (approval.outgoing) stringResource(R.string.flash_matches_send) else stringResource(R.string.flash_matches_receive))
+            // Keep both choices in one measured column: a wrapped confirmation must never
+            // overlap Reject when the dialog's action flow lays out larger text.
+            Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(onClick = { onAnswer(true) }, enabled = approval.expiresAtMs > nowMs,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp), shape = RoundedCornerShape(16.dp)) {
+                    Text(if (isBatch) {
+                        if (approval.outgoing) pluralStringResource(R.plurals.flash_matches_send_files, fileCount, fileCount) else pluralStringResource(R.plurals.flash_matches_receive_files, fileCount, fileCount)
+                    } else if (approval.outgoing) stringResource(R.string.flash_matches_send)
+                        else stringResource(if (isText) R.string.flash_matches_receive_text else R.string.flash_matches_receive),
+                        modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
+                }
+                TextButton(onClick = { onAnswer(false) }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                    Text(stringResource(R.string.flash_reject))
+                }
             }
-        },
-        dismissButton = { TextButton(onClick = { onAnswer(false) }, modifier = Modifier.heightIn(min = 48.dp)) { Text(stringResource(R.string.flash_reject)) } }
+        }
     )
 }
 

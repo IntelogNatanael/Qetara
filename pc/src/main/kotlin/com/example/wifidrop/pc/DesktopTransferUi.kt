@@ -77,6 +77,13 @@ internal fun actionableDesktopError(error: Throwable): String {
     return when {
         raw.contains("confirmacion_host_requerida") ->
             "Aprueba este equipo en el teléfono y vuelve a enviar. Compara antes la huella con Ajustes → Este equipo."
+        // Socket permissions describe network access, including ConnectException/BindException;
+        // the same OS wording on a file exception must keep its storage guidance below.
+        error is java.net.SocketException && (error is java.net.NoRouteToHostException ||
+            listOf("Permission denied", "Access denied", "Operation not permitted", "denegado",
+                "unreachable", "No route to host", "red inaccesible", "red no accesible")
+                .any { raw.contains(it, ignoreCase = true) }) ->
+            "La conexión con la red local está bloqueada o no tiene una ruta disponible. Comprueba que ambos equipos estén en la misma red y revisa si la VPN o el firewall permiten a Qetara acceder a la red local."
         error is java.net.BindException -> "El puerto está ocupado. Cierra otra instancia de Qetara o cambia el puerto en Ajustes."
         error is java.net.UnknownHostException -> "No se encuentra ese equipo. Revisa la dirección o usa Buscar equipos."
         error is java.net.ConnectException -> "El equipo no responde. Activa Recibir en el otro equipo y comprueba la misma red y puerto."

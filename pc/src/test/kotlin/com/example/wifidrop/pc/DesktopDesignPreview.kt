@@ -1,6 +1,9 @@
 package com.example.wifidrop.pc
 
 import androidx.compose.material.MaterialTheme
+import androidx.compose.foundation.layout.Column
+import androidx.compose.material.Text
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.ImageComposeScene
 import androidx.compose.ui.unit.Density
@@ -9,6 +12,12 @@ import com.example.wifidrop.protocol.flash.FlashListener
 import com.example.wifidrop.protocol.flash.FlashOfferedFile
 import com.example.wifidrop.protocol.flash.FlashPeer
 import com.example.wifidrop.protocol.flash.FlashState
+import com.example.wifidrop.protocol.flash.FlashOperation
+import com.example.wifidrop.protocol.flash.FlashReceived
+import com.example.wifidrop.protocol.flash.FlashCompleted
+import com.example.wifidrop.protocol.flash.FlashError
+import com.example.wifidrop.protocol.flash.FlashProgress
+import com.example.wifidrop.protocol.flash.FlashText
 import java.io.File
 import java.security.MessageDigest
 import java.util.Base64
@@ -20,7 +29,8 @@ import org.jetbrains.skia.EncodedImageFormat
  * Manual design tool, not a JUnit test. Renders the production composables in an offscreen scene.
  * No sockets, device discovery, production preferences, native windows, or OS input are used.
  * Run :pc:designPreview [-PpreviewScenario=all|empty|selected|selected-many|send-needs-input|
- * receive-starting|receive-stopping|receive-expired|flash-off|flash-ready|flash-approvals].
+ * receive-starting|receive-stopping|receive-expired|flash|flash-off|flash-empty|flash-no-receiver|
+ * flash-ready|flash-text|flash-transfer|flash-error|flash-expired|flash-approvals].
  * Flash approval scenarios also accept flash-approval-single|send|receive|many individually.
  * The optional files-dialog scenario checks the actual review dialog separately.
  */
@@ -33,32 +43,71 @@ object DesktopDesignPreview {
         val requested = args.getOrElse(1) { "all" }
         val scenarios = listOf(
             "empty", "selected", "selected-many", "send-needs-input",
-            "receive-starting", "receive-stopping", "receive-expired", "flash-off", "flash-ready",
-            "flash-approval-single", "flash-approval-send", "flash-approval-receive", "flash-approval-many"
+            "receive-starting", "receive-stopping", "receive-expired", "flash-off", "flash-empty", "flash-no-receiver",
+            "flash-ready", "flash-text", "flash-transfer", "flash-error", "flash-expired",
+            "flash-approval-single", "flash-approval-send", "flash-approval-receive", "flash-approval-many",
+            "channel-receiver-off", "channel-text-only", "channel-ready", "channel-queued", "channel-close"
         )
-        require(requested in listOf("all", "files-dialog", "flash-approvals") || requested in scenarios) { "Unknown preview scenario: $requested" }
+        require(requested in listOf("all", "files-dialog", "flash", "flash-approvals", "channel") || requested in scenarios) { "Unknown preview scenario: $requested" }
         val fixtures = createFixtures(output)
         val artifacts = mutableListOf<String>()
 
         val requestedScenarios = if (requested == "files-dialog") listOf(requested) else scenarios.filter {
-            requested == "all" || requested == it || (requested == "flash-approvals" && it.startsWith("flash-approval-"))
+            requested == "all" || requested == it || (requested == "flash-approvals" && it.startsWith("flash-approval-")) ||
+                (requested == "flash" && it.startsWith("flash-")) ||
+                (requested == "channel" && it.startsWith("channel-"))
         }
         for (scenario in requestedScenarios) {
+            var flashTransport: PreviewFlashTransport? = null
             val controller = onEdt {
                 DesktopFlashController(File(PREVIEW_RECEIVED_DIRECTORY)) { _, _, listener ->
-                    PreviewFlashTransport(listener)
+                    PreviewFlashTransport(listener, hasReceiver = scenario !in listOf("flash-empty", "flash-no-receiver"))
+                        .also { flashTransport = it }
                 }
             }
             try {
-                if (scenario == "flash-ready" || scenario.startsWith("flash-approval-")) {
+                if (scenario.startsWith("flash-") && scenario != "flash-off") {
                     onEdt { controller.start("Qetara de ejemplo") }
-                    awaitActivation(controller)
+                    awaitState(controller, "activation") { session.active }
                     onEdt {
-                        controller.chooseFiles(fixtures.take(2))
-                        controller.choosePeer(controller.state.session.peers.single())
+                        if (scenario in listOf("flash-ready", "flash-text", "flash-transfer", "flash-error")) controller.chooseFiles(fixtures)
+                        else if (scenario.startsWith("flash-approval-")) controller.chooseFiles(fixtures.take(2))
+                        controller.state.session.peers.singleOrNull()?.let(controller::choosePeer)
                     }
                 }
-                for ((width, height) in listOf(1160 to 800, 800 to 620)) {
+                if (scenario in listOf("flash-text", "flash-no-receiver", "flash-expired")) {
+                    onEdt {
+                        controller.updateTextDraft("Revisemos la propuesta a las 10:00.\nLleva tus comentarios 🙂")
+                    }
+                }
+                if (scenario == "flash-text") {
+                    fixtures.forEach { checkNotNull(flashTransport).showReceivedFile(it) }
+                    listOf(
+                        "De acuerdo. Ya tengo las notas.\nNos vemos a las 10:00 🙂",
+                        "Texto completo para revisar la expansión y el copiado.\n" +
+                            (1..8).joinToString("\n") { "Punto $it: coordinar la revisión del proyecto y conservar los comentarios de todo el equipo." }
+                    ).forEach { body ->
+                        checkNotNull(flashTransport).showReceivedFile(FlashText.createFile(File(output, "fixtures"), body))
+                    }
+                    awaitState(controller, "seven completed recent items") { transfers.size == 7 && transfers.none { it.busy } }
+                }
+                if (scenario in listOf("flash-transfer", "flash-error")) {
+                    onEdt { controller.send() }
+                    awaitState(controller, "visible transfer progress") { transfers.any { it.phase == DesktopFlashPhase.TRANSFERRING } }
+                    if (scenario == "flash-error") {
+                        checkNotNull(flashTransport).failCurrentTransfer()
+                        awaitState(controller, "failed transfer") { error && !busy }
+                    }
+                }
+                if (scenario == "flash-expired") {
+                    checkNotNull(flashTransport).showReceivedFile(fixtures.first())
+                    awaitState(controller, "completed receipt before expiry") { transfers.singleOrNull()?.phase == DesktopFlashPhase.COMPLETE }
+                    checkNotNull(flashTransport).expire()
+                    awaitState(controller, "expired session") { !session.active }
+                }
+                val sizes = if (scenario.startsWith("channel-")) listOf(1160 to 1180, 800 to 1180)
+                    else listOf(1160 to 800, 800 to 620)
+                for ((width, height) in sizes) {
                     val state = workspaceFixture(fixtures, scenario)
                     val png = onEdt { render(width, height, scenario, state, controller) }
                     val stem = "desktop-$scenario-${width}x$height"
@@ -93,16 +142,27 @@ object DesktopDesignPreview {
             This run exported ${artifacts.size} views: ${artifacts.size} PNGs and ${artifacts.size} SVG containers.
             Coverage includes Compartir empty/selected, a larger selection with more than eight peers,
             a failed send with a current input issue, Recibir starting/stopping/expired, and Flash
-            off/ready at 1160x800 and 800x620, density 1. Flash approval previews cover a single file,
+            off, active without peers, text without a receiver, five ready files, text with seven
+            recent items, a transferring batch, a failed transfer and an expired session at 1160x800
+            and 800x620, density 1. These are full workspace dimensions including the sidebar.
+            The active transfer is driven through the real controller's send command and its progress
+            buffer; the in-memory transport emits synthetic callbacks without opening a connection.
+            Flash approval previews cover a single file,
             three-file sending/receiving and 128 files with a long name, using the production dialog.
             The flash-approvals filter exports those four approval scenarios only.
+            The flash filter exports all Flash scenarios, including the four approval dialogs.
+            The production desktop palette is currently fixed to its light colors; this tool does
+            not invent a dark theme or modify the user's appearance preference.
             A filtered run exports only its selected scenarios.
             The empty workspace has missing-code/PIN/file/destination issues, so sending and receiving
             are disabled as in production. The selected fixture has valid synthetic credentials, a
             destination and two readable files; its issue lists are empty. Both provide nonempty
             discovery and sending status text. These are supplied states, not interaction-test results.
             Recibir renders the production tab selected through its initial-state parameter.
-            Mensajes is not represented; the preview does not replace it with imitation UI.
+            The channel filter renders the production channel content with synthetic states for a
+            stopped receiver, text only, a ready attachment, queued requests and the close dialog.
+            Its tall 1160/800 x 1180 views expose the complete content for layout inspection; they
+            do not validate scrolling or keyboard interaction in a real application window.
             No claim of complete visual QA or Figma alignment follows from generating these images.
             """.trimIndent() + "\n"
         )
@@ -120,9 +180,15 @@ object DesktopDesignPreview {
                 DesktopWorkspace(
                     state = state.copy(flashActive = controller.state.session.active),
                     actions = previewActions(),
-                    chatContent = {},
+                    chatContent = { openReceive ->
+                        if (scenario.startsWith("channel-")) channelFixture(scenario, state, openReceive)
+                    },
                     activityContent = {},
-                    initialTab = if (scenario.startsWith("receive-")) WorkspaceTab.RECEIVE else WorkspaceTab.SHARE,
+                    initialTab = when {
+                        scenario.startsWith("receive-") -> WorkspaceTab.RECEIVE
+                        scenario.startsWith("channel-") -> WorkspaceTab.CHAT
+                        else -> WorkspaceTab.SHARE
+                    },
                     flashVisible = scenario.startsWith("flash-"),
                     flashContent = {
                         DesktopFlashPanel(
@@ -137,6 +203,7 @@ object DesktopDesignPreview {
                 if (scenario.startsWith("flash-approval-")) {
                     DesktopFlashApprovalDialog(approvalFixture(scenario), count = 1, now = 1_000L, decide = {})
                 }
+                if (scenario == "channel-close") DesktopCloseConfirmationDialog(onContinue = {}, onExit = {})
             }
         }
         try {
@@ -154,7 +221,41 @@ object DesktopDesignPreview {
         }
     }
 
-    private fun workspaceFixture(files: List<File>, scenario: String): DesktopWorkspaceState {
+    @Composable
+    private fun channelFixture(scenario: String, state: DesktopWorkspaceState, openReceive: () -> Unit) {
+        val queued = scenario == "channel-queued"
+        val offerMessages = if (queued) listOf("first", "second").mapIndexed { index, id ->
+            DesktopChatEntry(
+                timestamp = "10:00", scope = DesktopChatScope.GLOBAL_LAN, direction = DesktopChatDirection.INCOMING,
+                peerLabel = "Equipo de ejemplo", peerAddress = "192.0.2.20",
+                message = "\u2063QCT\u2063{\"kind\":\"file_offer\",\"scope\":\"GLOBAL_LAN\",\"offer_id\":\"$id\",\"file_name\":\"Documento ${index + 1}.txt\",\"file_size_bytes\":1024,\"sender_id\":\"preview-peer\",\"sender_label\":\"Equipo de ejemplo\",\"sender_ip\":\"192.0.2.20\",\"created_at_ms\":1000}"
+            )
+        } else emptyList()
+        Column {
+            Text("Canal Wi-Fi", style = MaterialTheme.typography.h6)
+            DesktopChatScopeContent(
+                scope = DesktopChatScope.GLOBAL_LAN,
+                lanPeers = state.peers.map { it.copy(globalLanJoined = true) },
+                selectedDirectPeerIp = null, onSelectDirectPeer = {}, globalLanJoined = true,
+                draft = if (queued) "" else "Notas para la próxima reunión.", onDraftChange = {},
+                attachmentPath = if (scenario in listOf("channel-receiver-off", "channel-ready")) state.filePaths.first() else "",
+                onChooseAttachment = {}, onClearAttachment = {}, messages = offerMessages,
+                status = if (queued) "2 solicitudes del canal pendientes." else "Conversación del Canal Wi-Fi.",
+                messagePhase = DesktopTaskPhase.IDLE, discoveryStatus = "1 equipo disponible.",
+                discoveryPhase = DesktopTaskPhase.IDLE, onRefreshLan = {}, onSend = {},
+                autoDownloadChannelFiles = queued, onAutoDownloadChannelFilesChange = {},
+                onDownloadChannelFileOffer = {}, credentialsReady = true,
+                receiverActive = scenario !in listOf("channel-receiver-off", "channel-text-only"),
+                onOpenReceive = openReceive,
+                channelRequestStatuses = if (queued) mapOf(
+                    DesktopChannelOfferKey("192.0.2.20", "first") to DesktopChannelRequestStatus(DesktopChannelRequestPhase.REQUESTING, "Solicitando el archivo…"),
+                    DesktopChannelOfferKey("192.0.2.20", "second") to DesktopChannelRequestStatus(DesktopChannelRequestPhase.QUEUED, "Solicitud en cola.")
+                ) else emptyMap()
+            )
+        }
+    }
+
+    internal fun workspaceFixture(files: List<File>, scenario: String): DesktopWorkspaceState {
         val selected = scenario != "empty" && !scenario.startsWith("flash-")
         val selectedFiles = if (scenario in listOf("selected-many", "files-dialog")) files else files.take(2)
         val base = DesktopWorkspaceState(
@@ -192,6 +293,10 @@ object DesktopDesignPreview {
             identityFingerprint = "3f1c 7a20 94d8 0b5e a612 2d80 fbc4 719e"
         )
         return when (scenario) {
+            "channel-ready", "channel-queued", "channel-close" -> base.copy(
+                receiverPhase = DesktopTaskPhase.RUNNING, receiverStatus = "Recepción activa.",
+                receivingProgress = if (scenario == "channel-close") .4f else null
+            )
             "selected-many" -> base.copy(
                 host = "192.0.2.30",
                 peers = (21..30).map { address ->
@@ -234,7 +339,7 @@ object DesktopDesignPreview {
         )
     }
 
-    private fun previewActions() = DesktopWorkspaceActions(
+    internal fun previewActions() = DesktopWorkspaceActions(
         onTokenChange = {}, onPinChange = {}, onDeviceNameChange = {}, onOutputDirectoryChange = {},
         onHostChange = {}, onPortChange = {}, onRetriesChange = {}, onSessionMinutesChange = {},
         onCreateSession = {}, onCopySession = {}, onChooseFile = {}, onClearFiles = {},
@@ -259,23 +364,49 @@ object DesktopDesignPreview {
         )
     }
 
-    private class PreviewFlashTransport(private val listener: FlashListener) : DesktopFlashTransport {
+    private class PreviewFlashTransport(private val listener: FlashListener, hasReceiver: Boolean) : DesktopFlashTransport {
         private val expiry = System.currentTimeMillis() + TimeUnit.MINUTES.toMillis(30)
         private val peer = FlashPeer("00000000-0000-4000-8000-000000000002", "Equipo de ejemplo", "192.0.2.20", 8989, expiry)
-        private val active = FlashState(true, expiry, "00000000-0000-4000-8000-000000000001", 8989, peers = listOf(peer))
+        private val active = FlashState(true, expiry, "00000000-0000-4000-8000-000000000001", 8989,
+            peers = if (hasReceiver) listOf(peer) else emptyList())
+        private var currentOperation: FlashOperation? = null
+        private var receivedCount = 0
         override fun start() = listener.onState(active)
         override fun discover() = listener.onState(active)
         override fun stop() = listener.onState(FlashState())
         override fun discoverAt(address: String, port: Int) = error("Preview cannot discover network peers")
-        override fun sendBatch(files: List<File>, peer: FlashPeer): String = error("Preview cannot send files")
+        override fun sendBatch(files: List<File>, peer: FlashPeer): String {
+            val file = files.first()
+            val operation = FlashOperation("preview-sending-file", peer, file.name, file.length(), true,
+                batchId = "preview-sending-batch", fileCount = files.size)
+            currentOperation = operation
+            listener.onState(active.copy(operations = listOf(operation)))
+            listener.onProgress(FlashProgress(operation.id, operation.totalBytes * 43 / 100, operation.totalBytes, true))
+            return operation.batchId
+        }
         override fun approve(requestId: String, accepted: Boolean): Boolean = error("Preview cannot approve transfers")
         override fun cancel(operationId: String): Boolean = false
+        fun showReceivedFile(file: File) {
+            val id = "preview-received-${++receivedCount}"
+            listener.onState(active.copy(operations = listOf(FlashOperation(id, peer, file.name, file.length(), false))))
+            listener.onReceived(FlashReceived(id, peer, file))
+            listener.onCompleted(FlashCompleted(id, peer, file.name, false))
+            listener.onState(active)
+        }
+        fun failCurrentTransfer() {
+            val operation = checkNotNull(currentOperation)
+            listener.onError(FlashError(operation.id, "connection_lost",
+                "Se perdió la conexión con el otro equipo. Comprueba que Flash siga activo antes de volver a enviar."))
+            listener.onState(active)
+            currentOperation = null
+        }
+        fun expire() = listener.onState(FlashState())
     }
 
-    private fun awaitActivation(controller: DesktopFlashController) {
+    private fun awaitState(controller: DesktopFlashController, description: String, predicate: DesktopFlashUiState.() -> Boolean) {
         val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(3)
-        while (!onEdt { controller.state.session.active && controller.state.session.peers.isNotEmpty() }) {
-            check(System.nanoTime() < deadline) { "Synthetic Flash state did not activate" }
+        while (!onEdt { controller.state.predicate() }) {
+            check(System.nanoTime() < deadline) { "Synthetic Flash state did not reach $description" }
             Thread.sleep(10)
         }
     }

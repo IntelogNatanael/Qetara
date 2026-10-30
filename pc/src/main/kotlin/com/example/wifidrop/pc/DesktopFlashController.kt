@@ -6,6 +6,10 @@ import androidx.compose.runtime.setValue
 import com.example.wifidrop.protocol.flash.*
 import java.io.File
 import java.net.BindException
+import java.nio.file.Files
+import java.awt.Toolkit
+import java.awt.datatransfer.DataFlavor
+import java.awt.datatransfer.StringSelection
 import java.util.concurrent.Executors
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
@@ -23,7 +27,8 @@ internal data class DesktopFlashTransfer(
     val phase: DesktopFlashPhase = DesktopFlashPhase.WAITING,
     val detail: String = "Preparando conexión y verificación…",
     val file: File? = null,
-    val cancelling: Boolean = false
+    val cancelling: Boolean = false,
+    val textBody: String? = null
 ) {
     val busy: Boolean get() = phase == DesktopFlashPhase.WAITING || phase == DesktopFlashPhase.TRANSFERRING
 }
@@ -35,19 +40,40 @@ internal data class DesktopFlashUiState(
     val batchSending: Boolean = false,
     val directory: File,
     val selectedFiles: List<File> = emptyList(),
-    val selectedPeerId: String? = null,
+    val receiverSelection: FlashPeer? = null,
+    val textDraft: String = "",
     val transfers: List<DesktopFlashTransfer> = emptyList(),
     val status: String = "Flash está desactivado.",
     val error: Boolean = false
 ) {
     val busy: Boolean get() = sendPending || batchSending || session.operations.isNotEmpty() || transfers.any { it.busy }
     val selectedFile: File? get() = selectedFiles.firstOrNull()
-    val selectedPeer: FlashPeer? get() = session.peers.firstOrNull { it.id == selectedPeerId }
+    // A discovery refresh may update the label or expiry, but must not silently change the destination.
+    val selectedPeer: FlashPeer? get() = receiverSelection?.let { selected ->
+        session.peers.firstOrNull {
+            it.id == selected.id && it.address == selected.address && it.port == selected.port
+        }
+    }
+}
+
+/** The system clipboard is touched only by the explicit Paste and Copy actions. */
+internal interface DesktopFlashClipboard {
+    fun readText(): String?
+    fun writeText(text: String)
+}
+
+private object SystemDesktopFlashClipboard : DesktopFlashClipboard {
+    override fun readText(): String? {
+        val clipboard = Toolkit.getDefaultToolkit().systemClipboard
+        return if (clipboard.isDataFlavorAvailable(DataFlavor.stringFlavor)) clipboard.getData(DataFlavor.stringFlavor) as? String else null
+    }
+    override fun writeText(text: String) = Toolkit.getDefaultToolkit().systemClipboard.setContents(StringSelection(text), null)
 }
 
 /** One controller survives navigation; engine callbacks never mutate Compose state off the EDT. */
 internal class DesktopFlashController(
     initialDirectory: File,
+    private val clipboard: DesktopFlashClipboard = SystemDesktopFlashClipboard,
     private val engineFactory: (String, File, FlashListener) -> DesktopFlashTransport = ::createDesktopFlashTransport
 ) : AutoCloseable {
     var state by mutableStateOf(DesktopFlashUiState(directory = initialDirectory))
@@ -63,6 +89,12 @@ internal class DesktopFlashController(
     private var outgoingBatchCompleted = 0
     private var activeOutgoingOperationId: String? = null
     private var outgoingSubmission = 0L
+    private class OutgoingText(val body: String) {
+        val abandoned = AtomicBoolean(false)
+        @Volatile var directory: File? = null
+        @Volatile var file: File? = null
+    }
+    private var outgoingText: OutgoingText? = null
     private val commands = Executors.newSingleThreadExecutor { task ->
         Thread(task, "qetara-desktop-flash-control").apply { isDaemon = true }
     }
@@ -76,7 +108,8 @@ internal class DesktopFlashController(
         progressBuffer.clear()
         progressTimer.start()
         val directory = state.directory
-        state = state.copy(starting = true, status = "Activando Flash…", error = false)
+        state = state.copy(starting = true, status = "Activando Flash…", error = false, receiverSelection = null,
+            transfers = state.transfers.filter { it.textBody == null })
         commands.execute {
             if (!requests.isCurrent(token)) return@execute
             try {
@@ -109,21 +142,22 @@ internal class DesktopFlashController(
 
     fun stop() {
         requests.invalidate()
+        // Stop the transport before queued cleanup can encounter its still-open source handle.
+        if (!closed.get()) commands.execute {
+            engine?.stop()
+            engine = null
+        }
         progressTimer.stop()
         progressBuffer.clear()
         resetOutgoingBatch()
         state = state.copy(
             session = FlashState(), starting = false, sendPending = false, batchSending = false,
-            selectedPeerId = null, error = false,
+            receiverSelection = null, error = false,
             status = "Flash desactivado. Los archivos ya guardados se conservan.",
             transfers = state.transfers.map {
                 if (it.busy) it.copy(phase = DesktopFlashPhase.CANCELLED, detail = "Flash se desactivó. Comprueba el otro equipo antes de repetir.", cancelling = false) else it
             }
         )
-        if (!closed.get()) commands.execute {
-            engine?.stop()
-            engine = null
-        }
     }
 
     fun chooseDirectory(directory: File) {
@@ -147,7 +181,7 @@ internal class DesktopFlashController(
             status = when {
                 ignored > 0 -> "${selected.size} archivos preparados; se omitieron $ignored elementos no legibles."
                 selected.size == 1 -> "Archivo elegido. Selecciona el otro equipo."
-                else -> "${selected.size} archivos preparados. Se enviarán uno por uno."
+                else -> "${selected.size} archivos preparados. Se enviarán en un lote, uno después de otro."
             },
             error = false
         )
@@ -155,6 +189,64 @@ internal class DesktopFlashController(
 
     fun clearFiles() {
         if (!state.busy) state = state.copy(selectedFiles = emptyList())
+    }
+
+    fun updateTextDraft(text: String) {
+        val error = FlashText.validationError(text)
+        if (error != null) {
+            state = state.copy(status = error, error = true)
+            return
+        }
+        state = state.copy(textDraft = text, error = false)
+    }
+
+    fun pasteText(selectionStart: Int = state.textDraft.length, selectionEnd: Int = selectionStart): Int? {
+        if (!state.session.active || state.busy) return null
+        return runCatching { clipboard.readText() }.fold(
+            onSuccess = { text ->
+                if (text == null) {
+                    state = state.copy(status = "El portapapeles no contiene texto.", error = false)
+                    null
+                }
+                else {
+                    val draft = state.textDraft
+                    val start = minOf(selectionStart, selectionEnd).coerceIn(0, draft.length)
+                    val end = maxOf(selectionStart, selectionEnd).coerceIn(start, draft.length)
+                    // Validate the clipboard before concatenation, so an oversized value is never copied into draft state.
+                    val error = FlashText.validationError(text)
+                    if (error != null) state = state.copy(status = error, error = true)
+                    else updateTextDraft(draft.substring(0, start) + text + draft.substring(end))
+                    if (!state.error) {
+                        state = state.copy(status = "Texto pegado. Revísalo antes de enviar.")
+                        start + text.length
+                    } else null
+                }
+            },
+            onFailure = {
+                state = state.copy(status = "No se pudo leer el portapapeles. Vuelve a pulsar Pegar.", error = true)
+                null
+            }
+        )
+    }
+
+    fun copyText(operationId: String) {
+        val body = state.transfers.firstOrNull { it.id == operationId }?.textBody ?: return
+        runCatching { clipboard.writeText(body) }.fold(
+            onSuccess = { state = state.copy(status = "Texto copiado.", error = false) },
+            onFailure = { state = state.copy(status = "No se pudo copiar el texto. Vuelve a intentarlo.", error = true) }
+        )
+    }
+
+    fun sendText() {
+        val current = state
+        val peer = current.selectedPeer ?: return
+        if (!current.session.active || current.busy || peer.expiresAtMs <= System.currentTimeMillis() || current.textDraft.isBlank()) return
+        val error = FlashText.validationError(current.textDraft)
+        if (error != null) {
+            state = state.copy(status = error, error = true)
+            return
+        }
+        beginOutgoing(emptyList(), peer, OutgoingText(current.textDraft))
     }
 
     fun chooseDroppedFiles(files: List<File>) {
@@ -167,9 +259,12 @@ internal class DesktopFlashController(
     }
 
     fun choosePeer(peer: FlashPeer) {
-        if (!state.busy && state.session.peers.any { it.id == peer.id && it.address == peer.address && it.port == peer.port }) {
-            state = state.copy(selectedPeerId = peer.id, error = false)
-        }
+        if (!state.session.active || state.busy) return
+        val available = state.session.peers.firstOrNull {
+            it.id == peer.id && it.address == peer.address && it.port == peer.port &&
+                it.expiresAtMs > System.currentTimeMillis()
+        } ?: return
+        state = state.copy(receiverSelection = available, error = false)
     }
 
     fun discover() {
@@ -205,12 +300,18 @@ internal class DesktopFlashController(
             state = state.copy(status = "Uno de los archivos ya no está disponible. Revisa la selección.", error = true)
             return
         }
+        beginOutgoing(files, peer)
+    }
+
+    private fun beginOutgoing(files: List<File>, peer: FlashPeer, text: OutgoingText? = null) {
+        outgoingText = text
         outgoingFiles = files.toList()
-        outgoingBatchTotal = files.size
+        outgoingBatchTotal = if (text != null) 1 else files.size
         outgoingBatchCompleted = 0
         state = state.copy(
             batchSending = true, sendPending = true,
-            status = if (files.size == 1) "Preparando el archivo. Después compara el código en ambos equipos."
+            status = if (text != null) "Preparando el texto. Después compara el código en ambos equipos."
+            else if (files.size == 1) "Preparando el archivo. Después compara el código en ambos equipos."
             else "Preparando ${files.size} archivos. Una verificación autorizará este lote.",
             error = false
         )
@@ -221,16 +322,23 @@ internal class DesktopFlashController(
         commands.execute {
             if (!requests.isCurrent(token)) return@execute
             try {
-                val batchId = checkNotNull(engine).sendBatch(files, peer)
+                val sources = if (text != null) {
+                    val directory = Files.createTempDirectory("qetara-flash-text-").toFile()
+                    text.directory = directory
+                    listOf(FlashText.createFile(directory, text.body).also { text.file = it })
+                } else files
+                if (!requests.isCurrent(token) || text?.abandoned?.get() == true) return@execute
+                val batchId = checkNotNull(engine).sendBatch(sources, peer)
                 dispatch(token) {
                     // All callbacks, including completion, can arrive before sendBatch() returns.
-                    if (submission != outgoingSubmission || outgoingFiles.isEmpty()) return@dispatch
+                    if (submission != outgoingSubmission) return@dispatch
+                    outgoingFiles = sources
                     activeOutgoingBatchId = batchId
                     state = state.copy(sendPending = false)
                 }
             } catch (_: Exception) {
                 dispatch(token) {
-                    if (submission != outgoingSubmission || outgoingFiles.isEmpty()) return@dispatch
+                    if (submission != outgoingSubmission) return@dispatch
                     state.transfers.firstOrNull { it.id == activeOutgoingOperationId && it.busy }?.let {
                         upsert(it.copy(phase = DesktopFlashPhase.FAILED, detail = "No se pudo preparar el envío.", cancelling = false))
                     }
@@ -244,6 +352,23 @@ internal class DesktopFlashController(
     }
 
     private fun resetOutgoingBatch() {
+        outgoingText?.let { text ->
+            text.abandoned.set(true)
+            // Serialized after staging, so Stop cannot leave a file created by an in-flight preparation.
+            commands.execute {
+                val file = text.file
+                var deleted = file == null || !file.exists()
+                repeat(10) {
+                    if (!deleted) {
+                        deleted = file?.delete() == true || file?.exists() == false
+                        if (!deleted) Thread.sleep(100)
+                    }
+                }
+                text.directory?.let { if (!it.delete() && it.exists()) it.deleteOnExit() }
+                if (!deleted) file?.deleteOnExit()
+            }
+        }
+        outgoingText = null
         outgoingFiles = emptyList()
         activeOutgoingBatchId = null
         outgoingBatchTotal = 0
@@ -322,22 +447,26 @@ internal class DesktopFlashController(
         val approvals = requests.update(token, latest.approvals)
         latest.operations.forEach { operation ->
             val previous = state.transfers.firstOrNull { it.id == operation.id }
-            val sourceFile = if (operation.outgoing && outgoingFiles.isNotEmpty() &&
+            val sources = outgoingText?.file?.let(::listOf) ?: outgoingFiles
+            val sourceFile = if (operation.outgoing && sources.isNotEmpty() &&
+                (outgoingText == null || sources.getOrNull(operation.fileIndex)?.name == operation.fileName) &&
                 (activeOutgoingBatchId == operation.batchId || activeOutgoingBatchId == null)) {
                 activeOutgoingBatchId = operation.batchId
                 activeOutgoingOperationId = operation.id
-                outgoingFiles.getOrNull(operation.fileIndex)
+                sources.getOrNull(operation.fileIndex)
             } else null
+            val body = outgoingText?.takeIf { sourceFile != null && it.file == sourceFile }?.body
             if (previous == null) {
-                upsert(DesktopFlashTransfer(operation.id, operation.fileName, operation.peer?.label.orEmpty(), operation.totalBytes, operation.outgoing, file = sourceFile))
+                upsert(DesktopFlashTransfer(operation.id, operation.fileName, operation.peer?.label.orEmpty(), operation.totalBytes, operation.outgoing, file = sourceFile, textBody = body))
             } else if (previous.busy) {
-                upsert(previous.copy(fileName = operation.fileName, peerLabel = operation.peer?.label.orEmpty(), totalBytes = operation.totalBytes, outgoing = operation.outgoing, file = previous.file ?: sourceFile))
+                upsert(previous.copy(fileName = operation.fileName, peerLabel = operation.peer?.label.orEmpty(), totalBytes = operation.totalBytes, outgoing = operation.outgoing, file = previous.file ?: sourceFile, textBody = previous.textBody ?: body))
             }
         }
         val justActivated = state.starting && latest.active
         val ended = state.session.active && !latest.active
         state = state.copy(
             session = latest.copy(approvals = approvals), starting = false,
+            receiverSelection = if (ended) null else state.receiverSelection,
             status = when {
                 ended -> "El tiempo de Flash terminó. Actívalo de nuevo cuando lo necesites."
                 justActivated -> "Flash activo durante 30 minutos. Actívalo también en el otro equipo."
@@ -379,12 +508,13 @@ internal class DesktopFlashController(
 
         override fun onReceived(received: FlashReceived) {
             val known = knownOperations[token to received.operationId] ?: return
+            val body = FlashText.readReceived(received.file)
             // Stop can win the UI race after publication. Preserve this known operation's result only.
             dispatchResult {
                 val previous = state.transfers.firstOrNull { it.id == received.operationId }
                     ?: DesktopFlashTransfer(received.operationId, received.file.name, received.peer.label, known.totalBytes, false)
-                upsert(previous.copy(fileName = received.file.name, file = received.file, phase = DesktopFlashPhase.COMPLETE, transferredBytes = known.totalBytes, detail = "Archivo recibido y verificado.", cancelling = false))
-                if (requests.isCurrent(token)) state = state.copy(status = "Archivo recibido y verificado: ${received.file.name}", error = false)
+                upsert(previous.copy(fileName = received.file.name, file = received.file, phase = DesktopFlashPhase.COMPLETE, transferredBytes = known.totalBytes, detail = if (body != null) "Texto recibido y verificado." else "Archivo recibido y verificado.", cancelling = false, textBody = body))
+                if (requests.isCurrent(token)) state = state.copy(status = if (body != null) "Texto recibido y verificado." else "Archivo recibido y verificado: ${received.file.name}", error = false)
             }
         }
 
@@ -393,10 +523,11 @@ internal class DesktopFlashController(
             dispatchResult {
                 val previous = state.transfers.firstOrNull { it.id == completed.operationId }
                     ?: DesktopFlashTransfer(completed.operationId, completed.fileName, completed.peer.label, known.totalBytes, completed.outgoing)
-                upsert(previous.copy(phase = DesktopFlashPhase.COMPLETE, transferredBytes = previous.totalBytes, detail = if (completed.outgoing) "Recepción confirmada por el otro equipo." else "Archivo recibido y verificado.", cancelling = false))
+                upsert(previous.copy(phase = DesktopFlashPhase.COMPLETE, transferredBytes = previous.totalBytes, detail = if (completed.outgoing) "Recepción confirmada por el otro equipo." else if (previous.textBody != null) "Texto recibido y verificado." else "Archivo recibido y verificado.", cancelling = false))
                 if (requests.isCurrent(token)) {
                     val outgoingResult = completed.outgoing && known.batchId == activeOutgoingBatchId
-                    val completedFile = if (outgoingResult) outgoingFiles.getOrNull(known.fileIndex) else previous.file
+                    val completedFile = if (outgoingResult) outgoingText?.file ?: outgoingFiles.getOrNull(known.fileIndex) else previous.file
+                    val sentText = if (outgoingResult) outgoingText?.body else null
                     if (outgoingResult) {
                         outgoingBatchCompleted += 1
                     }
@@ -405,8 +536,10 @@ internal class DesktopFlashController(
                     if (outgoingResult && remaining == 0) resetOutgoingBatch()
                     state = state.copy(
                         selectedFiles = if (completed.outgoing) state.selectedFiles.filterNot { it == completedFile } else state.selectedFiles,
+                        textDraft = if (sentText != null && remaining == 0 && state.textDraft == sentText) "" else state.textDraft,
                         status = when {
                             !completed.outgoing -> state.status
+                            sentText != null -> "Texto enviado. El otro equipo confirmó la recepción."
                             outgoingResult && remaining > 0 -> "Entrega $outgoingBatchCompleted de $total confirmada. Preparando el siguiente archivo."
                             outgoingResult && total > 1 -> "$total archivos enviados y confirmados."
                             else -> "Archivo enviado. El otro equipo confirmó la recepción."
@@ -434,7 +567,7 @@ internal class DesktopFlashController(
             val outgoingFailure = error.operationId != null && error.operationId == activeOutgoingOperationId
             if (outgoingFailure) resetOutgoingBatch()
             state = state.copy(
-                status = if (received != null) "${received.fileName} se recibió y verificó. No se pudo confirmar el resultado al emisor." else error.message,
+                status = if (received != null) "${if (received.textBody != null) "El texto" else received.fileName} se recibió y verificó. No se pudo confirmar el resultado al emisor." else error.message,
                 error = received == null && error.code != "cancelled" && error.code != "rejected",
                 sendPending = if (outgoingFailure) false else state.sendPending,
                 batchSending = if (outgoingFailure) false else state.batchSending
@@ -459,8 +592,8 @@ internal class DesktopFlashController(
         progressTimer.stop()
         progressBuffer.clear()
         knownOperations.clear()
-        resetOutgoingBatch()
         commands.execute { runCatching { engine?.stop() }; engine = null }
+        resetOutgoingBatch()
         commands.shutdown()
     }
 }

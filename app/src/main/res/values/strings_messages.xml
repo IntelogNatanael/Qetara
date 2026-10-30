@@ -306,4 +306,10 @@
         <item quantity="one">"%1$d canceled"</item>
         <item quantity="other">"%1$d canceled"</item>
     </plurals>
+    <string name="msg_saved_history">"Saved history"</string>
+    <string name="msg_return_wifi_channel">"Return to the Wi‑Fi channel"</string>
+    <string name="msg_wifi_disconnected">"No Wi‑Fi connection"</string>
+    <string name="msg_saved_history_connect_wifi">"Connect to a Wi‑Fi network to write again. Your messages are still saved."</string>
+    <string name="msg_saved_history_join_channel">"These messages are saved on this device. Join the channel to write again."</string>
+    <string name="msg_saved_history_choose_device">"Your messages are still saved. Choose a device to write again."</string>
 </resources>

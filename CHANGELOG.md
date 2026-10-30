@@ -1,5 +1,21 @@
 # Cambios en Qetara
 
+## 1.4.5 — candidata local, no publicada
+
+- Flash incorpora envío de texto en Android y escritorio, con aprobación en ambos equipos y acciones explícitas para copiar y pegar. Conserva espacios, saltos de línea y Unicode válido, con un límite de 16 KiB en UTF-8; los equipos anteriores pueden recibirlo como un archivo TXT.
+- Las pantallas Flash reúnen la selección de receptor, archivos y texto, y distinguen los resultados de texto de los de archivo. El borrador editado durante un envío se conserva al llegar la confirmación.
+- El chat Android conserva los saltos de línea internos del mensaje y explica cómo volver a escribir cuando sólo se muestra el historial guardado. Con letra grande prioriza el destinatario en un encabezado compacto; «Ir al último mensaje» pasa al menú Más para no tapar la conversación.
+- En Android, las decisiones de aprobación Flash se colocan en una columna para evitar que textos ampliados se solapen. Un texto entrante que falla la integridad muestra el error de texto sin presentarse como recibido.
+- Compartir sustituye el aviso transitorio «Enviando» por el resumen final del lote; la revisión de archivos está disponible también para selecciones de uno a tres elementos.
+- En escritorio, las solicitudes de archivos del canal se encolan, evitan duplicados automáticos y se cancelan al revocar la sesión o salir del canal. La interfaz diferencia una solicitud aceptada de la recepción del archivo.
+- Los errores de conexión bloqueada o sin ruta en escritorio orientan a revisar la red local, VPN y firewall, conservando mensajes distintos para los permisos de archivos. La interfaz de escritorio continúa en español; la cobertura bilingüe descrita en la validación corresponde a Android.
+- El [informe de la candidata](docs/VALIDATION-1.4.5.md) delimita los controles automatizados y las pruebas físicas. Sigue abierto F-01: Android puede pedir confirmar de nuevo el PC después de recibir, sin pérdida observada de archivos ni del contenido preparado. La [preparación del cierre](docs/RELEASE-CLOSURE-1.4.5.md) mantiene separadas la identidad de fuentes, la reconstrucción y una futura publicación.
+
+## 1.4.4 — publicada, 2026-10-08
+
+- Android incorpora traducciones al español y al inglés de la interfaz, las notificaciones y los mensajes de error. Sigue el idioma del dispositivo y permite elegir el idioma de la aplicación desde Android 13.
+- Las fichas de tienda incluyen el icono clásico, y la receta F-Droid configura la detección de versiones mediante etiquetas. La [validación de 1.4.4](docs/VALIDATION-1.4.4.md) conserva las evidencias de esa entrega.
+
 ## 1.4.3 — publicada, 2026-10-07
 
 - Android activa R8 y la reducción de recursos en la variante release, conservando el identificador y la clave de distribución. Se reduce el tamaño del paquete sin cambiar intencionadamente los flujos de uso ni el protocolo.

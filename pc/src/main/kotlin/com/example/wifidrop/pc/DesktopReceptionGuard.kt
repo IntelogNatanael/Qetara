@@ -8,14 +8,24 @@ internal data class DesktopMessageReception(
     val generation: Int,
     val receiving: Boolean,
     val expiresAtMs: Long?,
-    val channelJoined: Boolean
+    val channelJoined: Boolean,
+    val channelGeneration: Int = 0
 ) {
     fun isActiveFor(expectedGeneration: Int, nowMs: Long = System.currentTimeMillis()): Boolean =
         generation == expectedGeneration && receiving && expiresAtMs != null && nowMs < expiresAtMs
 
-    fun requireDelivery(expectedGeneration: Int, scope: DesktopChatScope, nowMs: Long = System.currentTimeMillis()) {
+    fun isChannelActiveFor(
+        expectedGeneration: Int, expectedChannelGeneration: Int, nowMs: Long = System.currentTimeMillis()
+    ): Boolean = isActiveFor(expectedGeneration, nowMs) && channelJoined && channelGeneration == expectedChannelGeneration
+
+    fun requireDelivery(
+        expectedGeneration: Int,
+        scope: DesktopChatScope,
+        nowMs: Long = System.currentTimeMillis(),
+        expectedChannelGeneration: Int = channelGeneration
+    ) {
         check(isActiveFor(expectedGeneration, nowMs)) { "sesion_expirada_o_detenida" }
-        check(scope != DesktopChatScope.GLOBAL_LAN || channelJoined) { "canal_no_unido" }
+        check(scope != DesktopChatScope.GLOBAL_LAN || (channelJoined && channelGeneration == expectedChannelGeneration)) { "canal_no_unido" }
     }
 }
 
@@ -35,6 +45,8 @@ internal fun deliverDesktopMessageOnUi(deliver: () -> Unit) {
 /** Selection changes never free a running operation; cancellation keeps its slot until the worker finishes. */
 internal class DesktopTransferSlot {
     private var active: DesktopTransferCancellation? = null
+
+    val hasActive: Boolean get() = synchronized(this) { active != null }
 
     @Synchronized
     fun tryAcquire(): DesktopTransferCancellation? {

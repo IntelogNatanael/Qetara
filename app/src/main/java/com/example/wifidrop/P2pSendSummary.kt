@@ -1,5 +1,7 @@
 package com.example.wifidrop
 
+import com.example.wifidrop.presentation.matchesLocalizedQuantityStatus
+
 internal enum class P2pSendSummaryKind { ACTIVE, SUCCESS, ATTENTION }
 
 internal data class P2pSendSummary(
@@ -7,6 +9,11 @@ internal data class P2pSendSummary(
     val title: String,
     val detail: String
 )
+
+internal fun resolveP2pShareActivityStatus(importStatus: String, summary: P2pSendSummary?): String =
+    if (summary != null && summary.kind != P2pSendSummaryKind.ACTIVE &&
+        matchesLocalizedQuantityStatus(importStatus, R.plurals.pr_files_sending)
+    ) summary.title else importStatus
 
 /** Completed counters are incremented only after the receiver acknowledges the verified file. */
 internal fun buildP2pSendSummary(

@@ -59,6 +59,30 @@ class FlashEngineTest {
         return first to second
     }
 
+    @Test fun textAttachmentRequiresBilateralApprovalAndPreservesExactTextAfterAcknowledgement() {
+        Fixture().use { sender -> Fixture().use { receiver ->
+            val text = "  Mensaje rápido 👋\r\n第二行\n\nCafe\u0301\t  "
+            val source = FlashText.createFile(sender.root, text)
+            val operationId = sender.engine.send(source, receiver.peer())
+            val outgoing = sender.approval(); val incoming = receiver.approval()
+            assertEquals(listOf(FlashOfferedFile(source.name, source.length())), outgoing.files)
+            assertEquals(outgoing.files, incoming.files)
+            assertEquals(outgoing.verificationCode, incoming.verificationCode)
+            assertFalse(receiver.directory.exists())
+            assertTrue(sender.engine.approve(outgoing.requestId, true))
+            assertFalse(receiver.directory.exists(), "text payload must wait for the receiver's explicit decision")
+            assertTrue(receiver.received.isEmpty())
+            assertFalse(sender.engine.approve(outgoing.requestId, true), "the sender's decision is consumed once")
+            assertTrue(receiver.engine.approve(incoming.requestId, true))
+            assertEquals(operationId, sender.success().operationId)
+            receiver.success(); sender.idle(); receiver.idle()
+            val received = assertNotNull(receiver.received.poll(2, TimeUnit.SECONDS)).file
+            assertEquals(text, FlashText.readReceived(received))
+            assertContentEquals(text.toByteArray(Charsets.UTF_8), received.readBytes())
+            assertTrue(sender.errors.isEmpty() && receiver.errors.isEmpty())
+        } }
+    }
+
     @Test fun bothUsersMustApproveBeforeBytesAreWrittenAndEachFileGetsAFreshCode() {
         Fixture().use { a -> Fixture().use { b ->
             val source = a.source()

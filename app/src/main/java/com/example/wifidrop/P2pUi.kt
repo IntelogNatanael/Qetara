@@ -651,6 +651,14 @@ fun P2pScreen(
         queuePendingCount > 0 -> stringResource(R.string.shell_queue_count, queuePendingCount)
         else -> null
     }
+    val sendSummary = buildP2pSendSummary(
+        total = state.sendBatchTotal,
+        completed = state.sendBatchCompleted,
+        failed = state.sendBatchFailed,
+        canceled = state.sendBatchCanceled,
+        sending = state.sending,
+        paused = state.paused
+    )
     val headerIsQuiet = !sessionNeedsAttention &&
         headerActivityLabel.isNullOrBlank() &&
         activeSupportCard == null &&
@@ -1284,14 +1292,7 @@ fun P2pScreen(
             }
 
             if (selectedTab == P2pMainTab.SEND) {
-                buildP2pSendSummary(
-                    total = state.sendBatchTotal,
-                    completed = state.sendBatchCompleted,
-                    failed = state.sendBatchFailed,
-                    canceled = state.sendBatchCanceled,
-                    sending = state.sending,
-                    paused = state.paused
-                )?.let { summary ->
+                sendSummary?.let { summary ->
                     Surface(
                         modifier = Modifier.fillMaxWidth().semantics { liveRegion = LiveRegionMode.Polite },
                         shape = RoundedCornerShape(16.dp),
@@ -2838,10 +2839,8 @@ fun P2pScreen(
                                     state.selectedFileNames.take(3).forEach { name ->
                                         Text(name, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                     }
-                                    if (state.selectedFilesCount > 3) {
-                                        TextButton(onClick = { showSelectedFilesReview = true }) {
-                                            Text(pluralStringResource(R.plurals.shell_review_files, state.selectedFilesCount, state.selectedFilesCount))
-                                        }
+                                    TextButton(onClick = { showSelectedFilesReview = true }) {
+                                        Text(pluralStringResource(R.plurals.shell_review_files, state.selectedFilesCount, state.selectedFilesCount))
                                     }
                                 }
                             }
@@ -2953,7 +2952,7 @@ fun P2pScreen(
                                         Column(verticalArrangement = Arrangement.spacedBy(UiSpaceS)) {
                                             if (state.shareImportStatus.isNotBlank()) {
                                                 Text(
-                                                    state.shareImportStatus,
+                                                    resolveP2pShareActivityStatus(state.shareImportStatus, sendSummary),
                                                     style = MaterialTheme.typography.bodySmall
                                                 )
                                             }

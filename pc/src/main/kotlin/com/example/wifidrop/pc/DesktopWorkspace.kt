@@ -112,7 +112,7 @@ internal enum class WorkspaceTab(val label: String, val title: String, val subti
 internal fun DesktopWorkspace(
     state: DesktopWorkspaceState,
     actions: DesktopWorkspaceActions,
-    chatContent: @Composable () -> Unit,
+    chatContent: @Composable (() -> Unit) -> Unit,
     activityContent: @Composable (Modifier) -> Unit,
     flashVisible: Boolean = false,
     flashContent: @Composable () -> Unit = {},
@@ -186,7 +186,7 @@ internal fun DesktopWorkspace(
                                     val needsConnection = !state.credentialsReady || state.receiverPhase != DesktopTaskPhase.RUNNING
                                     if (wide && needsConnection) {
                                         Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
-                                            ChatSurface(Modifier.weight(1.5f), chatContent)
+                                            ChatSurface(Modifier.weight(1.5f)) { chatContent { selectedTab = WorkspaceTab.RECEIVE } }
                                             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                                                 ChatConnectionCards(state, actions)
                                             }
@@ -203,7 +203,7 @@ internal fun DesktopWorkspace(
                                             }
                                             if (connectionExpanded) ChatConnectionCards(state, actions)
                                         }
-                                        ChatSurface(content = chatContent)
+                                        ChatSurface { chatContent { selectedTab = WorkspaceTab.RECEIVE } }
                                     }
                                 }
                                 WorkspaceTab.ACTIVITY -> activityContent(Modifier.fillMaxSize())

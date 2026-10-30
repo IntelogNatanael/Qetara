@@ -41,12 +41,12 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Send
 import androidx.compose.material.icons.rounded.AttachFile
@@ -117,12 +117,13 @@ internal fun P2pMessagesTab(
     onDeleteMessage: (String) -> Unit,
     onClearMessages: (ChatChannel) -> Unit,
     onSyncToken: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    listState: LazyListState = rememberLazyListState()
 ) {
     val context = LocalContext.current
     val focusManager = LocalFocusManager.current
+    val largeText = LocalDensity.current.fontScale >= 1.5f
     val searchFocusRequester = remember { FocusRequester() }
-    val listState = rememberLazyListState()
     val chatCoroutineScope = rememberCoroutineScope()
     var searchVisible by rememberSaveable(activeChannel) { mutableStateOf(false) }
     var messageQuery by rememberSaveable(activeChannel) { mutableStateOf("") }
@@ -139,7 +140,6 @@ internal fun P2pMessagesTab(
         searchVisible = false
     }
     BackHandler(enabled = searchVisible, onBack = closeSearch)
-    val emptyScrollState = rememberScrollState()
     val queuePendingCount = state.sendQueue.count {
         it.status == SendQueueStatus.QUEUED ||
             it.status == SendQueueStatus.PAUSED ||
@@ -198,6 +198,7 @@ internal fun P2pMessagesTab(
         isGlobalChat -> globalChannelReady
         else -> directChannelReady
     }
+    val directSessionUnconfirmed = !isGlobalChat && directChannelReady && !state.chatSessionReady
     val showChannelJoinPrompt = isGlobalChat && !channelReady
     val hasMessages = recentMessages.isNotEmpty()
     val hasComposerPayload = state.chatDraft.isNotBlank() || state.selectedFilesCount > 0
@@ -265,7 +266,7 @@ internal fun P2pMessagesTab(
         isGlobalChat && state.chatDraft.isBlank() && state.selectedFilesCount <= 0 -> appString(R.string.msg_write_or_attach)
         !hasComposerPayload -> appString(R.string.msg_write_or_attach)
         state.sessionExpired -> appString(R.string.msg_expired_renew)
-        !isGlobalChat && directChannelReady && !state.chatSessionReady -> appString(R.string.msg_confirm_receiver_session)
+        directSessionUnconfirmed -> appString(R.string.msg_confirm_receiver_session)
         !isGlobalChat && directChatMode == ConnectionMode.WIFI_DIRECT && state.chatDirectTargetIps.isEmpty() ->
             appString(R.string.msg_choose_group_at_least_one)
         !isGlobalChat && directChatMode == ConnectionMode.WIFI_DIRECT && state.selectedFilesCount > 0 && state.chatDirectTargetIps.size > 1 ->
@@ -304,6 +305,11 @@ internal fun P2pMessagesTab(
             appString(R.string.msg_alone_channel)
         isGlobalChat ->
             globalDeviceCountLabel
+        directSessionUnconfirmed -> when {
+            !state.sessionEnabled -> appString(R.string.msg_enable_session_to_send)
+            state.sessionExpired -> appString(R.string.msg_renew_to_send)
+            else -> appString(R.string.msg_confirm_receiver_session)
+        }
         directTargetCount > 1 ->
             appQuantityString(R.plurals.msg_devices_ready_hint, directTargetCount, directTargetCount)
         directChannelReady ->
@@ -332,6 +338,9 @@ internal fun P2pMessagesTab(
         isDirectWifiMode -> appString(R.string.msg_direct_chat)
         else -> appString(R.string.msg_lan_direct)
     }
+    val visibleChatHeaderTitle = if (largeText && !isGlobalChat && directChannelReady) {
+        directSelectionSummary ?: chatHeaderTitle
+    } else chatHeaderTitle
     val channelHelperText = when {
         isGlobalChat && !state.lanConnected -> appString(R.string.msg_connect_wifi_to_view)
         isGlobalChat && !globalLanJoined -> appString(R.string.msg_join_network_channel)
@@ -393,7 +402,7 @@ internal fun P2pMessagesTab(
         }
     }
     LaunchedEffect(atLatestMessage) { if (atLatestMessage) newMessagesCount = 0 }
-    LaunchedEffect(messageQuery, activeChannel) { listState.scrollToItem(0) }
+    LaunchedEffect(messageQuery, activeChannel, channelReady) { listState.scrollToItem(0) }
     LaunchedEffect(searchVisible) {
         if (searchVisible) searchFocusRequester.requestFocus()
     }
@@ -407,565 +416,576 @@ internal fun P2pMessagesTab(
         elevation = CardDefaults.elevatedCardElevation(defaultElevation = 0.dp)
     ) {
         val sectionLabel = when {
+            !channelReady && hasMessages -> appString(R.string.msg_saved_history)
             showChannelJoinPrompt -> null
-            showDirectSetupCard && hasMessages -> appString(R.string.msg_recent_history)
             hasMessages -> if (messageQuery.isNotBlank()) appString(R.string.msg_saved_results) else if (isGlobalChat) appString(R.string.msg_messages) else appString(R.string.msg_direct_history)
             !showDirectSetupCard -> if (isGlobalChat) null else appString(R.string.msg_start_here)
             else -> null
         }
         BoxWithConstraints(Modifier.fillMaxSize()) {
-        val keyboardVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
-        val compactImeViewport = keyboardVisible && maxHeight < 220.dp
-        val composerMaxHeight = if (compactImeViewport) maxHeight
-            else (maxHeight * 0.62f).coerceAtLeast(128.dp).coerceAtMost(maxHeight)
-        val headerMaxHeight = maxHeight * 0.34f
-        Column(
-            modifier = Modifier.fillMaxSize().padding(if (keyboardVisible) 8.dp else 16.dp),
-            verticalArrangement = Arrangement.spacedBy(if (keyboardVisible) 8.dp else 16.dp)
-        ) {
-            // Keep this field in the same composition slot when the keyboard opens.
-            // The regular header is collapsed for both message writing and search.
-            if (searchVisible) {
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    OutlinedTextField(
-                        value = messageQuery,
-                        onValueChange = { messageQuery = it.take(160) },
-                        modifier = Modifier.fillMaxWidth().focusRequester(searchFocusRequester),
-                        singleLine = true,
-                        label = { Text(appString(R.string.msg_search_text_device)) },
-                        leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
-                        trailingIcon = {
-                            IconButton(onClick = closeSearch, modifier = Modifier.size(48.dp)) {
-                                Icon(Icons.Rounded.Close, contentDescription = appString(R.string.msg_close_search))
-                            }
-                        },
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                        keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() }),
-                        shape = RoundedCornerShape(16.dp)
-                    )
-                    Text(
-                        appQuantityString(R.plurals.msg_messages_found_count, recentMessages.size, recentMessages.size),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-            if (!keyboardVisible && !searchVisible) {
+            val keyboardVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
+            val compactImeViewport = keyboardVisible && maxHeight < 220.dp
+            val composerMaxHeight = if (compactImeViewport) maxHeight
+                else (maxHeight * 0.62f).coerceAtLeast(128.dp).coerceAtMost(maxHeight)
             Column(
-                modifier = Modifier.fillMaxWidth().heightIn(max = headerMaxHeight).verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                modifier = Modifier.fillMaxSize().padding(if (keyboardVisible) 8.dp else 16.dp),
+                verticalArrangement = Arrangement.spacedBy(if (keyboardVisible) 8.dp else 16.dp)
             ) {
-            FlowRow(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Column(
-                    modifier = Modifier.widthIn(min = 160.dp).weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(2.dp)
-                ) {
-                    Text(
-                        chatHeaderTitle,
-                        fontWeight = FontWeight.Bold,
-                        style = MaterialTheme.typography.titleLarge,
-                        modifier = Modifier.semantics { heading() }
-                    )
-                    Text(
-                        chatHeaderSummary,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                Row(
-                    modifier = Modifier.align(Alignment.CenterVertically),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    if (filteredMessages.isNotEmpty()) {
-                        IconButton(onClick = { composerMoreExpanded = false; searchVisible = true }, modifier = Modifier.size(48.dp)) {
-                            Icon(Icons.Rounded.Search, contentDescription = appString(R.string.msg_search_saved_messages))
-                        }
-                    }
-                    if (isGlobalChat && globalLanJoined) {
-                        TextButton(onClick = { onSetGlobalLanJoined(false) }, modifier = Modifier.heightIn(min = 48.dp)) {
-                            Icon(
-                                imageVector = Icons.Rounded.Close,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Text(appString(R.string.msg_leave))
-                        }
-                    }
-                    if (filteredMessages.isNotEmpty()) {
-                        IconButton(onClick = { confirmClearChat = true }, modifier = Modifier.size(48.dp)) {
-                            Icon(Icons.Rounded.DeleteSweep, contentDescription = appString(R.string.msg_delete_channel_history))
-                        }
-                    }
-                }
-            }
-
-            if (!isGlobalChat) {
-                val availablePeers = if (directChatMode == ConnectionMode.WIFI_DIRECT) directWifiPeers else directLanPeers
-                if (availablePeers.isNotEmpty()) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        availablePeers.forEach { peer ->
-                            val selected = if (directChatMode == ConnectionMode.WIFI_DIRECT) state.chatDirectTargetIps.contains(peer.ip)
-                                else state.chatDirectTargetIp == peer.ip
-                            FilterChip(
-                                selected = selected,
-                                onClick = { onSelectChatDirectPeer(peer.ip) },
-                                modifier = Modifier.heightIn(min = 48.dp),
-                                colors = qetaraFilterChipColors(),
-                                label = { Text(peer.label.ifBlank { peer.ip }, maxLines = 1) }
-                            )
-                        }
-                    }
-                }
-            }
-
-            if (!isGlobalChat && directChannelReady && !state.chatSessionReady) {
-                TextButton(onClick = onOpenConnectTab, modifier = Modifier.heightIn(min = 48.dp)) { Text(appString(R.string.msg_confirm_session_connect)) }
-            }
-
-            if (showDirectSetupCard && hasMessages) {
-                DirectChatSetupCard(
-                    title = directNotReadyTitle,
-                    body = directNotReadyBody
-                )
-                FilledTonalButton(
-                    onClick = onOpenConnectTab,
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
-                ) {
-                    Text(appString(R.string.msg_go_connect))
-                }
-            } else {
-                if (!showChannelJoinPrompt) {
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(UiSpaceS),
-                        verticalArrangement = Arrangement.spacedBy(UiSpaceS)
-                    ) {
-                        if (!(isGlobalChat && channelReady)) {
-                            StatusChip(
-                                label = if (isGlobalChat) {
-                                    when {
-                                        !state.lanConnected -> appString(R.string.msg_no_wifi)
-                                        !globalLanJoined -> appString(R.string.msg_outside_channel)
-                                        state.globalChatPeerCount <= 0 -> appString(R.string.msg_only_you)
-                                        else -> globalDeviceCountLabel
-                                    }
-                                } else if (channelReady) {
-                                    if (!state.chatSessionReady) appString(R.string.msg_session_unconfirmed) else if (directTargetCount > 1) appQuantityString(R.plurals.msg_devices_count, directTargetCount, directTargetCount) else appString(R.string.msg_device_ready)
-                                } else {
-                                    appString(R.string.msg_no_device)
-                                },
-                                containerColor = if (channelReady) {
-                                    MaterialTheme.colorScheme.primaryContainer
-                                } else {
-                                    MaterialTheme.colorScheme.surfaceVariant
-                                },
-                                contentColor = if (channelReady) {
-                                    MaterialTheme.colorScheme.onPrimaryContainer
-                                } else {
-                                    MaterialTheme.colorScheme.onSurfaceVariant
+                // Keep this field in the same composition slot when the keyboard opens.
+                // The regular header is collapsed for both message writing and search.
+                if (searchVisible) {
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        OutlinedTextField(
+                            value = messageQuery,
+                            onValueChange = { messageQuery = it.take(160) },
+                            modifier = Modifier.fillMaxWidth().focusRequester(searchFocusRequester),
+                            singleLine = true,
+                            label = { Text(appString(R.string.msg_search_text_device)) },
+                            leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
+                            trailingIcon = {
+                                IconButton(onClick = closeSearch, modifier = Modifier.size(48.dp)) {
+                                    Icon(Icons.Rounded.Close, contentDescription = appString(R.string.msg_close_search))
                                 }
-                            )
-                        }
-                        if (state.sessionExpired || (!state.chatSessionReady && (experience.showSyncAction || state.tokenSyncStatus.isNotBlank()))) {
-                            StatusChip(
-                                label = when {
-                                    state.sessionExpired -> appString(R.string.msg_session_expired)
-                                    com.example.wifidrop.presentation.isSessionSyncApprovalRequired(state.tokenSyncStatus) -> appString(R.string.msg_pending)
-                                    com.example.wifidrop.presentation.isSessionSyncFailure(state.tokenSyncStatus) -> appString(R.string.msg_retry)
-                                    state.sessionSyncing -> appString(R.string.msg_syncing)
-                                    else -> appString(R.string.msg_session)
-                                },
-                                containerColor = if (state.sessionExpired) {
-                                    MaterialTheme.colorScheme.errorContainer
-                                } else {
-                                    MaterialTheme.colorScheme.tertiaryContainer
-                                },
-                                contentColor = if (state.sessionExpired) {
-                                    MaterialTheme.colorScheme.onErrorContainer
-                                } else {
-                                    MaterialTheme.colorScheme.onTertiaryContainer
-                                }
-                            )
-                        }
-                    }
-
-                    if (channelHelperText != null && !showDirectSetupCard) {
-                        Text(
-                            channelHelperText,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                            keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() }),
+                            shape = RoundedCornerShape(16.dp)
                         )
-                    }
-
-                    if (showSyncButton) {
-                        OutlinedButton(onClick = onSyncToken, modifier = Modifier.heightIn(min = 48.dp)) {
-                            Text(appString(R.string.msg_sync_session))
-                        }
-                    }
-
-                    if (isGlobalChat) {
-                        TextButton(onClick = { channelOptionsExpanded = !channelOptionsExpanded }, modifier = Modifier.heightIn(min = 48.dp)) {
-                            Text(if (channelOptionsExpanded) appString(R.string.msg_hide_channel_options) else appString(R.string.msg_channel_options))
-                        }
-                        if (channelOptionsExpanded) {
-                            ChannelDownloadSettingsCard(
-                                autoDownload = state.autoDownloadChannelFiles,
-                                onAutoDownloadChange = onAutoDownloadChannelFilesChange,
-                                panelColor = quietPanelColor
-                            )
-                        }
-                    }
-                }
-            }
-
-            if (operationalNotice != null) {
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    color = if (operationalNoticeIsError) {
-                        MaterialTheme.colorScheme.errorContainer
-                    } else {
-                        quietPanelColor
-                    },
-                    contentColor = if (operationalNoticeIsError) {
-                        MaterialTheme.colorScheme.onErrorContainer
-                    } else {
-                        MaterialTheme.colorScheme.onSurface
-                    }
-                ) {
-                    Text(
-                        operationalNotice,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = if (operationalNoticeIsError) {
-                            MaterialTheme.colorScheme.onErrorContainer
-                        } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        },
-                        modifier = Modifier.padding(horizontal = UiSpaceM, vertical = 10.dp)
-                    )
-                }
-            }
-
-            if (state.sendQueue.isNotEmpty() && queueHeadline != null) {
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    color = quietPanelColor,
-                    contentColor = MaterialTheme.colorScheme.onSurface
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = UiSpaceM, vertical = 12.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column(
-                                modifier = Modifier.weight(1f),
-                                verticalArrangement = Arrangement.spacedBy(2.dp)
-                            ) {
-                                Text(
-                                    queueHeadline,
-                                    fontWeight = FontWeight.SemiBold,
-                                    style = MaterialTheme.typography.bodyMedium
-                                )
-                                if (queueSummary.isNotBlank()) {
-                                    Text(
-                                        queueSummary,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
-                            StatusChip(
-                                label = "${state.sendQueue.size}",
-                                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
-                        }
-                        if (featuredQueueItem != null) {
-                            HorizontalDivider()
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Column(
-                                    modifier = Modifier.weight(1f),
-                                    verticalArrangement = Arrangement.spacedBy(2.dp)
-                                ) {
-                                    Text(
-                                        featuredQueueItem.fileName,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        fontWeight = FontWeight.SemiBold,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                    Text(
-                                        (featuredQueueItem.peerLabel ?: featuredQueueItem.targetIp)
-                                            .takeIf { it.isNotBlank() }
-                                            ?: featuredQueueItem.targetIp,
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                                StatusChip(
-                                    label = queueStatusLabel(featuredQueueItem.status),
-                                    containerColor = queueStatusColor(featuredQueueItem.status),
-                                    contentColor = queueStatusContentColor(featuredQueueItem.status)
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
-            if (sectionLabel != null) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        sectionLabel,
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    if (hasMessages) {
                         Text(
-                            "${recentMessages.size}",
+                            appQuantityString(R.plurals.msg_messages_found_count, recentMessages.size, recentMessages.size),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
-            }
-
-            }
-            } else if (!compactImeViewport && !searchVisible) {
-                Text(
-                    if (isGlobalChat) channelTitle else directTargetLabel ?: chatHeaderTitle,
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-
-            if (hasMessages) {
-                Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize(),
-                    state = listState,
-                    reverseLayout = true,
-                    contentPadding = PaddingValues(vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    items(recentMessages, key = { it.id }) { item ->
-                        ChatMessageCard(
-                            item = item,
-                            onRetryMessage = onRetryMessage,
-                            onCancelQueuedMessage = onCancelQueuedMessage,
-                            onDownloadChannelFileOffer = { onDownloadChannelFileOffer(item) },
-                            onRequestDelete = { pendingDeleteMessageId = item.id },
-                            onShareMessage = { shareChatMessage(context, item) }
-                        )
-                    }
-                }
-                if (!atLatestMessage && messageQuery.isBlank()) {
-                    FilledTonalButton(
-                        onClick = {
-                            newMessagesCount = 0
-                            chatCoroutineScope.launch { listState.animateScrollToItem(0) }
-                        },
-                        modifier = Modifier.align(Alignment.BottomCenter).padding(8.dp).heightIn(min = 48.dp)
+                if (!keyboardVisible && !searchVisible) {
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        Icon(Icons.Rounded.ArrowDownward, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Text(if (newMessagesCount > 0) appQuantityString(R.plurals.msg_new_messages_count, newMessagesCount, newMessagesCount) else appString(R.string.msg_latest_message))
+                        Column(
+                            modifier = Modifier.widthIn(min = 160.dp).weight(1f),
+                            verticalArrangement = Arrangement.spacedBy(2.dp)
+                        ) {
+                            Text(
+                                visibleChatHeaderTitle,
+                                fontWeight = FontWeight.Bold,
+                                style = if (largeText) MaterialTheme.typography.titleMedium else MaterialTheme.typography.titleLarge,
+                                maxLines = if (largeText) 1 else Int.MAX_VALUE,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.semantics {
+                                    heading()
+                                    if (largeText) contentDescription = if (visibleChatHeaderTitle == chatHeaderTitle) chatHeaderTitle
+                                        else "$chatHeaderTitle · $visibleChatHeaderTitle"
+                                }
+                            )
+                            Text(
+                                chatHeaderSummary,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = if (largeText) 1 else 2,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.semantics {
+                                    if (largeText) contentDescription = chatHeaderSummary
+                                }
+                            )
+                        }
+                        Row(
+                            modifier = Modifier.align(Alignment.CenterVertically),
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            if (filteredMessages.isNotEmpty()) {
+                                IconButton(onClick = { composerMoreExpanded = false; searchVisible = true }, modifier = Modifier.size(48.dp)) {
+                                    Icon(Icons.Rounded.Search, contentDescription = appString(R.string.msg_search_saved_messages))
+                                }
+                            }
+                            if (isGlobalChat && globalLanJoined) {
+                                TextButton(onClick = { onSetGlobalLanJoined(false) }, modifier = Modifier.heightIn(min = 48.dp)) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.Close,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Text(appString(R.string.msg_leave))
+                                }
+                            }
+                            if (filteredMessages.isNotEmpty()) {
+                                IconButton(onClick = { confirmClearChat = true }, modifier = Modifier.size(48.dp)) {
+                                    Icon(Icons.Rounded.DeleteSweep, contentDescription = appString(R.string.msg_delete_channel_history))
+                                }
+                            }
+                        }
                     }
-                }
-                }
-            } else if (messageQuery.isNotBlank()) {
-                Box(
-                    Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()),
-                    contentAlignment = Alignment.Center
-                ) {
-                    EmptyStateBlock(
-                        title = appString(R.string.msg_message_not_found),
-                        body = appString(R.string.msg_try_other_message_query),
-                        actionLabel = appString(R.string.msg_clear_search),
-                        onAction = { messageQuery = "" }
-                    )
-                }
-            } else if (showDirectSetupCard) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f)
-                        .verticalScroll(emptyScrollState),
-                    verticalArrangement = Arrangement.spacedBy(UiSpaceM)
-                ) {
-                    DirectChatSetupCard(
-                        title = directNotReadyTitle,
-                        body = directNotReadyBody
-                    )
-                    FilledTonalButton(
-                        onClick = onOpenConnectTab,
-                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
-                    ) {
-                        Text(appString(R.string.msg_go_connect))
-                    }
-                }
-            } else if (showChannelJoinPrompt) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f)
-                        .verticalScroll(emptyScrollState),
-                    verticalArrangement = Arrangement.spacedBy(UiSpaceM)
-                ) {
-                    WifiChannelJoinCard(
-                        connectedToWifi = state.lanConnected,
-                        peerCount = state.globalChatPeerCount,
-                        onJoin = { onSetGlobalLanJoined(true) },
-                        onOpenConnectTab = onOpenConnectTab
-                    )
-                    ChannelDownloadSettingsCard(
-                        autoDownload = state.autoDownloadChannelFiles,
-                        onAutoDownloadChange = onAutoDownloadChannelFilesChange,
-                        panelColor = quietPanelColor
-                    )
-                }
-            } else {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f)
-                        .verticalScroll(emptyScrollState),
-                    verticalArrangement = Arrangement.spacedBy(UiSpaceS)
-                ) {
-                    if (isGlobalChat) {
-                        WifiChannelEmptyCard()
-                    } else {
-                        ChatStarterCard(
-                            title = chatStarterTitle,
-                            body = chatStarterBody,
-                            isReady = channelReady,
-                            isGlobal = false,
-                            joined = false,
-                            peerCount = 0
-                        )
-                    }
-                }
-            }
 
-            if (!searchVisible && !showDirectSetupCard && !showChannelJoinPrompt) {
-                ChatComposerPanel(
-                    draft = state.chatDraft,
-                    maxHeight = composerMaxHeight,
-                    keyboardVisible = keyboardVisible,
-                    selectedFileNames = state.selectedFileNames,
-                    selectedFilesCount = state.selectedFilesCount,
-                    recoveryIncomplete = com.example.wifidrop.presentation.isIncompleteAttachmentRecovery(state.shareImportStatus),
-                    placeholderText = composerPlaceholder,
-                    destinationDescription = if (isGlobalChat) channelTitle else directTargetLabel ?: chatHeaderTitle,
-                    sendButtonLabel = sendButtonLabel,
-                    composerEnabled = if (isGlobalChat) {
-                        state.lanConnected && globalLanJoined && !state.sessionExpired
-                    } else {
-                        directChannelReady && !state.sessionExpired
-                    },
-                    sendEnabled = sendDisabledReason == null,
-                    attachEnabled = if (isGlobalChat) {
-                        state.lanConnected && globalLanJoined && !state.sessionExpired
-                    } else {
-                        directChannelReady &&
-                            !state.sessionExpired &&
-                            when (directChatMode) {
-                                ConnectionMode.LAN -> true
-                                ConnectionMode.WIFI_DIRECT -> {
-                                    if (isP2pHost) {
-                                        true
-                                    } else {
-                                        state.chatDirectTargetIps.size == 1 &&
-                                            state.chatDirectTargetIps.firstOrNull() == state.connection?.groupOwnerAddress
+                } else if (!compactImeViewport && !searchVisible) {
+                    Text(
+                        if (isGlobalChat) channelTitle else directTargetLabel ?: chatHeaderTitle,
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                val chatContext: @Composable () -> Unit = {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        if (!isGlobalChat) {
+                            val availablePeers = if (directChatMode == ConnectionMode.WIFI_DIRECT) directWifiPeers else directLanPeers
+                            if (availablePeers.isNotEmpty()) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    availablePeers.forEach { peer ->
+                                        val selected = if (directChatMode == ConnectionMode.WIFI_DIRECT) state.chatDirectTargetIps.contains(peer.ip)
+                                            else state.chatDirectTargetIp == peer.ip
+                                        FilterChip(
+                                            selected = selected,
+                                            onClick = { onSelectChatDirectPeer(peer.ip) },
+                                            modifier = Modifier.heightIn(min = 48.dp),
+                                            colors = qetaraFilterChipColors(),
+                                            label = { Text(peer.label.ifBlank { peer.ip }, maxLines = 1) }
+                                        )
                                     }
                                 }
                             }
-                    },
-                    onDraftChange = { onChatDraftChange(it.take(2_000)) },
-                    onPickFile = onPickFile,
-                    onClearSelectedFiles = onClearSelectedFiles,
-                    onSend = onSendMessage,
-                    onOpenMore = { composerMoreExpanded = true }
-                )
-            }
+                        }
 
-            DropdownMenu(
-                expanded = composerMoreExpanded,
-                onDismissRequest = { composerMoreExpanded = false }
-            ) {
-                DropdownMenuItem(
-                    text = { Text(appString(R.string.msg_attach_files)) },
-                    leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Rounded.AttachFile,
-                            contentDescription = null
-                        )
-                    },
-                    enabled = if (isGlobalChat) {
-                        state.lanConnected && globalLanJoined && !state.sessionExpired
-                    } else {
-                        directChannelReady && !state.sessionExpired
-                    },
-                    onClick = {
-                        composerMoreExpanded = false
-                        onPickFile()
+                        if (!isGlobalChat && directChannelReady && !state.chatSessionReady) {
+                            TextButton(onClick = onOpenConnectTab, modifier = Modifier.heightIn(min = 48.dp)) { Text(appString(R.string.msg_confirm_session_connect)) }
+                        }
+
+                        if (!channelReady && hasMessages) {
+                            ChatConnectionNotice(
+                                title = if (isGlobalChat) {
+                                    if (state.lanConnected) appString(R.string.msg_return_wifi_channel) else appString(R.string.msg_wifi_disconnected)
+                                } else directNotReadyTitle,
+                                body = when {
+                                    isGlobalChat && !state.lanConnected -> appString(R.string.msg_saved_history_connect_wifi)
+                                    isGlobalChat -> appString(R.string.msg_saved_history_join_channel)
+                                    isDirectWifiMode -> directNotReadyBody
+                                    else -> appString(R.string.msg_saved_history_choose_device)
+                                },
+                                actionLabel = if (isGlobalChat && state.lanConnected) appString(R.string.msg_join_wifi_channel) else appString(R.string.msg_go_connect),
+                                onAction = if (isGlobalChat && state.lanConnected) {
+                                    { onSetGlobalLanJoined(true) }
+                                } else onOpenConnectTab
+                            )
+                        } else {
+                            if (!showChannelJoinPrompt) {
+                                FlowRow(
+                                    horizontalArrangement = Arrangement.spacedBy(UiSpaceS),
+                                    verticalArrangement = Arrangement.spacedBy(UiSpaceS)
+                                ) {
+                                    if (!(isGlobalChat && channelReady)) {
+                                        StatusChip(
+                                            label = if (isGlobalChat) {
+                                                when {
+                                                    !state.lanConnected -> appString(R.string.msg_no_wifi)
+                                                    !globalLanJoined -> appString(R.string.msg_outside_channel)
+                                                    state.globalChatPeerCount <= 0 -> appString(R.string.msg_only_you)
+                                                    else -> globalDeviceCountLabel
+                                                }
+                                            } else if (channelReady) {
+                                                if (!state.chatSessionReady) appString(R.string.msg_session_unconfirmed) else if (directTargetCount > 1) appQuantityString(R.plurals.msg_devices_count, directTargetCount, directTargetCount) else appString(R.string.msg_device_ready)
+                                            } else {
+                                                appString(R.string.msg_no_device)
+                                            },
+                                            containerColor = if (channelReady) {
+                                                MaterialTheme.colorScheme.primaryContainer
+                                            } else {
+                                                MaterialTheme.colorScheme.surfaceVariant
+                                            },
+                                            contentColor = if (channelReady) {
+                                                MaterialTheme.colorScheme.onPrimaryContainer
+                                            } else {
+                                                MaterialTheme.colorScheme.onSurfaceVariant
+                                            }
+                                        )
+                                    }
+                                    if (state.sessionExpired || (!state.chatSessionReady && (experience.showSyncAction || state.tokenSyncStatus.isNotBlank()))) {
+                                        StatusChip(
+                                            label = when {
+                                                state.sessionExpired -> appString(R.string.msg_session_expired)
+                                                com.example.wifidrop.presentation.isSessionSyncApprovalRequired(state.tokenSyncStatus) -> appString(R.string.msg_pending)
+                                                com.example.wifidrop.presentation.isSessionSyncFailure(state.tokenSyncStatus) -> appString(R.string.msg_retry)
+                                                state.sessionSyncing -> appString(R.string.msg_syncing)
+                                                else -> appString(R.string.msg_session)
+                                            },
+                                            containerColor = if (state.sessionExpired) {
+                                                MaterialTheme.colorScheme.errorContainer
+                                            } else {
+                                                MaterialTheme.colorScheme.tertiaryContainer
+                                            },
+                                            contentColor = if (state.sessionExpired) {
+                                                MaterialTheme.colorScheme.onErrorContainer
+                                            } else {
+                                                MaterialTheme.colorScheme.onTertiaryContainer
+                                            }
+                                        )
+                                    }
+                                }
+
+                                if (channelHelperText != null && !showDirectSetupCard) {
+                                    Text(
+                                        channelHelperText,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+
+                                if (showSyncButton) {
+                                    OutlinedButton(onClick = onSyncToken, modifier = Modifier.heightIn(min = 48.dp)) {
+                                        Text(appString(R.string.msg_sync_session))
+                                    }
+                                }
+
+                                if (isGlobalChat) {
+                                    TextButton(onClick = { channelOptionsExpanded = !channelOptionsExpanded }, modifier = Modifier.heightIn(min = 48.dp)) {
+                                        Text(if (channelOptionsExpanded) appString(R.string.msg_hide_channel_options) else appString(R.string.msg_channel_options))
+                                    }
+                                    if (channelOptionsExpanded) {
+                                        ChannelDownloadSettingsCard(
+                                            autoDownload = state.autoDownloadChannelFiles,
+                                            onAutoDownloadChange = onAutoDownloadChannelFilesChange,
+                                            panelColor = quietPanelColor
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        if (operationalNotice != null) {
+                            Surface(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(16.dp),
+                                color = if (operationalNoticeIsError) {
+                                    MaterialTheme.colorScheme.errorContainer
+                                } else {
+                                    quietPanelColor
+                                },
+                                contentColor = if (operationalNoticeIsError) {
+                                    MaterialTheme.colorScheme.onErrorContainer
+                                } else {
+                                    MaterialTheme.colorScheme.onSurface
+                                }
+                            ) {
+                                Text(
+                                    operationalNotice,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = if (operationalNoticeIsError) {
+                                        MaterialTheme.colorScheme.onErrorContainer
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                    },
+                                    modifier = Modifier.padding(horizontal = UiSpaceM, vertical = 10.dp)
+                                )
+                            }
+                        }
+
+                        if (state.sendQueue.isNotEmpty() && queueHeadline != null) {
+                            Surface(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(16.dp),
+                                color = quietPanelColor,
+                                contentColor = MaterialTheme.colorScheme.onSurface
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = UiSpaceM, vertical = 12.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Column(
+                                            modifier = Modifier.weight(1f),
+                                            verticalArrangement = Arrangement.spacedBy(2.dp)
+                                        ) {
+                                            Text(
+                                                queueHeadline,
+                                                fontWeight = FontWeight.SemiBold,
+                                                style = MaterialTheme.typography.bodyMedium
+                                            )
+                                            if (queueSummary.isNotBlank()) {
+                                                Text(
+                                                    queueSummary,
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                            }
+                                        }
+                                        StatusChip(
+                                            label = "${state.sendQueue.size}",
+                                            containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                        )
+                                    }
+                                    if (featuredQueueItem != null) {
+                                        HorizontalDivider()
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Column(
+                                                modifier = Modifier.weight(1f),
+                                                verticalArrangement = Arrangement.spacedBy(2.dp)
+                                            ) {
+                                                Text(
+                                                    featuredQueueItem.fileName,
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    fontWeight = FontWeight.SemiBold,
+                                                    maxLines = 1,
+                                                    overflow = TextOverflow.Ellipsis
+                                                )
+                                                Text(
+                                                    (featuredQueueItem.peerLabel ?: featuredQueueItem.targetIp)
+                                                        .takeIf { it.isNotBlank() }
+                                                        ?: featuredQueueItem.targetIp,
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                            }
+                                            StatusChip(
+                                                label = queueStatusLabel(featuredQueueItem.status),
+                                                containerColor = queueStatusColor(featuredQueueItem.status),
+                                                contentColor = queueStatusContentColor(featuredQueueItem.status)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        if (sectionLabel != null) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    sectionLabel,
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                if (hasMessages) {
+                                    Text(
+                                        "${recentMessages.size}",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+
                     }
-                )
-                DropdownMenuItem(
-                    text = { Text(appString(R.string.msg_clear_text)) },
-                    leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Rounded.Clear,
-                            contentDescription = null
-                        )
-                    },
-                    enabled = state.chatDraft.isNotBlank(),
-                    onClick = {
-                        composerMoreExpanded = false
-                        onChatDraftChange("")
+                }
+                val newestAtBottom = channelReady && hasMessages
+                Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        state = listState,
+                        reverseLayout = newestAtBottom,
+                        contentPadding = PaddingValues(vertical = 4.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.Top)
+                    ) {
+                        // Setup and saved history share one scroll area. Short histories stay
+                        // beside their context instead of reserving most of the screen.
+                        if (!newestAtBottom && !keyboardVisible && !searchVisible) {
+                            item(key = "chat_context") { chatContext() }
+                        }
+                        if (hasMessages) {
+                            items(recentMessages, key = { it.id }) { item ->
+                                ChatMessageCard(
+                                    item = item,
+                                    onRetryMessage = onRetryMessage,
+                                    onCancelQueuedMessage = onCancelQueuedMessage,
+                                    onDownloadChannelFileOffer = { onDownloadChannelFileOffer(item) },
+                                    onRequestDelete = { pendingDeleteMessageId = item.id },
+                                    onShareMessage = { shareChatMessage(context, item) }
+                                )
+                            }
+                        } else {
+                            item(key = "chat_empty") {
+                                Column(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalArrangement = Arrangement.spacedBy(UiSpaceM)
+                                ) {
+                                    when {
+                                        messageQuery.isNotBlank() -> EmptyStateBlock(
+                                            title = appString(R.string.msg_message_not_found),
+                                            body = appString(R.string.msg_try_other_message_query),
+                                            actionLabel = appString(R.string.msg_clear_search),
+                                            onAction = { messageQuery = "" }
+                                        )
+                                        showDirectSetupCard -> {
+                                            DirectChatSetupCard(
+                                                title = directNotReadyTitle,
+                                                body = directNotReadyBody
+                                            )
+                                            FilledTonalButton(
+                                                onClick = onOpenConnectTab,
+                                                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                                            ) {
+                                                Text(appString(R.string.msg_go_connect))
+                                            }
+                                        }
+                                        showChannelJoinPrompt -> {
+                                            WifiChannelJoinCard(
+                                                connectedToWifi = state.lanConnected,
+                                                peerCount = state.globalChatPeerCount,
+                                                onJoin = { onSetGlobalLanJoined(true) },
+                                                onOpenConnectTab = onOpenConnectTab
+                                            )
+                                            ChannelDownloadSettingsCard(
+                                                autoDownload = state.autoDownloadChannelFiles,
+                                                onAutoDownloadChange = onAutoDownloadChannelFilesChange,
+                                                panelColor = quietPanelColor
+                                            )
+                                        }
+                                        isGlobalChat -> WifiChannelEmptyCard()
+                                        else -> ChatStarterCard(
+                                            title = chatStarterTitle,
+                                            body = chatStarterBody,
+                                            isReady = channelReady && state.chatSessionReady,
+                                            notReadyLabel = appString(if (state.sessionExpired) R.string.msg_session_expired
+                                                else R.string.msg_session_unconfirmed)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                        if (newestAtBottom && !keyboardVisible && !searchVisible) {
+                            item(key = "chat_context") { chatContext() }
+                        }
                     }
-                )
-                DropdownMenuItem(
-                    text = { Text(appString(R.string.msg_remove_attachments)) },
-                    leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Rounded.Close,
-                            contentDescription = null
-                        )
-                    },
-                    enabled = state.selectedFilesCount > 0,
-                    onClick = {
-                        composerMoreExpanded = false
-                        onClearSelectedFiles()
+                }
+
+                if (keyboardVisible && directSessionUnconfirmed && !searchVisible) {
+                    TextButton(onClick = onOpenConnectTab,
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                        Text(appString(R.string.msg_confirm_session_connect))
                     }
-                )
+                }
+                if (!searchVisible && !showDirectSetupCard && !showChannelJoinPrompt) {
+                    ChatComposerPanel(
+                        draft = state.chatDraft,
+                        maxHeight = composerMaxHeight,
+                        keyboardVisible = keyboardVisible,
+                        selectedFileNames = state.selectedFileNames,
+                        selectedFilesCount = state.selectedFilesCount,
+                        recoveryIncomplete = com.example.wifidrop.presentation.isIncompleteAttachmentRecovery(state.shareImportStatus),
+                        placeholderText = composerPlaceholder,
+                        destinationDescription = if (isGlobalChat) channelTitle else directTargetLabel ?: chatHeaderTitle,
+                        sendButtonLabel = sendButtonLabel,
+                        composerEnabled = if (isGlobalChat) {
+                            state.lanConnected && globalLanJoined && !state.sessionExpired
+                        } else {
+                            directChannelReady && !state.sessionExpired
+                        },
+                        sendEnabled = sendDisabledReason == null,
+                        attachEnabled = if (isGlobalChat) {
+                            state.lanConnected && globalLanJoined && !state.sessionExpired
+                        } else {
+                            directChannelReady &&
+                                !state.sessionExpired &&
+                                when (directChatMode) {
+                                    ConnectionMode.LAN -> true
+                                    ConnectionMode.WIFI_DIRECT -> {
+                                        if (isP2pHost) {
+                                            true
+                                        } else {
+                                            state.chatDirectTargetIps.size == 1 &&
+                                                state.chatDirectTargetIps.firstOrNull() == state.connection?.groupOwnerAddress
+                                        }
+                                    }
+                                }
+                        },
+                        onDraftChange = { onChatDraftChange(it.take(2_000)) },
+                        onPickFile = onPickFile,
+                        onClearSelectedFiles = onClearSelectedFiles,
+                        onSend = onSendMessage,
+                        onOpenMore = { composerMoreExpanded = true }
+                    )
+                }
+
+                DropdownMenu(
+                    expanded = composerMoreExpanded,
+                    onDismissRequest = { composerMoreExpanded = false }
+                ) {
+                    if (hasMessages && channelReady && !atLatestMessage && messageQuery.isBlank()) {
+                        DropdownMenuItem(
+                            text = {
+                                Text(if (newMessagesCount > 0)
+                                    appQuantityString(R.plurals.msg_new_messages_count, newMessagesCount, newMessagesCount)
+                                else appString(R.string.msg_latest_message))
+                            },
+                            leadingIcon = { Icon(Icons.Rounded.ArrowDownward, contentDescription = null) },
+                            modifier = Modifier.heightIn(min = 48.dp),
+                            onClick = {
+                                composerMoreExpanded = false
+                                newMessagesCount = 0
+                                chatCoroutineScope.launch { listState.animateScrollToItem(0) }
+                            }
+                        )
+                    }
+                    DropdownMenuItem(
+                        text = { Text(appString(R.string.msg_attach_files)) },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Rounded.AttachFile,
+                                contentDescription = null
+                            )
+                        },
+                        enabled = if (isGlobalChat) {
+                            state.lanConnected && globalLanJoined && !state.sessionExpired
+                        } else {
+                            directChannelReady && !state.sessionExpired
+                        },
+                        onClick = {
+                            composerMoreExpanded = false
+                            onPickFile()
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text(appString(R.string.msg_clear_text)) },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Rounded.Clear,
+                                contentDescription = null
+                            )
+                        },
+                        enabled = state.chatDraft.isNotBlank(),
+                        onClick = {
+                            composerMoreExpanded = false
+                            onChatDraftChange("")
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text(appString(R.string.msg_remove_attachments)) },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Rounded.Close,
+                                contentDescription = null
+                            )
+                        },
+                        enabled = state.selectedFilesCount > 0,
+                        onClick = {
+                            composerMoreExpanded = false
+                            onClearSelectedFiles()
+                        }
+                    )
+                }
             }
-        }
         }
     }
 
@@ -983,7 +1003,9 @@ internal fun P2pMessagesTab(
                     Text(
                         pendingMessage?.text?.take(160).orEmpty().ifBlank { appString(R.string.msg_message_no_visible_content) },
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 4,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
             },
@@ -1038,6 +1060,33 @@ internal fun P2pMessagesTab(
                 }
             }
         )
+    }
+}
+
+@Composable
+private fun ChatConnectionNotice(
+    title: String,
+    body: String,
+    actionLabel: String,
+    onAction: () -> Unit
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+            Text(body, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            FilledTonalButton(onClick = onAction, modifier = Modifier.heightIn(min = 48.dp)) {
+                Text(actionLabel)
+            }
+        }
     }
 }
 
@@ -1239,6 +1288,7 @@ private fun ChatComposerPanel(
     onOpenMore: () -> Unit
 ) {
     val attachmentsLabel = appQuantityString(R.plurals.msg_files_ready_count, selectedFilesCount, selectedFilesCount)
+    val largeText = LocalDensity.current.fontScale >= 1.5f
     Surface(
         modifier = Modifier.fillMaxWidth().heightIn(max = maxHeight),
         shape = RoundedCornerShape(16.dp),
@@ -1278,7 +1328,10 @@ private fun ChatComposerPanel(
                 onValueChange = onDraftChange,
                 enabled = composerEnabled,
                 placeholder = {
-                    Text(placeholderText)
+                    // Keep an empty composer compact at large font sizes. The editor's semantic
+                    // description retains the complete destination; entered text still wraps below.
+                    Text(placeholderText, maxLines = if (largeText) 1 else Int.MAX_VALUE,
+                        overflow = TextOverflow.Ellipsis)
                 },
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1349,9 +1402,7 @@ private fun ChatStarterCard(
     title: String,
     body: String,
     isReady: Boolean,
-    isGlobal: Boolean,
-    joined: Boolean,
-    peerCount: Int
+    notReadyLabel: String
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -1372,16 +1423,10 @@ private fun ChatStarterCard(
                 verticalArrangement = Arrangement.spacedBy(UiSpaceS)
             ) {
                 StatusChip(
-                    label = if (isGlobal) {
-                        when {
-                            !joined -> appString(R.string.msg_not_joined)
-                            peerCount <= 0 -> appString(R.string.msg_only_you)
-                            else -> deviceCountLabel(peerCount)
-                        }
-                    } else if (isReady) {
+                    label = if (isReady) {
                         appString(R.string.msg_ready)
                     } else {
-                        appString(R.string.msg_no_device)
+                        notReadyLabel
                     },
                     containerColor = if (isReady) {
                         MaterialTheme.colorScheme.primaryContainer

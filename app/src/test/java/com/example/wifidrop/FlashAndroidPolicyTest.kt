@@ -1,7 +1,10 @@
 package com.example.wifidrop
 
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.TextFieldValue
 import com.example.wifidrop.protocol.flash.FlashApproval
 import com.example.wifidrop.protocol.flash.FlashPeer
+import com.example.wifidrop.protocol.flash.FLASH_TEXT_MAX_BYTES
 import org.junit.Assert.*
 import org.junit.Test
 import java.io.File
@@ -106,5 +109,104 @@ class FlashAndroidPolicyTest : LocalizedResourcesTest() {
         val delivered = FlashAndroidResult("operation-A", "first.txt", FlashResultKind.DELIVERED, "Confirmado")
         assertEquals(listOf(delivered), recordFlashFailure(listOf(delivered), "operation-A", "first.txt", "Cancelado", true))
         assertEquals(listOf(delivered), recordFlashFailure(listOf(delivered), "operation-A", "first.txt", "Conexión interrumpida", false))
+    }
+
+    @Test fun textReceiptConsumesOnlyTheMatchingDraft() {
+        val body = "  Hola,\n你好 👋  "
+        val unchangedDraft = FlashAndroidState(textDraft = body, sendingText = true).completeTextDraft(body)
+        assertEquals("", unchangedDraft.textDraft)
+        assertFalse(unchangedDraft.sendingText)
+        val editedDraft = FlashAndroidState(textDraft = "otro texto", sendingText = true).completeTextDraft(body)
+        assertEquals("otro texto", editedDraft.textDraft)
+        assertFalse(editedDraft.sendingText)
+    }
+
+    @Test fun textAckFailurePreservesExactVerifiedBodyAndDoesNotClaimDelivery() {
+        val body = "  Hola,\r\n你好 👋  "
+        val received = FlashAndroidResult("message-A", "message.txt", FlashResultKind.RECEIVED,
+            "Recibido", file = File("kept-message.txt"), textBody = body)
+        val result = recordFlashFailure(listOf(received), "message-A", "message.txt", "Sin confirmación", false).single()
+        assertEquals(FlashResultKind.RECEIVED, result.kind)
+        assertEquals(body, result.textBody)
+        assertTrue(result.confirmationIssue)
+        assertTrue(result.detail.startsWith("Texto recibido y verificado."))
+    }
+
+    @Test fun retainedTextReceiptAndFailureFollowLanguageWithoutChangingBody() {
+        val body = "  Hola,\r\n你好 👋  "
+        val received = FlashAndroidResult("text-A", "message.txt", FlashResultKind.RECEIVED,
+            flashText(R.string.flash_text_received_verified), textBody = body)
+        val result = recordFlashFailure(listOf(received), received.id, received.fileName,
+            flashTextErrorText("unconfirmed"), false).single()
+        val status = FlashAndroidState(statusText = flashTextErrorText("rejected"), textDraft = body)
+
+        assertTrue(result.detail.startsWith("Texto recibido y verificado."))
+        assertTrue(status.status.contains("El texto sigue en el borrador."))
+        useAppLocale("en")
+        assertEquals("Text received and verified. Could not confirm delivery to the other device.", result.detail)
+        assertTrue(status.status.contains("The text is still in your draft."))
+        assertEquals(body, result.textBody)
+        assertEquals(body, status.textDraft)
+        assertTrue(result.confirmationIssue)
+        assertEquals(FlashResultKind.RECEIVED, result.kind)
+    }
+
+    @Test fun retainedRejectedEditsFollowLanguageAndPreserveSelection() {
+        val current = TextFieldValue("Conservar", TextRange(2, 5))
+        val oversized = pasteFlashText(current, "x".repeat(FLASH_TEXT_MAX_BYTES + 1))
+        val malformed = acceptFlashTextEdit(current, TextFieldValue("\uD800"))
+
+        assertTrue(oversized.error!!.contains("El borrador no cambió."))
+        assertTrue(malformed.error!!.contains("caracteres Unicode no válidos"))
+        useAppLocale("en")
+        assertEquals("Text cannot exceed 16 KiB (16,384 bytes). Your draft was not changed.", oversized.error)
+        assertEquals("The text contains invalid Unicode characters. Your draft was not changed.", malformed.error)
+        assertEquals(current, oversized.value)
+        assertEquals(current, malformed.value)
+    }
+
+    @Test fun failedTextRetainsBodyWithinExistingResultLimit() {
+        val previous = (1..20).map {
+            FlashAndroidResult("text-$it", "message.txt", FlashResultKind.RECEIVED, "Recibido", textBody = "Texto $it")
+        }
+        val updated = recordFlashFailure(previous, "failed-text", "message.txt", "Sin conexión", false, textBody = "  exacto\n")
+        assertEquals(20, updated.size)
+        assertEquals(FlashResultKind.FAILED, updated.first().kind)
+        assertEquals("  exacto\n", updated.first().textBody)
+        assertFalse(updated.any { it.id == "text-20" })
+    }
+
+    @Test fun oversizePastePreservesDraftAndSelectionWithoutTruncation() {
+        val current = TextFieldValue("Un borrador", TextRange(3, 7))
+        val result = pasteFlashText(current, "x".repeat(FLASH_TEXT_MAX_BYTES + 1))
+        assertEquals(current, result.value)
+        assertNotNull(result.error)
+        assertTrue(result.error!!.contains("El borrador no cambió"))
+    }
+
+    @Test fun pasteValidatesCombinedUtf8SizeBeforeAcceptingIt() {
+        val current = TextFieldValue("é".repeat(FLASH_TEXT_MAX_BYTES / 2), TextRange(0))
+        val result = pasteFlashText(current, "a")
+        assertEquals(current, result.value)
+        assertNotNull(result.error)
+    }
+
+    @Test fun malformedUnicodeAndOversizeTypedEditPreservePreviousCursor() {
+        val current = TextFieldValue("Conservar", TextRange(2))
+        val malformed = acceptFlashTextEdit(current, TextFieldValue("\uD800"))
+        assertEquals(current, malformed.value)
+        assertNotNull(malformed.error)
+        val oversized = acceptFlashTextEdit(current, TextFieldValue("é".repeat(FLASH_TEXT_MAX_BYTES)))
+        assertEquals(current, oversized.value)
+        assertNotNull(oversized.error)
+    }
+
+    @Test fun validPasteReplacesOnlySelectedRangeAndPreservesExactText() {
+        val current = TextFieldValue("Inicio FIN final", TextRange(7, 10))
+        val pasted = "  你好 👋\r\n"
+        val result = pasteFlashText(current, pasted)
+        assertNull(result.error)
+        assertEquals("Inicio " + pasted + " final", result.value.text)
+        assertEquals(TextRange(7 + pasted.length), result.value.selection)
     }
 }

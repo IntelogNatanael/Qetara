@@ -1,5 +1,21 @@
 # Preparación de F-Droid
 
+## Candidata local 1.4.5 / código 12
+
+Las fuentes de trabajo preparan 1.4.5/12. La receta versionada conserva
+1.4.4/11 y el commit `e379ccc9519514ef3f091821b333502c954cae54` hasta fijar
+el commit de la nueva entrega. No debe interpretarse como una receta ya
+actualizada o validada para 1.4.5. El [informe de la candidata](../docs/VALIDATION-1.4.5.md)
+y la [preparación del cierre](../docs/RELEASE-CLOSURE-1.4.5.md) separan las
+pruebas realizadas de la reconstrucción y publicación pendientes.
+
+La [validación de 1.4.4](../docs/VALIDATION-1.4.4.md) registra la entrega
+anterior y su CI; los párrafos siguientes conservan el historial de 1.4.3
+y 1.4.2, sin atribuir sus resultados a la nueva candidata ni describir el
+estado actual del catálogo.
+
+## Historial de la publicación 1.4.3
+
 **Estado al 7 de octubre de 2026:** la receta local y la MR !51433 proponen
 **1.4.3/código 10**,
 commit `ee4c0aea8110f4ff8d11aa701cd93e1c7b3a3489`, con R8, `Binaries` global y
@@ -87,8 +103,9 @@ esta nueva build. El
 el estado de fuentes, paquetes e instalaciones en esa fecha.
 
 La receta fija el commit completo y la huella del certificado del desarrollador.
-Las actualizaciones automáticas permanecen desactivadas durante la preparación
-de esta candidata. Se conserva la compilación Gradle estándar del módulo `app`,
+Desde la receta de 1.4.4, `AutoUpdateMode: Version` y `UpdateCheckMode` filtran
+etiquetas de versión; `UpdateCheckData` lee las propiedades de Gradle.
+Se conserva la compilación Gradle estándar del módulo `app`,
 sin omitir escáneres, alterar el versionado ni retirar perfiles ART o metadata VCS.
 
 ## Validación
@@ -111,13 +128,17 @@ revisión 2 y Build Tools 36.0.0, coloca el YAML en `metadata/` de un checkout d
 fdroiddata que incluya su configuración oficial de categorías. Ejecuta:
 
 ```sh
+qetara_app=io.github.intelognatanael.qetara
+qetara_code='<versionCode de la receta preparada>'
 fdroid readmeta
-fdroid rewritemeta io.github.intelognatanael.qetara
-fdroid lint --force-yamllint io.github.intelognatanael.qetara
-fdroid scanner --refresh --json --exit-code io.github.intelognatanael.qetara:10
-fdroid build --test --no-tarball --scan-binary --stop io.github.intelognatanael.qetara:10
+fdroid rewritemeta "$qetara_app"
+fdroid lint --force-yamllint "$qetara_app"
+fdroid scanner --refresh --json --exit-code "$qetara_app:$qetara_code"
+fdroid build --test --no-tarball --scan-binary --stop "$qetara_app:$qetara_code"
 ```
 
+Sustituye el marcador de código por el `versionCode` de la receta que realmente
+se va a comprobar; no uses el código de una candidata con una receta anterior.
 Los comandos de escáner y build preparan y limpian su propio checkout de trabajo.
 No deben apuntar al directorio donde desarrollas la aplicación. `--test` mantiene
 la salida en el área de prueba; no se utilizan `--force` ni `--skip-scan`.

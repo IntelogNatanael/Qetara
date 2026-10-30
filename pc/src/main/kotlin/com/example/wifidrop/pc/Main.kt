@@ -174,6 +174,7 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.CancellationException
 import kotlinx.coroutines.delay
 import javax.crypto.BadPaddingException
@@ -1625,7 +1626,8 @@ private fun runDesktopGui(cli: CliArgs) {
         val channelFileOffers = remember { ConcurrentHashMap<String, DesktopLocalChannelFileOffer>() }
         val channelUploads = remember { DesktopTransferSlot() }
         val chatSends = remember { DesktopTransferSlot() }
-        val channelRequests = remember { DesktopTransferSlot() }
+        val channelRequests = remember { DesktopChannelRequestQueue<DesktopChatEntry>() }
+        var channelRequestStatuses by remember { mutableStateOf<Map<DesktopChannelOfferKey, DesktopChannelRequestStatus>>(emptyMap()) }
         var activeChatCancellation by remember { mutableStateOf<DesktopTransferCancellation?>(null) }
         var activeChatScope by remember { mutableStateOf<DesktopChatScope?>(null) }
         var localNetworkEndpoints by remember { mutableStateOf(detectLocalNetworkEndpoints()) }
@@ -1663,6 +1665,7 @@ private fun runDesktopGui(cli: CliArgs) {
         val chatMessages = remember { mutableStateListOf<DesktopChatEntry>() }
         val lanPeers = remember { mutableStateListOf<DesktopLanPeer>() }
         val globalLanJoinedFlag = remember { AtomicBoolean(false) }
+        val channelReceptionGeneration = remember { AtomicInteger(0) }
         val logListState = rememberLazyListState()
         fun appendLog(message: String, isError: Boolean = false) {
             logs.add(
@@ -1863,9 +1866,11 @@ private fun runDesktopGui(cli: CliArgs) {
         }
 
         fun revokeChannelFileOffers() {
+            channelReceptionGeneration.incrementAndGet()
             channelFileOffers.clear()
             channelUploads.cancel()
-            channelRequests.cancel()
+            channelRequests.revoke("Solicitud detenida. Vuelve a entrar al canal con Recibir activo y usa Descargar.")
+            channelRequestStatuses = channelRequests.snapshot()
             if (activeChatScope == DesktopChatScope.GLOBAL_LAN) {
                 messagePhase = DesktopTaskPhase.STOPPING
                 messageStatus = "Deteniendo el envío del canal…"
@@ -1891,66 +1896,45 @@ private fun runDesktopGui(cli: CliArgs) {
             receiverServer?.stop()
         }
 
-        fun sendChannelFileOfferRequest(entry: DesktopChatEntry) {
-            if (receiverPhase != DesktopTaskPhase.RUNNING) {
-                messageStatus = "Activa Recibir en este equipo antes de descargar un archivo del canal."
-                notice = messageStatus
-                return
-            }
-            val offer = decodeDesktopChannelFileOffer(entry.message) ?: run {
-                messageStatus = "No encontré los datos del archivo."
-                appendLog(messageStatus, isError = true)
-                return
-            }
-            val targetIp = entry.peerAddress
-            val token = runCatching { requireValidToken(tokenText) }.getOrElse {
-                messageStatus = it.message ?: "Token inválido."
-                appendLog(messageStatus, isError = true)
-                return
-            }
-            val pin = runCatching { requireValidPin(pinText) }.getOrElse {
-                messageStatus = it.message ?: "PIN inválido."
-                appendLog(messageStatus, isError = true)
-                return
-            }
-            val port = parsePort() ?: run {
-                messageStatus = portError ?: "Puerto inválido."
-                appendLog(messageStatus, isError = true)
-                return
-            }
-            val retries = parseRetries() ?: run {
-                messageStatus = retriesError ?: "Reintentos inválidos."
-                appendLog(messageStatus, isError = true)
-                return
-            }
-            if (targetIp.isBlank()) {
-                messageStatus = "No encontré la IP del equipo que compartió el archivo."
-                appendLog(messageStatus, isError = true)
-                return
-            }
+        fun channelReceiverActive(): Boolean = DesktopMessageReception(
+            receiverGeneration, receiverPhase == DesktopTaskPhase.RUNNING, receiverExpiresAt, isGlobalLanJoined
+        ).isActiveFor(receiverGeneration)
 
+        fun startNextChannelFileRequest() {
+            if (!isGlobalLanJoined || !channelReceiverActive()) {
+                channelRequests.revoke("Activa Recibir con una sesión vigente y vuelve a solicitar el archivo desde el canal.")
+                channelRequestStatuses = channelRequests.snapshot()
+                return
+            }
+            val work = channelRequests.next() ?: return
+            channelRequestStatuses = channelRequests.snapshot()
+            val entry = work.value
+            val offer = requireNotNull(decodeDesktopChannelFileOffer(entry.message))
             val request = DesktopChannelFileRequest(
                 offerId = offer.id,
                 requesterId = localPeerId,
                 requesterLabel = sanitizePeerLabel(deviceLabelText),
                 requesterIp = null
             )
-            val config = SenderConfig(
-                token = token,
-                pin = pin,
-                targetHost = targetIp,
-                port = port,
-                clientId = localPeerId,
-                clientLabel = sanitizePeerLabel(deviceLabelText),
-                retries = retries,
-                localNoiseIdentity = noiseIdentity
-            )
-            val cancellation = channelRequests.tryAcquire() ?: run {
-                notice = "Ya hay una solicitud de descarga en curso. Espera a que termine."
+            val config = runCatching {
+                SenderConfig(
+                    token = requireValidToken(tokenText),
+                    pin = requireValidPin(pinText),
+                    targetHost = entry.peerAddress,
+                    port = requireNotNull(parsePort()) { "Puerto inválido." },
+                    clientId = localPeerId,
+                    clientLabel = sanitizePeerLabel(deviceLabelText),
+                    retries = requireNotNull(parseRetries()) { "Reintentos inválidos." },
+                    localNoiseIdentity = noiseIdentity
+                )
+            }.getOrElse { error ->
+                channelRequests.complete(work, actionableDesktopError(error))
+                channelRequestStatuses = channelRequests.snapshot()
+                startNextChannelFileRequest()
                 return
             }
             val requestGeneration = receiverGeneration
-            messageStatus = "Solicitando ${offer.fileName}..."
+            messageStatus = "Solicitando ${offer.fileName}…"
             thread(
                 start = true,
                 isDaemon = true,
@@ -1961,23 +1945,53 @@ private fun runDesktopGui(cli: CliArgs) {
                         messageRaw = encodeDesktopChannelFileRequest(request),
                         scope = DesktopChatScope.GLOBAL_LAN,
                         config = config,
-                        cancellation = cancellation
+                        cancellation = work.cancellation
                     )
                 }
                 SwingUtilities.invokeLater {
-                    if (!channelRequests.isCurrent(cancellation)) return@invokeLater
-                    channelRequests.release(cancellation)
-                    if (receiverGeneration != requestGeneration || receiverPhase != DesktopTaskPhase.RUNNING ||
-                        !isGlobalLanJoined || cancellation.isCancelled) return@invokeLater
-                    result.onSuccess {
-                        messageStatus = "Descarga solicitada a ${offer.senderLabel}."
-                        appendLog(messageStatus)
-                    }.onFailure { error ->
-                        messageStatus = "No se pudo solicitar la descarga."
-                        appendLog("${messageStatus} ${actionableDesktopError(error)}", isError = true)
+                    if (receiverGeneration != requestGeneration) work.cancellation.cancel()
+                    if (!isGlobalLanJoined || !channelReceiverActive()) {
+                        channelRequests.revoke("Activa Recibir con una sesión vigente y vuelve a solicitar el archivo desde el canal.")
                     }
+                    val error = result.exceptionOrNull()?.let {
+                        if (it.message.orEmpty().contains("canal_archivo_ocupado")) "El equipo está enviando otro archivo."
+                        else actionableDesktopError(it)
+                    }
+                    if (channelRequests.complete(work, error)) {
+                        messageStatus = if (error == null) {
+                            "Solicitud aceptada por ${entry.peerLabel}. La recepción se confirma en Recibir."
+                        } else {
+                            "No se pudo solicitar ${offer.fileName}. Usa Descargar para volver a intentarlo."
+                        }
+                        appendLog(listOfNotNull(messageStatus, error).joinToString(" "), isError = error != null)
+                    }
+                    channelRequestStatuses = channelRequests.snapshot()
+                    startNextChannelFileRequest()
                 }
             }
+        }
+
+        fun sendChannelFileOfferRequest(entry: DesktopChatEntry, automatic: Boolean = false) {
+            // The automatic setting never authorizes another mode or rejoining a channel.
+            if (entry.scope != DesktopChatScope.GLOBAL_LAN || entry.direction != DesktopChatDirection.INCOMING ||
+                (automatic && !autoDownloadChannelFiles)) return
+            if (!isGlobalLanJoined || !channelReceiverActive()) {
+                messageStatus = "Entra al Canal Wi-Fi y activa Recibir con una sesión vigente antes de descargar."
+                notice = messageStatus
+                return
+            }
+            val offer = decodeDesktopChannelFileOffer(entry.message) ?: return
+            if (entry.peerAddress.isBlank()) {
+                notice = "No encontré la IP del equipo que compartió el archivo."
+                return
+            }
+            when (channelRequests.enqueue(DesktopChannelOfferKey(entry.peerAddress, offer.id), entry, automatic)) {
+                DesktopChannelEnqueueResult.FULL -> notice = "La cola de solicitudes está llena. Usa Descargar en la oferta cuando termine una solicitud."
+                DesktopChannelEnqueueResult.DUPLICATE -> if (!automatic) notice = "Este archivo ya tiene una solicitud en curso."
+                DesktopChannelEnqueueResult.QUEUED -> Unit
+            }
+            channelRequestStatuses = channelRequests.snapshot()
+            startNextChannelFileRequest()
         }
 
         fun handleChannelFileRequest(entry: DesktopChatEntry): Boolean {
@@ -2004,6 +2018,7 @@ private fun runDesktopGui(cli: CliArgs) {
             val cancellation = channelUploads.tryAcquire()
                 ?: throw IllegalStateException("canal_archivo_ocupado: vuelve a solicitarlo cuando termine el envío actual")
             val uploadGeneration = receiverGeneration
+            val uploadChannelGeneration = channelReceptionGeneration.get()
             appendLog("${request.requesterLabel} pidió ${localOffer.offer.fileName}. Enviando...")
             thread(
                 start = true,
@@ -2016,13 +2031,19 @@ private fun runDesktopGui(cli: CliArgs) {
                         sendFileToPeer(localOffer.file, config, cancellation)
                     }.onSuccess { result ->
                         SwingUtilities.invokeLater {
-                            if (receiverGeneration != uploadGeneration || !isGlobalLanJoined || cancellation.isCancelled) return@invokeLater
+                            if (cancellation.isCancelled || !DesktopMessageReception(
+                                    receiverGeneration, receiverPhase == DesktopTaskPhase.RUNNING,
+                                    receiverExpiresAt, isGlobalLanJoined, channelReceptionGeneration.get()
+                                ).isChannelActiveFor(uploadGeneration, uploadChannelGeneration)) return@invokeLater
                             messageStatus = "Archivo enviado a ${request.requesterLabel}."
                             appendLog(result)
                         }
                     }.onFailure { error ->
                         SwingUtilities.invokeLater {
-                            if (receiverGeneration != uploadGeneration || !isGlobalLanJoined || cancellation.isCancelled) return@invokeLater
+                            if (cancellation.isCancelled || !DesktopMessageReception(
+                                    receiverGeneration, receiverPhase == DesktopTaskPhase.RUNNING,
+                                    receiverExpiresAt, isGlobalLanJoined, channelReceptionGeneration.get()
+                                ).isChannelActiveFor(uploadGeneration, uploadChannelGeneration)) return@invokeLater
                             messageStatus = "No se pudo enviar ${localOffer.offer.fileName}."
                             appendLog("${messageStatus} ${error.message ?: error::class.java.simpleName}", isError = true)
                         }
@@ -2215,11 +2236,12 @@ private fun runDesktopGui(cli: CliArgs) {
                     }
                 },
                 onMessageReceived = { entry ->
+                    val channelGeneration = channelReceptionGeneration.get()
                     deliverDesktopMessageOnUi {
                         DesktopMessageReception(
                             receiverGeneration, receiverPhase == DesktopTaskPhase.RUNNING,
-                            receiverExpiresAt, isGlobalLanJoined
-                        ).requireDelivery(generation, entry.scope)
+                            receiverExpiresAt, isGlobalLanJoined, channelReceptionGeneration.get()
+                        ).requireDelivery(generation, entry.scope, expectedChannelGeneration = channelGeneration)
                         if (handleChannelFileRequest(entry)) {
                             return@deliverDesktopMessageOnUi
                         }
@@ -2243,7 +2265,7 @@ private fun runDesktopGui(cli: CliArgs) {
                         }
                         appendLog("Mensaje recibido de ${entry.peerLabel} @ ${entry.peerAddress}")
                         if (incomingOffer != null && autoDownloadChannelFiles) {
-                            sendChannelFileOfferRequest(entry)
+                            sendChannelFileOfferRequest(entry, automatic = true)
                         }
                     }
                 }
@@ -2513,6 +2535,12 @@ private fun runDesktopGui(cli: CliArgs) {
                 appendLog(messageStatus, isError = true)
                 return
             }
+            desktopChannelPublicationIssue(scope, attachment != null, channelReceiverActive())?.let { issue ->
+                messageStatus = issue
+                notice = issue
+                appendLog(issue)
+                return
+            }
             if (scope == DesktopChatScope.GLOBAL_LAN && !isGlobalLanJoined) {
                 setGlobalLanMembership(true)
             }
@@ -2580,6 +2608,7 @@ private fun runDesktopGui(cli: CliArgs) {
                 )
                 encodeDesktopChannelFileOffer(offer)
             }
+            val channelOfferExpiresAt = receiverExpiresAt
 
             messagePhase = DesktopTaskPhase.STARTING
             val payloadLabel = when {
@@ -2618,6 +2647,8 @@ private fun runDesktopGui(cli: CliArgs) {
                     if (cancellation.isCancelled) return@forEach
                     if (channelFileOfferPayload != null) {
                         runCatching {
+                            check(channelOfferExpiresAt != null && System.currentTimeMillis() < channelOfferExpiresAt &&
+                                channelFileOffers.containsKey(requireNotNull(channelFileOffer).id)) { "sesion_expirada_o_detenida" }
                             sendMessageToPeer(
                                 messageRaw = channelFileOfferPayload,
                                 scope = DesktopChatScope.GLOBAL_LAN,
@@ -2753,7 +2784,12 @@ private fun runDesktopGui(cli: CliArgs) {
 
         Window(
             onCloseRequest = {
-                if (activeSendCancellation != null || receivingProgress != null || activeChatCancellation != null || flashController.state.busy || flashController.state.session.approvals.isNotEmpty()) {
+                if (desktopExitNeedsConfirmation(
+                        otherOperationActive = activeSendCancellation != null || receivingProgress != null ||
+                            activeChatCancellation != null || flashController.state.busy || flashController.state.session.approvals.isNotEmpty(),
+                        channelUploads = channelUploads,
+                        channelRequests = channelRequests
+                    )) {
                     showCloseDialog = true
                 } else {
                     stopDesktopOperationsForExit()
@@ -2945,7 +2981,7 @@ private fun runDesktopGui(cli: CliArgs) {
                         flashApprovals = flashController.state.session.approvals.size
                     ),
                     actions = actions,
-                    chatContent = {
+                    chatContent = { onOpenReceive ->
                         val scope = openChatScope ?: DesktopChatScope.DIRECT
                         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
                             Button(
@@ -2981,8 +3017,15 @@ private fun runDesktopGui(cli: CliArgs) {
                             onRefreshLan = { refreshLanPeers() },
                             onSend = { sendChatMessage(it) },
                             autoDownloadChannelFiles = autoDownloadChannelFiles,
-                            onAutoDownloadChannelFilesChange = { autoDownloadChannelFiles = it },
-                            onDownloadChannelFileOffer = ::sendChannelFileOfferRequest,
+                            onAutoDownloadChannelFilesChange = {
+                                autoDownloadChannelFiles = it
+                                if (!it) {
+                                    channelRequests.cancelAutomatic()
+                                    channelRequestStatuses = channelRequests.snapshot()
+                                    startNextChannelFileRequest()
+                                }
+                            },
+                            onDownloadChannelFileOffer = { sendChannelFileOfferRequest(it) },
                             credentialsReady = tokenError == null && pinError == null,
                             unreadCounts = unreadConversations,
                             messageBusy = activeChatCancellation != null,
@@ -2990,7 +3033,10 @@ private fun runDesktopGui(cli: CliArgs) {
                                 messagePhase = DesktopTaskPhase.STOPPING
                                 messageStatus = "Cancelando el envío del chat…"
                                 chatSends.cancel()
-                            }
+                            },
+                            receiverActive = channelReceiverActive(),
+                            onOpenReceive = onOpenReceive,
+                            channelRequestStatuses = channelRequestStatuses
                         )
                     },
                     activityContent = { modifier ->
@@ -3019,23 +3065,29 @@ private fun runDesktopGui(cli: CliArgs) {
                 )
                 DesktopFlashApprovalHost(flashController)
                 if (showCloseDialog) {
-                    androidx.compose.material.AlertDialog(
-                        onDismissRequest = { showCloseDialog = false },
-                        title = { Text("Hay una transferencia o solicitud en curso") },
-                        text = { Text("Al salir se detendrán los envíos, la recepción y Flash. Los archivos ya recibidos se conservan.") },
-                        confirmButton = {
-                            TextButton(onClick = {
-                                stopDesktopOperationsForExit()
-                                savePreferences()
-                                exitApplication()
-                            }) { Text("Salir y detener") }
-                        },
-                        dismissButton = { TextButton(onClick = { showCloseDialog = false }) { Text("Seguir en Qetara") } }
+                    DesktopCloseConfirmationDialog(
+                        onContinue = { showCloseDialog = false },
+                        onExit = {
+                            stopDesktopOperationsForExit()
+                            savePreferences()
+                            exitApplication()
+                        }
                     )
                 }
             }
         }
     }
+}
+
+@Composable
+internal fun DesktopCloseConfirmationDialog(onContinue: () -> Unit, onExit: () -> Unit) {
+    androidx.compose.material.AlertDialog(
+        onDismissRequest = onContinue,
+        title = { Text("Hay una transferencia o solicitud en curso") },
+        text = { Text("Al salir se detendrán los envíos, las solicitudes pendientes del canal, la recepción y Flash. Los archivos ya recibidos se conservan.") },
+        confirmButton = { TextButton(onClick = onExit) { Text("Salir y detener") } },
+        dismissButton = { TextButton(onClick = onContinue) { Text("Seguir en Qetara") } }
+    )
 }
 
 private fun openDeveloperGithub() {
@@ -3166,7 +3218,7 @@ private fun DesktopChatFloatingRail(
 }
 
 @Composable
-private fun DesktopChatScopeContent(
+internal fun DesktopChatScopeContent(
     scope: DesktopChatScope,
     lanPeers: List<DesktopLanPeer>,
     selectedDirectPeerIp: String?,
@@ -3190,7 +3242,10 @@ private fun DesktopChatScopeContent(
     credentialsReady: Boolean = true,
     unreadCounts: Map<String, Int> = emptyMap(),
     messageBusy: Boolean = messagePhase in listOf(DesktopTaskPhase.STARTING, DesktopTaskPhase.RUNNING, DesktopTaskPhase.STOPPING),
-    onCancelSend: (() -> Unit)? = null
+    onCancelSend: (() -> Unit)? = null,
+    receiverActive: Boolean = false,
+    onOpenReceive: (() -> Unit)? = null,
+    channelRequestStatuses: Map<DesktopChannelOfferKey, DesktopChannelRequestStatus> = emptyMap()
 ) {
     val activePeers = lanPeers.filter {
         it.sessionActive && it.ip.isNotBlank() && (scope == DesktopChatScope.DIRECT || it.globalLanJoined)
@@ -3220,7 +3275,8 @@ private fun DesktopChatScopeContent(
         DesktopChatScope.DIRECT -> selectedPeer?.sessionActive == true
         DesktopChatScope.GLOBAL_LAN -> activePeers.isNotEmpty()
     }
-    val canSend = credentialsReady && hasTarget &&
+    val publicationIssue = desktopChannelPublicationIssue(scope, validAttachment != null, receiverActive)
+    val canSend = credentialsReady && hasTarget && publicationIssue == null &&
         (hasDraft || validAttachment != null) &&
         !messageBusy
 
@@ -3347,6 +3403,16 @@ private fun DesktopChatScopeContent(
                             modifier = Modifier.weight(1f)
                         )
                     }
+                    Text(
+                        "Sólo ofertas nuevas mientras estés en el canal y Recibir esté activo. Al desactivar esta opción se retiran las solicitudes automáticas pendientes.",
+                        style = MaterialTheme.typography.caption,
+                        color = qetaraMuted
+                    )
+                    Text(
+                        "Un archivo ya solicitado puede seguir llegando a Recibir.",
+                        style = MaterialTheme.typography.caption,
+                        color = qetaraMuted
+                    )
                 }
             }
         }
@@ -3386,7 +3452,10 @@ private fun DesktopChatScopeContent(
                     scopedMessages.forEach { entry ->
                         DesktopChatMessageRow(
                             entry = entry,
-                            onDownloadChannelFileOffer = { onDownloadChannelFileOffer(entry) }
+                            onDownloadChannelFileOffer = { onDownloadChannelFileOffer(entry) },
+                            requestStatus = decodeDesktopChannelFileOffer(entry.message)?.let {
+                                channelRequestStatuses[DesktopChannelOfferKey(entry.peerAddress, it.id)]
+                            }
                         )
                     }
                 }
@@ -3446,6 +3515,17 @@ private fun DesktopChatScopeContent(
                 TextButton(onClick = onClearAttachment) {
                     Text("Quitar")
                 }
+            }
+        }
+
+        if (scope == DesktopChatScope.GLOBAL_LAN && validAttachment != null) {
+            Text(
+                publicationIssue ?: "Mantén Recibir activo para que los equipos del canal puedan descargar este archivo.",
+                style = MaterialTheme.typography.caption,
+                color = if (publicationIssue != null) MaterialTheme.colors.error else qetaraMuted
+            )
+            if (publicationIssue != null && onOpenReceive != null) {
+                TextButton(onClick = onOpenReceive) { Text("Ir a Recibir") }
             }
         }
 
@@ -3682,7 +3762,8 @@ private fun DesktopWifiGlyph(
 @Composable
 private fun DesktopChatMessageRow(
     entry: DesktopChatEntry,
-    onDownloadChannelFileOffer: () -> Unit
+    onDownloadChannelFileOffer: () -> Unit,
+    requestStatus: DesktopChannelRequestStatus? = null
 ) {
     val directionLabel = if (entry.direction == DesktopChatDirection.OUTGOING) "Tú" else entry.peerLabel
     val fileOffer = decodeDesktopChannelFileOffer(entry.message)
@@ -3759,6 +3840,7 @@ private fun DesktopChatMessageRow(
                             if (entry.direction == DesktopChatDirection.INCOMING) {
                                 Button(
                                     onClick = onDownloadChannelFileOffer,
+                                    enabled = requestStatus?.phase !in listOf(DesktopChannelRequestPhase.QUEUED, DesktopChannelRequestPhase.REQUESTING),
                                     colors = ButtonDefaults.buttonColors(
                                         backgroundColor = qetaraTeal,
                                         contentColor = Color.White
@@ -3768,6 +3850,13 @@ private fun DesktopChatMessageRow(
                                 }
                             }
                         }
+                    }
+                    if (entry.direction == DesktopChatDirection.INCOMING && requestStatus != null) {
+                        Text(
+                            requestStatus.detail,
+                            style = MaterialTheme.typography.caption,
+                            color = if (requestStatus.phase == DesktopChannelRequestPhase.MANUAL) MaterialTheme.colors.error else qetaraMuted
+                        )
                     }
                 } else {
                     Text(

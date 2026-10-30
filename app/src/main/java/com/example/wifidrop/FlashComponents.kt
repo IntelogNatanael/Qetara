@@ -7,8 +7,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.Description
+import androidx.compose.material.icons.rounded.AttachFile
+import androidx.compose.material.icons.rounded.ContentPaste
+import androidx.compose.material.icons.rounded.Devices
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -18,10 +21,13 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.wifidrop.protocol.flash.FlashPeer
+import com.example.wifidrop.protocol.flash.FlashText as FlashTextAttachment
 
 /** Presentation only: activation, discovery and exact-batch approval remain in the service. */
 @Composable
@@ -76,6 +82,153 @@ internal fun FlashIntroduction(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+internal fun FlashTextComposer(
+    draft: String,
+    selectedPeer: FlashPeer?,
+    busy: Boolean,
+    sendingText: Boolean,
+    importing: Boolean,
+    selectedFileCount: Int,
+    compact: Boolean,
+    onDraftChange: (String) -> Unit,
+    onPaste: () -> String?,
+    onChoosePeer: () -> Unit,
+    onChooseFiles: () -> Unit,
+    onReviewFiles: () -> Unit,
+    onCancelImport: () -> Unit,
+    onSend: () -> Unit,
+    onSendFiles: () -> Unit
+) {
+    var editing by remember { mutableStateOf(TextFieldValue(draft, TextRange(draft.length))) }
+    var inputError by remember { mutableStateOf<FlashText?>(null) }
+    LaunchedEffect(draft) {
+        if (draft != editing.text) {
+            editing = TextFieldValue(draft, TextRange(draft.length))
+            inputError = null
+        }
+    }
+    val draftValidation = flashTextValidationError(draft)
+    val validation = inputError ?: draftValidation
+    Surface(color = MaterialTheme.colorScheme.surface, contentColor = MaterialTheme.colorScheme.onSurface,
+        shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
+      Column(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 16.dp, vertical = 8.dp),
+          verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        TextButton(onClick = onChoosePeer, enabled = !busy,
+            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp)) {
+            Icon(Icons.Rounded.Devices, contentDescription = null, modifier = Modifier.size(20.dp))
+            Spacer(Modifier.width(8.dp))
+            Text(selectedPeer?.let { stringResource(R.string.flash_text_to_device, it.label) } ?: stringResource(R.string.flash_choose_receiver),
+                modifier = Modifier.weight(1f), textAlign = TextAlign.Start,
+                maxLines = 1, overflow = TextOverflow.Ellipsis)
+            if (selectedPeer != null) Text(stringResource(R.string.flash_change_short), style = MaterialTheme.typography.labelMedium)
+        }
+        OutlinedTextField(
+            value = editing,
+            onValueChange = { candidate ->
+                val change = acceptFlashTextEdit(editing, candidate)
+                inputError = change.errorText
+                if (change.errorText == null) {
+                    editing = change.value
+                    onDraftChange(change.value.text)
+                }
+            },
+            label = { Text(stringResource(R.string.flash_text_placeholder)) },
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            minLines = 1,
+            maxLines = if (compact) 2 else 3,
+            isError = validation != null,
+            supportingText = if (validation != null) ({ Text(validation.localized()) }) else null
+        )
+        if (importing) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                Text(stringResource(R.string.flash_preparing_files), Modifier.weight(1f).padding(start = 8.dp),
+                    style = MaterialTheme.typography.bodySmall)
+                TextButton(onClick = onCancelImport, modifier = Modifier.heightIn(min = 48.dp)) { Text(stringResource(R.string.flash_cancel)) }
+            }
+        } else if (selectedFileCount > 0) {
+            TextButton(onClick = onReviewFiles, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp)) {
+                Icon(Icons.Rounded.Description, contentDescription = null, modifier = Modifier.size(20.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(pluralStringResource(R.plurals.flash_files_attached, selectedFileCount, selectedFileCount),
+                    modifier = Modifier.weight(1f), textAlign = TextAlign.Start)
+                Text(stringResource(R.string.flash_review), style = MaterialTheme.typography.labelMedium)
+            }
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp),
+            verticalAlignment = Alignment.CenterVertically) {
+            // File preparation is independent of choosing a destination or starting a request.
+            IconButton(onClick = onChooseFiles, enabled = !busy, modifier = Modifier.size(48.dp)) {
+                Icon(Icons.Rounded.AttachFile, contentDescription = stringResource(R.string.flash_attach_files))
+            }
+            IconButton(onClick = {
+                onPaste()?.let { pasted ->
+                    val change = pasteFlashText(editing, pasted)
+                    inputError = change.errorText
+                    if (change.errorText == null) {
+                        editing = change.value
+                        onDraftChange(change.value.text)
+                    }
+                }
+            }, modifier = Modifier.size(48.dp)) {
+                Icon(Icons.Rounded.ContentPaste, contentDescription = stringResource(R.string.flash_paste))
+            }
+            Button(onClick = { inputError = null; onSend() },
+                enabled = !busy && selectedPeer != null && draft.isNotBlank() && draftValidation == null,
+                modifier = Modifier.weight(1f).heightIn(min = 48.dp), shape = RoundedCornerShape(16.dp)) {
+                Text(if (sendingText) stringResource(R.string.flash_sending_text) else stringResource(R.string.flash_send_text),
+                    modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
+            }
+        }
+        if (selectedFileCount > 0 && !importing) {
+            OutlinedButton(onClick = onSendFiles, enabled = !busy && selectedPeer != null,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp), shape = RoundedCornerShape(16.dp)) {
+                Text(pluralStringResource(R.plurals.flash_send_files, selectedFileCount, selectedFileCount),
+                    modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
+            }
+        }
+        if (!compact) {
+            Text(stringResource(R.string.flash_each_send_confirmation), style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+      }
+    }
+}
+
+internal data class FlashTextEdit(val value: TextFieldValue, val errorText: FlashText?) {
+    val error: String? get() = errorText?.resolve()
+}
+
+/** Keep validation copy unresolved so retained draft errors follow the current language. */
+internal fun flashTextValidationError(text: String, preserveDraft: Boolean = false): FlashText? =
+    when (FlashTextAttachment.validationCode(text)) {
+        "text_too_large" -> flashText(if (preserveDraft) R.string.flash_text_too_large_unchanged
+            else R.string.flash_text_error_too_large)
+        "text_invalid_unicode" -> flashText(if (preserveDraft) R.string.flash_text_invalid_unicode_unchanged
+            else R.string.flash_text_error_invalid_unicode)
+        else -> null
+    }
+
+/** Reject the whole edit before retaining it; neither the old text nor selection is changed. */
+internal fun acceptFlashTextEdit(current: TextFieldValue, candidate: TextFieldValue): FlashTextEdit {
+    val error = flashTextValidationError(candidate.text, preserveDraft = true)
+    return if (error == null) FlashTextEdit(candidate, null) else FlashTextEdit(current, error)
+}
+
+internal fun pasteFlashText(current: TextFieldValue, pasted: String): FlashTextEdit {
+    // Validate the clipboard fragment before concatenating, bounding the temporary candidate too.
+    flashTextValidationError(pasted, preserveDraft = true)?.let { return FlashTextEdit(current, it) }
+    val start = current.selection.min
+    val candidate = current.text.replaceRange(start, current.selection.max, pasted)
+    return acceptFlashTextEdit(current, TextFieldValue(candidate, TextRange(start + pasted.length)))
+}
+
 @Composable
 private fun FlashIntroStep(number: String, text: String) {
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Top) {
@@ -112,7 +265,7 @@ internal fun FlashSessionSummary(
                     style = MaterialTheme.typography.labelMedium)
             }
         }
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        if (awaitingApproval || transferring || showAddress) Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             if (awaitingApproval) {
                 Surface(color = MaterialTheme.colorScheme.tertiaryContainer,
                     contentColor = MaterialTheme.colorScheme.onTertiaryContainer, shape = RoundedCornerShape(10.dp)) {
@@ -123,7 +276,7 @@ internal fun FlashSessionSummary(
                 Text(if (transferring) stringResource(R.string.flash_transfer_in_progress) else stringResource(R.string.flash_available_to_receive),
                     style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
             }
-            Text(deviceLabel, style = MaterialTheme.typography.bodySmall,
+            if (showAddress) Text(deviceLabel, style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -138,48 +291,6 @@ internal fun FlashSessionSummary(
             Text(addresses.ifEmpty { listOf(stringResource(R.string.flash_unavailable)) }.joinToString(" · "),
                 style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text(stringResource(R.string.flash_session_help),
-                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-    }
-}
-
-@Composable
-internal fun FlashSendBar(
-    importing: Boolean,
-    selectedPeer: FlashPeer?,
-    selectedFileCount: Int,
-    enabled: Boolean,
-    onChoosePeer: () -> Unit,
-    onChooseFiles: () -> Unit,
-    onSend: () -> Unit
-) {
-    Surface(color = MaterialTheme.colorScheme.surface, contentColor = MaterialTheme.colorScheme.onSurface,
-        shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
-        Column(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 20.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(when {
-                importing -> stringResource(R.string.flash_preparing_files_description)
-                selectedPeer == null -> stringResource(R.string.flash_choose_device_to_continue)
-                selectedFileCount == 0 -> stringResource(R.string.flash_add_files_to_continue)
-                else -> pluralStringResource(R.plurals.flash_files_ready_to_send, selectedFileCount, selectedFileCount)
-            }, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Button(onClick = {
-                when {
-                    selectedPeer == null -> onChoosePeer()
-                    selectedFileCount == 0 -> onChooseFiles()
-                    else -> onSend()
-                }
-            }, enabled = enabled && !importing,
-                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp), shape = RoundedCornerShape(16.dp)) {
-                Text(when {
-                    importing -> stringResource(R.string.flash_preparing_files)
-                    selectedPeer == null -> stringResource(R.string.flash_choose_receiver)
-                    selectedFileCount == 0 -> stringResource(R.string.flash_choose_files)
-                    else -> stringResource(R.string.flash_request_send)
-                }, textAlign = TextAlign.Center)
-            }
-            Text(stringResource(R.string.flash_batch_verification_help),
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
@@ -213,17 +324,6 @@ internal fun FlashCard(content: @Composable ColumnScope.() -> Unit) {
             contentColor = MaterialTheme.colorScheme.onSurface),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
         Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp), content = content)
-    }
-}
-
-@Composable
-internal fun FlashSectionHeading(title: String, step: String) {
-    Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-        Surface(color = MaterialTheme.colorScheme.primaryContainer,
-            contentColor = MaterialTheme.colorScheme.onPrimaryContainer, shape = RoundedCornerShape(10.dp)) {
-            Text(step, Modifier.padding(horizontal = 10.dp, vertical = 5.dp), style = MaterialTheme.typography.labelLarge)
-        }
-        Text(title, Modifier.weight(1f).semantics { heading() }, style = MaterialTheme.typography.titleMedium)
     }
 }
 

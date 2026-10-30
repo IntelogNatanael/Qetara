@@ -326,4 +326,10 @@
         <item quantity="many">"%1$d cancelados"</item>
         <item quantity="other">"%1$d cancelados"</item>
     </plurals>
+    <string name="msg_saved_history">"Historial guardado"</string>
+    <string name="msg_return_wifi_channel">"Vuelve al canal Wi‑Fi"</string>
+    <string name="msg_wifi_disconnected">"Sin conexión Wi‑Fi"</string>
+    <string name="msg_saved_history_connect_wifi">"Conéctate a una red Wi‑Fi para volver a escribir. Tus mensajes siguen guardados."</string>
+    <string name="msg_saved_history_join_channel">"Estos mensajes están guardados en este equipo. Entra al canal para volver a escribir."</string>
+    <string name="msg_saved_history_choose_device">"Tus mensajes siguen guardados. Elige un equipo para volver a escribir."</string>
 </resources>

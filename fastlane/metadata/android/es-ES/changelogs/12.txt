@@ -1,0 +1,3 @@
+Flash permite enviar texto entre Android y PC, con aprobación en ambos equipos y botones para copiar y pegar.
+Conserva espacios, saltos de línea y Unicode válido hasta 16 KiB; los equipos anteriores pueden recibir el texto como un archivo TXT.
+El chat conserva los saltos de línea internos y explica cómo volver a escribir desde el historial guardado.

@@ -47,13 +47,15 @@ internal data class FlashAndroidResult(
     val detailText: FlashText,
     val file: File? = null,
     val downloadUri: String? = null,
-    val confirmationIssue: Boolean = false
+    val confirmationIssue: Boolean = false,
+    val textBody: String? = null
 ) {
     val detail: String get() = detailText.resolve()
 
     constructor(id: String, fileName: String, kind: FlashResultKind, detail: String,
-                file: File? = null, downloadUri: String? = null, confirmationIssue: Boolean = false) :
-        this(id, fileName, kind, FlashText(literal = detail), file, downloadUri, confirmationIssue)
+                file: File? = null, downloadUri: String? = null, confirmationIssue: Boolean = false,
+                textBody: String? = null) :
+        this(id, fileName, kind, FlashText(literal = detail), file, downloadUri, confirmationIssue, textBody)
 }
 
 internal data class FlashAndroidState(
@@ -61,6 +63,8 @@ internal data class FlashAndroidState(
     val engine: FlashState? = null,
     val statusText: FlashText = flashText(R.string.flash_off),
     val importing: Boolean = false,
+    val textDraft: String = "",
+    val sendingText: Boolean = false,
     val selectedFiles: List<File> = emptyList(),
     val selectedPeer: FlashPeer? = null,
     val progress: Map<String, FlashProgress> = emptyMap(),
@@ -73,12 +77,14 @@ internal data class FlashAndroidState(
     val selectedFile: File? get() = selectedFiles.firstOrNull()
 
     constructor(phase: FlashAndroidPhase = FlashAndroidPhase.OFF, engine: FlashState? = null,
-                status: String, importing: Boolean = false, selectedFiles: List<File> = emptyList(),
+                status: String, importing: Boolean = false, textDraft: String = "", sendingText: Boolean = false,
+                selectedFiles: List<File> = emptyList(),
                 selectedPeer: FlashPeer? = null, progress: Map<String, FlashProgress> = emptyMap(),
                 results: List<FlashAndroidResult> = emptyList(), localAddresses: List<String> = emptyList(),
                 deviceLabel: String = "Android") :
-        this(phase, engine, FlashText(literal = status), importing, selectedFiles, selectedPeer,
-            progress, results, localAddresses, deviceLabel)
+        this(phase = phase, engine = engine, statusText = FlashText(literal = status), importing = importing,
+            textDraft = textDraft, sendingText = sendingText, selectedFiles = selectedFiles, selectedPeer = selectedPeer,
+            progress = progress, results = results, localAddresses = localAddresses, deviceLabel = deviceLabel)
 }
 
 /** Process-only state. Opening Flash or recreating its Activity never starts a receiver. */
@@ -122,19 +128,28 @@ internal fun canAnswerFlashApproval(
 
 /** A later batch failure cannot undo a verified local receipt or a confirmed remote delivery. */
 internal fun recordFlashFailure(
-    results: List<FlashAndroidResult>, operationId: String, fileName: String, message: FlashText, cancelled: Boolean
+    results: List<FlashAndroidResult>, operationId: String, fileName: String, message: FlashText, cancelled: Boolean,
+    textBody: String? = null
 ): List<FlashAndroidResult> {
     if (results.any { it.id == operationId && it.kind == FlashResultKind.DELIVERED }) return results
     val received = results.firstOrNull { it.id == operationId && it.kind == FlashResultKind.RECEIVED }
     if (received != null) return results.map {
         if (it.id == operationId) it.copy(confirmationIssue = true,
-            detailText = flashText(R.string.flash_received_unconfirmed)) else it
+            detailText = flashText(if (it.textBody != null) R.string.flash_text_received_unconfirmed
+                else R.string.flash_received_unconfirmed)) else it
     }
     val result = FlashAndroidResult(operationId, fileName,
-        if (cancelled) FlashResultKind.CANCELLED else FlashResultKind.FAILED, message)
+        if (cancelled) FlashResultKind.CANCELLED else FlashResultKind.FAILED, message, textBody = textBody)
     return (listOf(result) + results.filterNot { it.id == operationId }).take(20)
 }
 
 internal fun recordFlashFailure(
-    results: List<FlashAndroidResult>, operationId: String, fileName: String, message: String, cancelled: Boolean
-): List<FlashAndroidResult> = recordFlashFailure(results, operationId, fileName, FlashText(literal = message), cancelled)
+    results: List<FlashAndroidResult>, operationId: String, fileName: String, message: String, cancelled: Boolean,
+    textBody: String? = null
+): List<FlashAndroidResult> = recordFlashFailure(results, operationId, fileName, FlashText(literal = message), cancelled, textBody)
+
+/** A receipt may only consume the draft that was sent, never edits made while awaiting the ACK. */
+internal fun FlashAndroidState.completeTextDraft(sentBody: String): FlashAndroidState = copy(
+    sendingText = false,
+    textDraft = if (textDraft == sentBody) "" else textDraft
+)

@@ -22,6 +22,12 @@ class ReceivedFileOpenInstrumentation : Instrumentation() {
     private var flashSockets = false
     private var flashUdp = false
     private var flashApprovalPreview = false
+    private var mobileMessagesUi = false
+    private var mobileMessagesFontScale: String? = null
+    private var flashTextUi = false
+    private var flashBilingualUi = false
+    private var shareUi = false
+    private var flashTextServiceSockets = false
     private var flashPcHost = "127.0.0.1"
 
     override fun onCreate(arguments: Bundle?) {
@@ -32,6 +38,12 @@ class ReceivedFileOpenInstrumentation : Instrumentation() {
         flashSockets = arguments?.getString("scenario") == "flash-sockets"
         flashUdp = arguments?.getString("scenario") == "flash-udp"
         flashApprovalPreview = arguments?.getString("scenario") == "flash-approval-preview"
+        mobileMessagesUi = arguments?.getString("scenario") == "mobile-messages-ui"
+        mobileMessagesFontScale = arguments?.getString("font-scale")
+        flashTextUi = arguments?.getString("scenario") == "flash-text-ui"
+        flashBilingualUi = arguments?.getString("scenario") == "flash-bilingual-ui"
+        shareUi = arguments?.getString("scenario") == "share_ui"
+        flashTextServiceSockets = arguments?.getString("scenario") == "flash-text-service-sockets"
         flashPcHost = arguments?.getString("pc-host")?.trim()?.takeIf { it.isNotEmpty() } ?: "127.0.0.1"
         start()
     }
@@ -43,6 +55,26 @@ class ReceivedFileOpenInstrumentation : Instrumentation() {
         }
         if (localization) {
             LocalizationInstrumentationScenario(this, localizationExpectedLanguage).run()
+            return
+        }
+        if (flashTextServiceSockets) {
+            FlashTextServiceSocketScenario(this, flashPcHost).run()
+            return
+        }
+        if (mobileMessagesUi) {
+            MobileMessagesUiScenario(this, localizationExpectedLanguage, mobileMessagesFontScale).run()
+            return
+        }
+        if (shareUi) {
+            ShareUiScenario(this, localizationExpectedLanguage).run()
+            return
+        }
+        if (flashBilingualUi) {
+            FlashBilingualUiScenario(this, localizationExpectedLanguage).run()
+            return
+        }
+        if (flashTextUi) {
+            FlashTextUiScenario(this).run()
             return
         }
         if (flashApprovalPreview) {

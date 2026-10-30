@@ -247,5 +247,5 @@ internal fun validateAuthenticatedSession(
 }
 
 private fun sanitizeOutgoingMessage(raw: String): String {
-    return raw.trim().replace(Regex("\\s+"), " ").take(2_000)
+    return raw.trim().take(2_000)
 }

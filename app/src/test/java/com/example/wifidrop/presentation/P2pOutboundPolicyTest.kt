@@ -11,7 +11,7 @@ class P2pOutboundPolicyTest : com.example.wifidrop.LocalizedResourcesTest() {
     fun directMessageRequiresText() {
         val decision = buildDirectMessageSendPlan(
             context = connectedContext(),
-            draft = "   ",
+            draft = " \t\r\n  ",
             targetIp = "192.168.1.20"
         )
 
@@ -52,7 +52,45 @@ class P2pOutboundPolicyTest : com.example.wifidrop.LocalizedResourcesTest() {
         assertTrue(decision is P2pOutboundDecision.Ready)
         val plan = (decision as P2pOutboundDecision.Ready).plan
         assertEquals(listOf("192.168.1.20", "192.168.1.21"), plan.targetIps)
-        assertEquals("hola mundo", plan.message)
+        assertEquals("hola   mundo", plan.message)
+    }
+
+    @Test
+    fun outgoingChatPathsPreserveUnicodeParagraphsAndInteriorSpacing() {
+        val expected = "Hola, Perú 👋\r\n\r\nLínea  dos:\tñ, 漢字.\nÚltima línea 🚀"
+        val draft = " \t$expected  \n"
+        val direct = buildDirectMessageSendPlan(connectedContext(), draft, "192.168.1.20")
+        val composer = buildDirectChatComposerPlan(connectedContext(), draft, 0, listOf("192.168.1.20"))
+        val channel = buildGlobalMessageSendPlan(connectedContext(), draft, 0, true, 1)
+
+        assertTrue(direct is P2pOutboundDecision.Ready)
+        assertTrue(composer is P2pOutboundDecision.Ready)
+        assertTrue(channel is P2pOutboundDecision.Ready)
+        assertEquals(expected, (direct as P2pOutboundDecision.Ready).plan.message)
+        assertEquals(expected, (composer as P2pOutboundDecision.Ready).plan.message)
+        assertEquals(expected, (channel as P2pOutboundDecision.Ready).plan.message)
+    }
+
+    @Test
+    fun preservingParagraphsStillCapsOutgoingTextAtTwoThousandCharacters() {
+        val expected = "é".repeat(1_990) + "\n\nñ  漢字🚀Z"
+        assertEquals(2_000, expected.length)
+        val decision = buildDirectMessageSendPlan(
+            connectedContext(), "\t$expected overflow\n ", "192.168.1.20"
+        )
+
+        assertTrue(decision is P2pOutboundDecision.Ready)
+        assertEquals(expected, (decision as P2pOutboundDecision.Ready).plan.message)
+    }
+
+    @Test
+    fun whitespaceOnlyComposersWithoutAttachmentsRemainBlocked() {
+        val draft = " \t\r\n  "
+        val message = "Escribe un mensaje o adjunta al menos un archivo."
+        assertBlocked(
+            buildDirectChatComposerPlan(connectedContext(), draft, 0, listOf("192.168.1.20")), message
+        )
+        assertBlocked(buildGlobalMessageSendPlan(connectedContext(), draft, 0, true, 1), message)
     }
 
     @Test

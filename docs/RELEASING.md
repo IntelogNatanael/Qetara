@@ -1,8 +1,8 @@
 # Preparar una distribución
 
-La versión se define una sola vez en `gradle.properties`: `qetaraVersion` para todos los módulos y `qetaraVersionCode` para Android. La distribución Android actual es 1.4.3, código 10. Las actualizaciones posteriores deben incrementar el código y mantener el identificador y la clave de firma.
+La versión se define una sola vez en `gradle.properties`: `qetaraVersion` para todos los módulos y `qetaraVersionCode` para Android. Las actualizaciones deben incrementar el código y mantener el identificador y la clave de firma. Una versión declarada en las fuentes no demuestra que exista una distribución publicada.
 
-Estado al 7 de octubre de 2026: validación local Android 1.4.3 completada y release estable publicada en GitHub, con fuentes, etiqueta, APK firmado y sumas. La [validación de 1.4.3](VALIDATION-1.4.3.md) registra APK y `mapping.txt` idénticos en Windows/Linux/F-Droid, reproducción exacta de la firma, escáneres aprobados y pruebas físicas con sus límites. La comprobación anónima pública, reproducción del APK descargado y CI GitHub del tag (4/4 jobs) aprobaron. La MR !51433 ya está actualizada con el commit de metadata `45acfb7b4cda9da3026615d9534cbeb437dd5e65`; su [pipeline 2924351724](https://gitlab.com/carlos5alentino/fdroiddata/-/pipelines/2924351724) aprobó los nueve jobs obligatorios, incluida la reconstrucción con R8, comparación con el APK público, firma y escáneres. El informe de validación conserva los avisos revisados de Code Quality y de las herramientas. La revisión del mantenedor y la inclusión en F-Droid siguen pendientes. Los informes de 1.4.0/código 7, 1.4.1/código 8 y 1.4.2/código 9 son antecedentes de sus respectivas revisiones; sus hashes y resultados no acreditan el APK nuevo. Registra el commit completo de la candidata y vincula cada comprobación y artefacto nuevo a ese commit. Publicar las fuentes, publicar un APK firmado y presentar la receta a F-Droid son acciones separadas.
+El estado de cada entrega se acredita en su informe: [1.4.4 publicada](VALIDATION-1.4.4.md) y [candidata local 1.4.5](VALIDATION-1.4.5.md). Los hashes, pruebas y pipelines históricos sólo corresponden a las fuentes y artefactos identificados allí. Para 1.4.5, consulta también la [preparación del cierre](RELEASE-CLOSURE-1.4.5.md). Registra el commit completo de las fuentes y vincula cada comprobación y artefacto nuevo a ese commit. Publicar las fuentes, publicar un APK firmado y presentar la receta a F-Droid son acciones separadas.
 
 Desde 1.4.0 el identificador Android es `io.github.intelognatanael.qetara`, basado en la cuenta de GitHub del proyecto. Es una aplicación nueva respecto de `com.example.wifidrop`; puede coexistir con la anterior y no importa sus datos privados. El `namespace` Kotlin conserva `com.example.wifidrop`: identifica las clases internas, no la aplicación instalada. Las autoridades de FileProvider se derivan del identificador de instalación.
 
@@ -78,8 +78,8 @@ Para firmar el APK del clon limpio, configura las cuatro variables después de t
 
 ```powershell
 $buildTools = Join-Path $env:ANDROID_HOME 'build-tools\36.0.0'
-$unsigned = '<ruta del Qetara-1.4.3-unsigned.apk del clon limpio>'
-$signed = '<ruta nueva para Qetara-1.4.3-signed.apk>'
+$unsigned = '<ruta del APK sin firma producido por el clon limpio>'
+$signed = '<ruta nueva para el APK firmado de esa misma versión>'
 if (Test-Path -LiteralPath $signed) { throw 'La salida firmada ya existe.' }
 & (Join-Path $buildTools 'zipalign.exe') -c -P 16 4 $unsigned
 if ($LASTEXITCODE -ne 0) { throw 'El APK sin firma no conserva la alineacion esperada.' }
