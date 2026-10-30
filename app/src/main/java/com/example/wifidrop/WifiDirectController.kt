@@ -50,11 +50,33 @@ data class WifiDirectState(
     val statusMessage: String = appString(R.string.rt_ready)
 )
 
+internal fun reconcileP2pEnabledState(
+    current: WifiDirectState,
+    enabled: Boolean,
+    statusMessage: String
+): WifiDirectState {
+    // A passive refresh must not replace an in-progress operation with "Wi-Fi enabled".
+    if (enabled && current.p2pEnabled) return current
+    return current.copy(
+        p2pEnabled = enabled,
+        peers = if (enabled) current.peers else emptyList(),
+        connection = if (enabled) current.connection else null,
+        group = if (enabled) current.group else null,
+        discoveringPeers = enabled && current.discoveringPeers,
+        connectingToPeer = enabled && current.connectingToPeer,
+        creatingGroup = enabled && current.creatingGroup,
+        statusMessage = if (enabled && (current.discoveringPeers || current.connectingToPeer || current.creatingGroup)) {
+            current.statusMessage
+        } else statusMessage
+    )
+}
+
 class WifiDirectController(context: Context) {
 
     private val appContext = context.applicationContext
     private val manager = appContext.getSystemService(Context.WIFI_P2P_SERVICE) as? WifiP2pManager
     private val channel = manager?.initialize(appContext, appContext.mainLooper, null)
+    private var p2pStateRequestVersion = 0L
 
     private val _state = MutableStateFlow(
         WifiDirectState(
@@ -69,6 +91,7 @@ class WifiDirectController(context: Context) {
     val state: StateFlow<WifiDirectState> = _state.asStateFlow()
 
     fun markPermissionMissing() {
+        p2pStateRequestVersion++
         _state.update {
             it.copy(
                 discoveringPeers = false,
@@ -80,15 +103,16 @@ class WifiDirectController(context: Context) {
     }
 
     fun onP2pStateChanged(enabled: Boolean) {
+        // A broadcast supersedes any state query already in flight.
+        p2pStateRequestVersion++
+        applyP2pEnabledState(enabled)
+    }
+
+    private fun applyP2pEnabledState(enabled: Boolean) {
         _state.update {
-            it.copy(
-                p2pEnabled = enabled,
-                peers = if (enabled) it.peers else emptyList(),
-                connection = if (enabled) it.connection else null,
-                group = if (enabled) it.group else null,
-                discoveringPeers = if (enabled) it.discoveringPeers else false,
-                connectingToPeer = if (enabled) it.connectingToPeer else false,
-                creatingGroup = if (enabled) it.creatingGroup else false,
+            reconcileP2pEnabledState(
+                current = it,
+                enabled = enabled,
                 statusMessage = if (enabled) appContext.getString(R.string.rt_wifi_enabled) else appContext.getString(R.string.rt_wifi_disabled)
             )
         }
@@ -115,9 +139,25 @@ class WifiDirectController(context: Context) {
     }
 
     fun refreshAll() {
-        requestPeers()
+        requestP2pEnabledState()
+        requestPeers(preserveOperationState = true)
         requestConnectionInfo()
         requestGroupInfo()
+    }
+
+    private fun requestP2pEnabledState() {
+        // Older Android versions continue to use WIFI_P2P_STATE_CHANGED_ACTION.
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return
+        withManagerAndPermission { mgr, ch ->
+            val requestVersion = ++p2pStateRequestVersion
+            mgr.requestP2pState(ch) { p2pState ->
+                if (requestVersion != p2pStateRequestVersion || !hasRequiredPermission()) return@requestP2pState
+                when (p2pState) {
+                    WifiP2pManager.WIFI_P2P_STATE_ENABLED -> applyP2pEnabledState(true)
+                    WifiP2pManager.WIFI_P2P_STATE_DISABLED -> applyP2pEnabledState(false)
+                }
+            }
+        }
     }
 
     @SuppressLint("MissingPermission")
@@ -148,7 +188,7 @@ class WifiDirectController(context: Context) {
     }
 
     @SuppressLint("MissingPermission")
-    fun requestPeers() {
+    fun requestPeers(preserveOperationState: Boolean = false) {
         withManagerAndPermission { mgr, ch ->
             mgr.requestPeers(ch) { list ->
                 val mapped = list.deviceList
@@ -164,8 +204,10 @@ class WifiDirectController(context: Context) {
                 _state.update {
                     it.copy(
                         peers = mapped,
-                        discoveringPeers = false,
-                        statusMessage = if (mapped.isEmpty()) {
+                        discoveringPeers = preserveOperationState && it.discoveringPeers,
+                        statusMessage = if (preserveOperationState) {
+                            it.statusMessage
+                        } else if (mapped.isEmpty()) {
                             appContext.getString(R.string.rt_wifi_no_peers)
                         } else {
                             appContext.resources.getQuantityString(R.plurals.rt_wifi_peers_ready, mapped.size, mapped.size)

@@ -134,11 +134,13 @@ fun P2pScreenRoute() {
     val sessionExpired = sessionPresenter.isSessionExpired(nowMs)
     val requiredPermissions = remember { requiredWifiDirectPermissions() }
     var hasPermission by remember { mutableStateOf(hasRequiredPermissions(appContext)) }
-    DisposableEffect(activity, appContext) {
+    DisposableEffect(activity, appContext, backend) {
         val lifecycleOwner = activity as? LifecycleOwner
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 hasPermission = hasRequiredPermissions(appContext)
+                // Returning from system Wi-Fi Direct settings can change P2P without changing permission.
+                if (hasPermission) backend.refreshWifiDirectState()
             }
         }
         lifecycleOwner?.lifecycle?.addObserver(observer)
