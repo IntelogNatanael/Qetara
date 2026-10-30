@@ -2,34 +2,33 @@
 
 ## Candidata local 1.4.5 / código 12
 
-Las fuentes 1.4.5/12 quedaron fijadas en el commit **A**
-`baec571b7c82b799848368f5e42027677695ae2c`, árbol
-`77befa99b93aeee295b2abcc0148d608fb429fe6`. La
+Las fuentes actuales 1.4.5/12 quedaron fijadas en el commit **E**
+`29f6874615b271aad6b5184d1dad5aa406a389fa`, árbol
+`009fd2154d0599ec8731cfcafcd74f89562233ee`. La
 [receta pública preparada](metadata/io.github.intelognatanael.qetara.yml)
-apunta a A y forma parte de una actualización posterior limitada a documentación
-y metadata. La receta incluida dentro de A sigue siendo la histórica 1.4.4/11;
-la actualización documental B se incorpora por separado y no cambia la
+apunta a E y forma parte de una actualización posterior limitada a documentación
+y metadata. La receta incluida dentro de E aún fijaba A;
+la actualización documental F se incorpora por separado y no cambia la
 identidad de las fuentes del APK.
 
 Con fdroidserver 2.4.5 aprobaron `readmeta`, `rewritemeta`,
 `lint --force-yamllint` y una segunda normalización estable, todos con código 0.
 La receta canónica ocupa **859 bytes**, SHA-256
-`e7f43c4c0de982ffc590d64f6a4ae158106097cdb39ce9e4ee9c4c23a106e39b`.
+`6e2c377e74d88343b13c526b561211f0928ac0d0dfb1987c10b742aa05447380`.
 Conserva `Repo` HTTPS, `Binaries`, el certificado permitido y la actualización
 por etiquetas. El overlay local separado cambia únicamente `Repo` y omite
 `Binaries` para el ensayo previo a publicación; no se incorpora al YAML público.
 
-Windows, Linux y el ensayo local F-Droid produjeron APK sin firma idénticos
+Windows, Linux y el ensayo local F-Droid de E produjeron APK sin firma idénticos
 byte a byte. El escáner de fuentes con `--refresh` y el comando de build con
-R8 y escaneo binario terminaron con código 0. Después falló el guard del
-runner, que exigía un checkout sin modificaciones: F-Droid retiró los tres
-wrappers y 11 líneas de configuración de firma. Una auditoría independiente
-generó la limpieza con la función instalada, verificó el diff exacto y los
-APK, y aprobó sin modificar ni recompilar las fuentes. El fallo original
-permanece registrado y no se presenta como un PASS del runner.
+R8 y escaneo binario terminaron con código 0. El guard de E declaró antes la
+limpieza de firma generada por la función instalada y la retirada de tres
+wrappers; después comprobó bytes, rutas y modos Git exactos, sin otros cambios.
+Ese guard aprobó. El fallo del guard original de A y su auditoría posterior
+se conservan en el historial, separados de E.
 
 Las copias de firma desde Linux y F-Droid reprodujeron byte a byte el APK
-firmado de A, con apksigcopier y `fdroidserver.common.verify_apks`; aprobaron
+firmado de E, con apksigcopier y `fdroidserver.common.verify_apks`; aprobaron
 certificado, firmas v2/v3 y alineación de 16 KiB. No se declara publicación de
 1.4.5, etiqueta, descarga pública, CI remota ni aceptación de F-Droid. El
 [informe de la candidata](../docs/VALIDATION-1.4.5.md) y el

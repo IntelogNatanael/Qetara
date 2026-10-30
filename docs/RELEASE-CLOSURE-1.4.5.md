@@ -9,40 +9,44 @@ La publicación queda fuera de esta preparación.
 
 ## Fuentes fijadas y alcance del cierre
 
-El 30 de octubre de 2026 se fijó el commit de fuentes **A**,
-`baec571b7c82b799848368f5e42027677695ae2c`, árbol
-`77befa99b93aeee295b2abcc0148d608fb429fe6`: 49 rutas revisadas, versión
-1.4.5/código 12 y árbol seguido limpio al confirmar. El informe privado quedó
-sin seguimiento. Los ensayos v9 son anteriores a la creación de A; no se
-presentan como builds de un clon limpio de ese commit.
+Las fuentes actuales son el commit **E**,
+`29f6874615b271aad6b5184d1dad5aa406a389fa`, árbol
+`009fd2154d0599ec8731cfcafcd74f89562233ee`, hijo de C
+`877eb96f2d71f827a95f3c8df80198879e60b738`. La versión sigue siendo
+1.4.5/código 12, sin publicar. E corrige la orden de detener descubrimiento;
+C había corregido la actualización del estado P2P al iniciar y reanudar.
+Los 266 tests JVM Android aprobaron sobre el árbol de trabajo del contenido
+fijado en E; las builds release se hicieron desde clones nuevos. El análisis
+lint de E se ejecutó, con informe reutilizado: cero errores y 44 advertencias.
 
-La receta pública preparada para A aprobó lectura, normalización estable y
-lint con fdroidserver 2.4.5. Windows, Linux y F-Droid produjeron tres APK sin
-firma idénticos byte a byte, SHA-256
-`a39a9dc9a336dfa224be297b64f6f843ec8f5e0e48d418ad1c8ce36ac15a0962`.
-Las reproducciones de firma sobre Linux y F-Droid coincidieron con el APK
-firmado de A, SHA-256
-`d449c2a7f5edb725e9095928c88a608d027722ff76e04be6bdc8890c16f933b6`,
-con firmas v2/v3 y alineación de 16 KiB verificadas.
+Windows, Linux y F-Droid produjeron tres APK sin firma idénticos byte a byte,
+SHA-256 `530d589e725b336d4c0530de92eb847f445886a9dbe8aef224b5982261b9a79e`.
+Las reproducciones Linux/F-Droid coincidieron con el APK firmado de E,
+SHA-256 `12cd3270c28bea5dfff2375907e9688dcf0e3458fd2645afacbc248c847e7fab`,
+con certificado, firmas v2/v3 y alineación de 16 KiB verificados.
 
-El comando de build F-Droid terminó con código 0; el guard posterior del
-runner falló porque exigía un checkout sin cambios seguidos. Una auditoría
-independiente aprobó la transformación exacta de F-Droid: retirada de tres
-wrappers y limpieza de 11 líneas de firma mediante la función instalada,
-sin otras modificaciones. Se conservaron el fallo y los originales. El
-informe distingue esos tres resultados; no declara un PASS del runner original.
+El runner de E declaró la transformación F-Droid esperada antes del escaneo
+y la build. Generó la retirada de firma con la función instalada en memoria
+y exigió exactamente esos bytes y la eliminación de los tres wrappers, sin
+otros cambios seguidos. Escáneres, build y guard exacto aprobaron. El fallo
+del guard de A y su auditoría posterior se conservan como historial; tampoco
+se oculta el defecto físico encontrado en C antes de fijar E.
 
-El APK firmado se instaló conservando los datos y aprobó una repetición física
-acotada: cinco archivos Flash PC → Android con hashes correctos, texto Unicode
-exacto en el XML receptor, texto de regreso confirmado visualmente y un archivo
-Compartir Android → PC con hash y estado terminal correctos. El informe
-precisa qué se midió en cada recorrido y separa los ensayos debug anteriores.
-F-01 y Wi-Fi Direct con un segundo teléfono siguen pendientes.
+Con el APK E comprobado en ambos teléfonos, Android API 36 y API 33
+completaron Chat en ambos sentidos y dos lotes de cinco archivos, con diez
+SHA-256 recibidos correctos. Sockets y contadores apoyan el transporte por
+el grupo Wi-Fi Direct, manteniendo OPPO como propietario y HONOR como cliente.
+No hubo PCAP ni aislamiento del router y hubo WLAN concurrente para control
+ADB. También aprobaron detener/reiniciar búsqueda, Home/reanudar, conservación
+de preparación y reconexión con sesión renovada. El informe delimita cada
+resultado. F-01 sigue abierto. Flash sobre P2P y la inversión de roles del
+grupo quedan fuera de esta ronda. El cierre dejó ambos teléfonos sin grupo
+ni descubrimiento, con sesiones cerradas y las preferencias finales registradas.
 
-Esta actualización documental y de receta se incorpora por separado de A,
-en una revisión **B** limitada a esos archivos.
+Esta actualización documental y de receta se incorpora por separado de E,
+en una revisión **F** limitada a esos archivos.
 Los APK, su metadata VCS y la futura etiqueta de la entrega deben identificar
-A. Construir desde B produciría otra identidad VCS aunque el código no
+E. Construir desde F produciría otra identidad VCS aunque el código no
 cambiara, y exigiría nueva evidencia para esos APK.
 
 El alcance del commit de fuentes incluye la implementación Android, escritorio y
@@ -91,9 +95,11 @@ guard estricto puede fallar después de una build correcta. Conservar ambos
 resultados. Antes de aceptar el artefacto, generar la transformación esperada
 con la herramienta y versión identificadas y compararla exactamente con el
 diff completo. No restaurar el checkout, ampliar una lista de excepciones ni
-omitir comprobaciones para hacer pasar el guard. En este cierre, la auditoría
+omitir comprobaciones para hacer pasar el guard. En el cierre A, la auditoría
 se escribió en una carpeta nueva, no recompiló y verificó la conservación de
 las entradas originales antes y después de reproducir las firmas.
+En E, el guard se declaró antes de compilar y aprobó en la misma ejecución,
+conservando la expectativa y el diff observado como evidencias separadas.
 
 El detalle funcional pendiente, incluido cualquier hallazgo de severidad
 menor, pertenece al informe de validación. Preparar esta lista no lo resuelve.
@@ -167,21 +173,19 @@ absoluta y la conservación previa de la evidencia necesaria.
 
 ## Receta, firma y publicación posterior
 
-La receta almacenada dentro de A es la histórica 1.4.4/11. La
+La receta almacenada dentro de E aún fijaba el commit A. La
 [receta pública preparada para la actualización posterior](../fdroid/metadata/io.github.intelognatanael.qetara.yml)
-fija el SHA completo de A y 1.4.5/12. Conserva el origen HTTPS, `Binaries`,
+fija el SHA completo de E y 1.4.5/12. Conserva el origen HTTPS, `Binaries`,
 el certificado permitido y la configuración de actualización por etiquetas.
 Su versión canónica validada ocupa 859 bytes, SHA-256
-`e7f43c4c0de982ffc590d64f6a4ae158106097cdb39ce9e4ee9c4c23a106e39b`.
-Los únicos cambios semánticos frente a la receta de A son `versionName`,
-`versionCode`, `Builds[0].commit`, `CurrentVersion` y `CurrentVersionCode`.
+`6e2c377e74d88343b13c526b561211f0928ac0d0dfb1987c10b742aa05447380`.
+El único cambio semántico frente a la receta incluida en E es `Builds[0].commit`.
 La lectura, normalización repetida y lint aprobaron con código 0. También
-aprobaron los comandos de escáner y build F-Droid; la condición estricta del
-runner y la auditoría posterior conservan los estados separados indicados arriba.
+aprobaron los comandos de escáner y build F-Droid y el guard exacto predeclarado.
 
 No se puede incluir en un commit una receta que contenga el SHA de ese mismo
-commit. Por eso se fijó primero A y se preparó después la receta que apunta
-a A. Si se elige otro commit como fuente definitiva, repetir las builds y
+commit. Por eso se fijó primero E y se preparó después la receta que apunta
+a E. Si se elige otro commit como fuente definitiva, repetir las builds y
 la comparación con esa identidad. El guard
 `audit-release.ps1 -RequireCurrentRecipe` comprueba coherencia de fuentes y
 metadata; no demuestra que la URL declarada esté publicada.

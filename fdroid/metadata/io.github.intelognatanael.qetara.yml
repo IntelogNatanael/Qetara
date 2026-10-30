@@ -16,7 +16,7 @@ Binaries: https://github.com/IntelogNatanael/Qetara/releases/download/v%v/Qetara
 Builds:
   - versionName: 1.4.5
     versionCode: 12
-    commit: baec571b7c82b799848368f5e42027677695ae2c
+    commit: 29f6874615b271aad6b5184d1dad5aa406a389fa
     subdir: app
     gradle:
       - yes
