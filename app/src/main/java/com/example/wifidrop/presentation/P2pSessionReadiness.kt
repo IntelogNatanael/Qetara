@@ -7,7 +7,9 @@ data class P2pSessionConfirmation(
     val peerId: String?,
     val networkKey: String,
     val token: String,
-    val pin: String
+    val pin: String,
+    val confirmedAtElapsedMs: Long? = null,
+    val awaitingAuthenticatedIdentity: Boolean = false
 )
 
 /** A selected address is not evidence that both devices share the current session. */
@@ -23,6 +25,7 @@ fun isSessionReadyForTarget(
 ): Boolean {
     if (target == null || target.ip.isBlank() || sessionExpired) return false
     val locallyConfirmed = confirmation != null &&
+        !confirmation.awaitingAuthenticatedIdentity &&
         confirmation.peerIp == target.ip &&
         confirmation.peerId == target.peerId &&
         confirmation.networkKey == networkKey &&

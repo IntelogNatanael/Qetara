@@ -16,7 +16,8 @@ data class PeerRouteObservation(
     val peerIp: String,
     val localIp: String,
     val acceptedAtElapsedMs: Long,
-    val noiseStaticKey: String = ""
+    val noiseStaticKey: String = "",
+    val sessionBinding: String? = null
 )
 
 internal fun isCurrentDirectRoute(group: DirectGroupContext?, route: PeerRouteObservation): Boolean {

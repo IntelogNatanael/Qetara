@@ -5,9 +5,11 @@ import com.example.wifidrop.appString
 
 import android.content.ClipboardManager
 import android.content.Context
+import android.os.SystemClock
 import com.example.wifidrop.ConnectionSnapshot
 import com.example.wifidrop.LocalDeviceIdentity
 import com.example.wifidrop.TransferSecurity
+import com.example.wifidrop.TransferRuntimeState
 import com.example.wifidrop.copySensitiveText
 import com.example.wifidrop.backend.P2pBackend
 import kotlinx.coroutines.CancellationException
@@ -97,18 +99,13 @@ class P2pSessionPresenter(
         normalizeAndSetPin(generateSessionPin())
     }
 
-    fun observeConnectionContext(networkKey: String, target: P2pResolvedTarget?) {
+    fun observeConnectionContext(
+        networkKey: String,
+        target: P2pResolvedTarget?,
+        transferState: TransferRuntimeState? = null
+    ) {
         _state.update { current ->
-            val networkChanged = current.connectionNetworkKey != networkKey
-            val targetChanged = current.connectionTargetIp != target?.ip || current.connectionTargetPeerId != target?.peerId
-            if (!networkChanged && !targetChanged) current else current.copy(
-                connectionNetworkKey = networkKey,
-                connectionTargetIp = target?.ip,
-                connectionTargetPeerId = target?.peerId,
-                confirmation = null,
-                lastAutoSyncedPeerIp = null,
-                readinessChangedAtMs = if (networkChanged) System.currentTimeMillis() else current.readinessChangedAtMs
-            )
+            observeSessionConnectionContext(current, networkKey, target, transferState, System.currentTimeMillis())
         }
     }
 
@@ -130,7 +127,9 @@ class P2pSessionPresenter(
         }
         observeConnectionContext(networkKey, target)
         _state.update { state -> state.copy(
-            confirmation = P2pSessionConfirmation(target.ip, target.peerId, networkKey, state.token, state.pin),
+            confirmation = P2pSessionConfirmation(
+                target.ip, target.peerId, networkKey, state.token, state.pin, SystemClock.elapsedRealtime()
+            ),
             lastAutoSyncedPeerIp = target.ip,
             syncStatus = appString(R.string.pr_session_confirmed, target.label ?: target.ip)
         ) }

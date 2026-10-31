@@ -841,7 +841,10 @@ object FileTransfer {
                     onNoiseKeyObserved(clientId, noiseKey)
                 }
                 onPeerSeen(clientId, remoteIp, clientLabel, true)
-                onAuthenticatedPeerRoute(route.copy(noiseStaticKey = noiseKey))
+                onAuthenticatedPeerRoute(route.copy(
+                    noiseStaticKey = noiseKey,
+                    sessionBinding = sessionCredentialBinding(expectedToken, expectedPin, sessionExpiresAtMs)
+                ))
 
                 when (packetType) {
                     PACKET_HELLO -> {

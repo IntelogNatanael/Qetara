@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import com.example.wifidrop.ConnectionMode
 import com.example.wifidrop.ConnectionSnapshot
+import com.example.wifidrop.TransferRuntimeState
 
 data class P2pSessionRuntimeBindingsInput(
     val activeConnectionMode: ConnectionMode,
@@ -22,7 +23,8 @@ data class P2pSessionRuntimeBindingsInput(
     val deviceLabel: String,
     val nowMs: Long,
     val sessionEnabled: Boolean = true,
-    val serviceRunning: Boolean = false
+    val serviceRunning: Boolean = false,
+    val transferState: TransferRuntimeState? = null
 )
 
 @Composable
@@ -31,8 +33,13 @@ fun BindP2pSessionRuntimeEffects(
     input: P2pSessionRuntimeBindingsInput
 ) {
     val selectedConnection = input.connection.takeIf { input.activeConnectionMode == ConnectionMode.WIFI_DIRECT }
-    LaunchedEffect(input.networkKey, input.resolvedTarget?.ip, input.resolvedTarget?.peerId) {
-        sessionPresenter.observeConnectionContext(input.networkKey, input.resolvedTarget)
+    LaunchedEffect(
+        input.networkKey, input.resolvedTarget?.ip, input.resolvedTarget?.peerId,
+        input.transferState?.authenticatedPeerRoutes, input.transferState?.trustedPeers,
+        input.transferState?.peerRouteRevocations, input.transferState?.activeToken,
+        input.transferState?.sessionExpiresAtMs, input.serviceRunning
+    ) {
+        sessionPresenter.observeConnectionContext(input.networkKey, input.resolvedTarget, input.transferState)
     }
     LaunchedEffect(
         input.serviceRunning,

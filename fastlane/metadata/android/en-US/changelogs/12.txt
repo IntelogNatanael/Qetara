@@ -1,3 +1,4 @@
-Flash can send text between Android and PC, with approval on both devices and explicit Copy and Paste actions.
-It preserves spaces, line breaks and valid Unicode up to 16 KiB; older devices can receive the text as a TXT file.
-Chat preserves internal line breaks and explains how to resume writing from saved history.
+Flash adds text messages between Android and PC, with approval on both devices and Copy/Paste actions.
+Chat preserves line breaks and makes it easier to resume conversations.
+Fixed Wi-Fi Direct state updates and stopping discovery, and preserved confirmation when recognizing the same authenticated LAN recipient.
+New store screenshots in English and Spanish.

@@ -235,6 +235,7 @@ fun BindP2pScreenRouteEffects(
             activeConnectionMode = input.resolvedTarget?.mode ?: input.uxPreferences.activeConnectionMode,
             sessionEnabled = input.uxPreferences.sessionEnabled,
             serviceRunning = input.transferState.serviceRunning,
+            transferState = input.transferState,
             permissionGranted = input.hasPermission,
             lanConnected = input.lanConnected,
             connection = input.wifiState.connection,
