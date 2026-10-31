@@ -42,9 +42,9 @@ fun requiredPermissionHumanLabel(): String {
     }
 }
 
-fun loadReceivedFiles(dir: File): List<File> {
+fun loadReceivedFiles(dir: File, isConsumedFlashText: (File) -> Boolean = { false }): List<File> {
     return dir.listFiles()
-        ?.filter { it.isFile }
+        ?.filter { it.isFile && !isConsumedFlashText(it) }
         ?.sortedByDescending { it.lastModified() }
         ?: emptyList()
 }

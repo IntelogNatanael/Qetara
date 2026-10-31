@@ -105,6 +105,7 @@ class TransferForegroundService : Service() {
             }
         }
         startMessageTicker()
+        val visiblePending = pending.filter(::isUserVisibleMessageTask)
 
         _state.update {
             it.copy(
@@ -113,9 +114,9 @@ class TransferForegroundService : Service() {
                 favoritePeers = trusted.filter { p -> p.favorite },
                 history = TransferHistoryStore.list(applicationContext),
                 chatMessages = ChatMessageStore.list(applicationContext),
-                pendingMessageCount = pending.size,
-                messageStatus = if (pending.isNotEmpty()) {
-                    resources.getQuantityString(R.plurals.rt_pending_messages, pending.size, pending.size)
+                pendingMessageCount = visiblePending.size,
+                messageStatus = if (visiblePending.isNotEmpty()) {
+                    resources.getQuantityString(R.plurals.rt_pending_messages, visiblePending.size, visiblePending.size)
                 } else {
                     it.messageStatus
                 },
@@ -198,7 +199,7 @@ class TransferForegroundService : Service() {
         releaseWakeLock()
         val trusted = TrustedPeerStore.all(applicationContext)
         val lastTarget = LastSendTargetStore.get(applicationContext)
-        val pending = PendingMessageStore.list(applicationContext)
+        val pending = PendingMessageStore.list(applicationContext).filter(::isUserVisibleMessageTask)
 
         _state.value = TransferRuntimeState(
             history = TransferHistoryStore.list(applicationContext),
@@ -2486,7 +2487,7 @@ class TransferForegroundService : Service() {
                     synchronized(messageLock) {
                         if (messageSenderJob === admittedJob) messageSenderJob = null
                     }
-                    refreshMessageState()
+                    refreshMessageState(sourceTask = candidate)
                     syncWakeLockAndLifetime()
                     pumpMessageQueue()
                 }
@@ -2498,6 +2499,7 @@ class TransferForegroundService : Service() {
 
     private suspend fun runPendingMessageTask(taskId: String) {
         val task = synchronized(messageLock) { pendingMessageTasks[taskId] } ?: return
+        val publishFeedback = isUserVisibleMessageTask(task)
         if (task.trackChatStatus) {
             ChatMessageStore.updateStatus(
                 applicationContext,
@@ -2506,7 +2508,7 @@ class TransferForegroundService : Service() {
                 errorCause = null
             )
         }
-        refreshMessageState(getString(R.string.rt_sending_message_to, task.peerLabel ?: task.targetIp))
+        refreshMessageState(getString(R.string.rt_sending_message_to, task.peerLabel ?: task.targetIp), task)
 
         val directDelivery = requiresDirectGroupDelivery(task.message, task.scope, task.clientId)
         val groupAtSend = _state.value.directGroup
@@ -2541,20 +2543,22 @@ class TransferForegroundService : Service() {
                         errorCause = null
                     )
                 }
-                LastSendTargetStore.set(
-                    applicationContext,
-                    ipRaw = task.targetIp,
-                    labelRaw = task.peerLabel ?: task.targetIp
-                )
-                _state.update {
-                    it.copy(
-                        lastSendTargetIp = task.targetIp,
-                        lastSendTargetLabel = task.peerLabel ?: task.targetIp,
-                        lastSendTargetAtMs = System.currentTimeMillis()
+                if (publishFeedback) {
+                    LastSendTargetStore.set(
+                        applicationContext,
+                        ipRaw = task.targetIp,
+                        labelRaw = task.peerLabel ?: task.targetIp
                     )
+                    _state.update {
+                        it.copy(
+                            lastSendTargetIp = task.targetIp,
+                            lastSendTargetLabel = task.peerLabel ?: task.targetIp,
+                            lastSendTargetAtMs = System.currentTimeMillis()
+                        )
+                    }
                 }
-                refreshMessageState(getString(R.string.rt_message_sent_to, task.peerLabel ?: task.targetIp))
-                updateForegroundNotification(getString(R.string.rt_message_sent))
+                refreshMessageState(getString(R.string.rt_message_sent_to, task.peerLabel ?: task.targetIp), task)
+                if (publishFeedback) updateForegroundNotification(getString(R.string.rt_message_sent))
             },
             onFailure = { error ->
                 val cause = error.message ?: error::class.java.simpleName
@@ -2588,9 +2592,10 @@ class TransferForegroundService : Service() {
                         )
                     }
                     refreshMessageState(
-                        getString(R.string.rt_connection_retry_in, task.peerLabel ?: task.targetIp, (nextAttemptAt - now).coerceAtLeast(0L) / 1000)
+                        getString(R.string.rt_connection_retry_in, task.peerLabel ?: task.targetIp, (nextAttemptAt - now).coerceAtLeast(0L) / 1000),
+                        task
                     )
-                    updateForegroundNotification(getString(R.string.rt_message_queued))
+                    if (publishFeedback) updateForegroundNotification(getString(R.string.rt_message_queued))
                 } else {
                     synchronized(messageLock) {
                         pendingMessageTasks.remove(taskId)
@@ -2610,34 +2615,28 @@ class TransferForegroundService : Service() {
                             errorCause = finalCause
                         )
                     }
-                    refreshMessageState(getString(R.string.rt_message_send_error, runtimeFailureText(finalCause)))
-                    updateForegroundNotification(getString(R.string.rt_message_error))
+                    refreshMessageState(getString(R.string.rt_message_send_error, runtimeFailureText(finalCause)), task)
+                    if (publishFeedback) {
+                        updateForegroundNotification(getString(R.string.rt_message_error))
+                    } else {
+                        android.util.Log.w("QetaraMessageQueue", "Direct roster delivery failed: $finalCause")
+                    }
                 }
             }
         )
     }
 
-    private fun refreshMessageState(statusOverride: String? = null) {
+    private fun refreshMessageState(statusOverride: String? = null, sourceTask: PendingMessageTask? = null) {
         val pending = synchronized(messageLock) { pendingMessageTasks.values.sortedBy { it.createdAtMs } }
-        val pendingCount = pending.size
         val now = System.currentTimeMillis()
-        val nextDelaySec = pending.minOfOrNull { task ->
-            ((task.nextAttemptAtMs - now).coerceAtLeast(0L) / 1000L)
-        }
 
         _state.update { current ->
-            val computed = statusOverride ?: when {
-                pendingCount > 0 && nextDelaySec != null && nextDelaySec > 0L ->
-                    resources.getQuantityString(R.plurals.rt_pending_messages_retry, pendingCount, pendingCount, nextDelaySec)
-
-                pendingCount > 0 -> resources.getQuantityString(R.plurals.rt_pending_messages, pendingCount, pendingCount)
-                else -> current.messageStatus.takeIf { it.isNotBlank() } ?: ""
-            }
+            val presentation = resolveMessageQueuePresentation(current.messageStatus, pending, now, statusOverride, sourceTask)
 
             current.copy(
                 chatMessages = ChatMessageStore.list(applicationContext),
-                messageStatus = computed,
-                pendingMessageCount = pendingCount
+                messageStatus = presentation.status,
+                pendingMessageCount = presentation.pendingCount
             )
         }
     }
@@ -2680,7 +2679,7 @@ class TransferForegroundService : Service() {
         credentialRequestPromptedAtMs.clear()
         val trusted = TrustedPeerStore.all(applicationContext)
         val lastTarget = LastSendTargetStore.get(applicationContext)
-        val pending = PendingMessageStore.list(applicationContext)
+        val pending = PendingMessageStore.list(applicationContext).filter(::isUserVisibleMessageTask)
 
         _state.update {
             it.copy(

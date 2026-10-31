@@ -50,6 +50,7 @@ class FlashForegroundService : Service() {
     private var textJob: Job? = null
     private var pendingText: PendingFlashText? = null
     private val operationDetails = ConcurrentHashMap<String, FlashOperation>()
+    private val textReceipts by lazy { FlashTextReceiptStore(File(filesDir, FlashTextReceiptStore.DIRECTORY_NAME)) }
     private var multicastLock: WifiManager.MulticastLock? = null
     private var wakeLock: PowerManager.WakeLock? = null
     private var lastStartId = 0
@@ -182,6 +183,9 @@ class FlashForegroundService : Service() {
             // Publication is terminal. Keep a known, verified receipt even when STOP won the UI epoch.
             if (!operationDetails.containsKey(received.operationId)) return
             val textBody = FlashTextAttachment.readReceived(received.file)
+            if (textBody != null && !textReceipts.recordConsumed(received.file, textBody)) {
+                android.util.Log.w("QetaraFlash", "Could not retain the consumed-text receipt for the file library")
+            }
             val result = FlashAndroidResult(received.operationId, received.file.name, FlashResultKind.RECEIVED,
                 flashText(if (textBody != null) R.string.flash_text_received_verified_in_qetara else R.string.flash_received_verified_in_qetara),
                 file = received.file, textBody = textBody)

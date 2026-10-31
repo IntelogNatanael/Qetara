@@ -74,6 +74,7 @@ Estas herramientas se usan para producir o comprobar la aplicación; no deben co
 | Kotlin JVM y Compose Compiler plugins | 2.2.10 | Apache 2.0 |
 | Compose Gradle plugin | 1.8.2 | Apache 2.0 |
 | JUnit | 4.13.2 | Eclipse Public License 1.0 |
+| JSON-java (`org.json:json`), solo pruebas JVM Android | 20240303 | [Dominio público, según LICENSE de esa etiqueta](https://github.com/stleary/JSON-java/blob/20240303/LICENSE); no se incorpora al APK |
 | Kotlin Test / Kotlin Test JUnit | 2.2.10 | Apache 2.0 |
 | Hamcrest Core, transitivo de JUnit | 1.3 | BSD, según su POM padre |
 | Compose UI tooling | 1.10.1 | Apache 2.0; dependencia Android debug |

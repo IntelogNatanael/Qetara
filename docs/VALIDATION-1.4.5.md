@@ -1,5 +1,7 @@
 # Validación de Qetara 1.4.5 / código 12
 
+> **Corte documental anterior al cierre.** Los resultados E/F y anteriores que siguen son históricos; «actual» y «pendiente» se refieren a esos ensayos. El cierre de la fuente que contiene esta copia se registrará después, con identidad y resultados propios, en [el informe de `main`](https://github.com/IntelogNatanael/Qetara/blob/main/docs/VALIDATION-1.4.5.md). Esta copia no acredita resultados de fuentes posteriores.
+
 **Estado al 30 de octubre de 2026: candidata local, no publicada.** Las fuentes
 actuales 1.4.5/12 son el commit E
 `29f6874615b271aad6b5184d1dad5aa406a389fa`. Aprobaron 266 pruebas JVM Android

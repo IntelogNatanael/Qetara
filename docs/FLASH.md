@@ -1,6 +1,6 @@
 # Flash en Android y PC
 
-Flash permite compartir archivos puntuales por la red local sin preparar credenciales. Es una función que activas cuando la necesitas y está apagada al iniciar Qetara. No requiere cuenta ni internet. Ambos dispositivos deben usar una versión de Qetara compatible con Flash.
+Flash permite compartir texto y archivos puntuales por la red local sin preparar credenciales. Es una función que activas cuando la necesitas y está apagada al iniciar Qetara. No requiere cuenta ni internet. Ambos dispositivos deben usar una versión de Qetara compatible con la función que vas a utilizar.
 
 ## Un envío completo
 
@@ -12,6 +12,14 @@ Flash permite compartir archivos puntuales por la red local sin preparar credenc
 6. Desactiva Flash para dejar de estar disponible. También termina automáticamente al cumplirse 30 minutos desde la activación.
 
 El envío requiere una decisión expresa en ambos dispositivos. La aprobación cubre únicamente la selección mostrada en ese lote y su conexión. No autoriza archivos añadidos después, otro lote ni una nueva conexión: un nuevo intento exige comparar y aceptar otra vez. Compartir la Wi-Fi, ver un nombre familiar o haber usado Qetara anteriormente no acepta una transferencia por sí solo. No es necesario escribir la verificación: se compara visualmente.
+
+## Texto y portapapeles
+
+Para intercambiar mensajes de Flash, usa Qetara 1.4.5 o posterior en ambos equipos. Elige el receptor, escribe o usa **Pegar** y pulsa **Enviar texto**. Compara la verificación y acepta en ambos equipos, igual que con los archivos. **Copiar** permite recuperar el contenido exacto de un resultado de texto enviado o recibido.
+
+El mensaje y los archivos adjuntos se envían por separado: enviar un lote no envía el borrador. Si el texto se rechaza o falla, permanece en el editor. La confirmación de entrega limpia el borrador enviado, pero conserva los cambios que hayas escrito después. El límite es de 16 KiB de texto UTF-8; los saltos de línea y los espacios forman parte del mensaje.
+
+El texto recibido aparece en la actividad de Flash con la acción **Copiar**. Los nuevos mensajes recibidos por Flash no se ofrecen como documentos en Descargas. Usa Chat para mantener una conversación con historial guardado.
 
 ## Qué permanece y qué termina
 

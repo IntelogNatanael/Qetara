@@ -1,5 +1,6 @@
-Flash adds text messages between Android and PC, with approval on both devices and Copy/Paste actions.
-Fixed dropped characters when typing quickly in Flash.
-Chat preserves line breaks and makes it easier to resume conversations.
-Fixed Wi-Fi Direct state updates and stopping discovery, and preserved confirmation when recognizing the same authenticated LAN recipient.
+Flash adds Android/PC messages, approval on both devices and Copy/Paste.
+Fixed dropped characters when typing quickly.
+Chat preserves line breaks and avoids message errors caused by background updates.
+Downloads distinguishes documents from messages received through Flash.
+Fixed Wi-Fi Direct state and stopping discovery, and preserved confirmation for the same authenticated LAN recipient.
 New store screenshots in English and Spanish.

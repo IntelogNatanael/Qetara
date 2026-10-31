@@ -1,5 +1,7 @@
 # Procedimiento y estado del cierre de Qetara 1.4.5 / código 12
 
+> **Corte documental anterior al cierre.** E/F describe una preparación histórica. Las referencias a E como fuente actual o destino de una futura etiqueta, y a la publicación fuera de alcance, pertenecen a ese corte. La entrega deberá identificar la fuente que se valide; el cierre definitivo se registrará después en [el procedimiento de `main`](https://github.com/IntelogNatanael/Qetara/blob/main/docs/RELEASE-CLOSURE-1.4.5.md).
+
 Este documento reúne el procedimiento, los criterios y el estado del cierre
 local. Los resultados, hashes y límites de cada comprobación se registran en
 el [informe público de la candidata](VALIDATION-1.4.5.md).

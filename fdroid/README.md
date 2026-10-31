@@ -1,5 +1,7 @@
 # Preparación de F-Droid
 
+> **Corte documental anterior al cierre.** La receta y los resultados E/F que siguen describen ensayos históricos, no la validación de la fuente que contiene esta copia. La receta final deberá fijar la fuente validada. Su estado, la publicación y las comprobaciones F-Droid se registrarán después en [la documentación de `main`](https://github.com/IntelogNatanael/Qetara/blob/main/fdroid/README.md).
+
 ## Candidata local 1.4.5 / código 12
 
 Las fuentes actuales 1.4.5/12 quedaron fijadas en el commit **E**

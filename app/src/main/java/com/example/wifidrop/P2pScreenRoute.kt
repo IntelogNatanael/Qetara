@@ -108,6 +108,9 @@ fun P2pScreenRoute() {
     val receiveDir = remember {
         File(appContext.getExternalFilesDir(null), "WifiDropReceived").apply { mkdirs() }
     }
+    val flashTextReceipts = remember {
+        FlashTextReceiptStore(File(appContext.filesDir, FlashTextReceiptStore.DIRECTORY_NAME))
+    }
     val directWifiTargetsSaver = remember {
         listSaver<List<String>, String>(
             save = { ArrayList(it) },
@@ -115,7 +118,7 @@ fun P2pScreenRoute() {
         )
     }
 
-    var receivedFiles by remember { mutableStateOf(loadReceivedFiles(receiveDir)) }
+    var receivedFiles by remember { mutableStateOf(loadReceivedFiles(receiveDir, flashTextReceipts::isConsumedText)) }
     var nowMs by remember { mutableLongStateOf(System.currentTimeMillis()) }
     var targetIpInput by rememberSaveable { mutableStateOf("") }
     var directChatDraft by rememberSaveable { mutableStateOf("") }
@@ -293,7 +296,7 @@ fun P2pScreenRoute() {
     }
 
     fun refreshReceivedFiles() {
-        receivedFiles = loadReceivedFiles(receiveDir)
+        receivedFiles = loadReceivedFiles(receiveDir, flashTextReceipts::isConsumedText)
     }
 
     val wifiPermissionLauncher = rememberLauncherForActivityResult(

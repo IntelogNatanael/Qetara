@@ -97,4 +97,5 @@ dependencies {
     implementation("kr.jclab:noise-java:0.0.1")
 
     testImplementation("junit:junit:4.13.2")
+    testImplementation("org.json:json:20240303")
 }

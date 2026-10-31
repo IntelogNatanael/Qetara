@@ -4,7 +4,7 @@ Comparte archivos y mensajes entre tus dispositivos, sin cuentas.
 
 Qetara conecta Android y PC por tu red local. Entre dispositivos Android también admite Wi-Fi Direct. El código está disponible bajo la [licencia MIT](LICENSE).
 
-Descarga el [APK Android 1.4.2](https://github.com/IntelogNatanael/Qetara/releases/download/v1.4.2/Qetara-1.4.2.apk), código 9, desde la [entrega publicada](https://github.com/IntelogNatanael/Qetara/releases/tag/v1.4.2). Las fuentes están en [`v1.4.2`](https://github.com/IntelogNatanael/Qetara/tree/v1.4.2). La [validación](docs/VALIDATION-1.4.2.md) documenta pruebas, compilaciones limpias y reproducibilidad. La [receta F-Droid](fdroid/README.md) incluye el APK firmado y está preparada para revisión; la aplicación todavía no está incluida en su catálogo.
+Descarga Android desde [F-Droid](https://f-droid.org/packages/io.github.intelognatanael.qetara/) o desde [la última entrega en GitHub](https://github.com/IntelogNatanael/Qetara/releases/latest). Las entregas incluyen el APK firmado y sus sumas SHA-256; cada etiqueta identifica sus fuentes. El [informe de validación](https://github.com/IntelogNatanael/Qetara/blob/main/docs/VALIDATION-1.4.5.md) distingue las pruebas de cada candidata y el cierre de publicación. Consulta también [la receta y el estado de F-Droid](https://github.com/IntelogNatanael/Qetara/blob/main/fdroid/README.md).
 
 ## Empezar
 
@@ -19,7 +19,7 @@ Consulta la [guía de uso](docs/USER_GUIDE.md) para conectar equipos, recuperar 
 
 ### Compartir con Flash
 
-**Flash es opcional y empieza apagado.** Actívalo en Android y PC para compartir archivos por la misma red local sin crear ni escribir código de sesión o PIN. Elige uno o varios archivos y el equipo; revisa la lista y el tamaño total, compara la verificación de ambas pantallas y acepta una vez en cada dispositivo para ese lote. Los archivos se transfieren en orden y conservan resultados individuales. Cada nuevo lote requiere otra confirmación. Puedes seguir el progreso, cancelar y abrir lo recibido. La activación termina a los 30 minutos o cuando la desactives.
+**Flash es opcional y empieza apagado.** Actívalo en ambos equipos para compartir texto y archivos por la red local sin escribir un código de sesión o PIN. Elige el receptor y escribe, pega texto o adjunta archivos. Texto y archivos se envían por separado. Compara la verificación de ambas pantallas y acepta una vez en cada dispositivo para cada mensaje o lote. Los archivos se transfieren en orden y conservan resultados individuales. Puedes copiar el texto enviado o recibido, seguir el progreso, cancelar y abrir los archivos. La activación termina a los 30 minutos o cuando la desactives.
 
 Flash tiene una sesión temporal independiente; la conexión habitual, los mensajes y los controles avanzados siguen disponibles. Consulta [la guía de Flash](docs/FLASH.md), incluidos los pasos cuando la red impide descubrir equipos.
 

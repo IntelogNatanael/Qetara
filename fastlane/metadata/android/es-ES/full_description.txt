@@ -7,7 +7,7 @@
 <li>Abre, comparte y busca los archivos recibidos en tus descargas.</li>
 <li>Envía archivos a Qetara desde el menú Compartir de Android.</li>
 <li>Usa un código de sesión y un PIN para el intercambio habitual y los mensajes.</li>
-<li>Activa Flash para compartir archivos con equipos cercanos, con un código de verificación y confirmación en ambos dispositivos. Flash empieza apagado y caduca a los 30 minutos.</li>
+<li>Usa Flash para intercambiar texto y archivos con equipos cercanos. Compara el código de verificación y confirma cada mensaje o lote de archivos en ambos dispositivos. Copia el texto enviado o recibido y pégalo en un nuevo borrador. Flash empieza apagado y caduca a los 30 minutos.</li>
 <li>Elige una apariencia clara u oscura y ajusta el tamaño de lectura.</li>
 </ul>
 
