@@ -1,21 +1,79 @@
 # Procedimiento y estado del cierre de Qetara 1.4.5 / código 12
 
-> **Corte documental anterior al cierre.** E/F describe una preparación histórica. Las referencias a E como fuente actual o destino de una futura etiqueta, y a la publicación fuera de alcance, pertenecen a ese corte. La entrega deberá identificar la fuente que se valide; el cierre definitivo se registrará después en [el procedimiento de `main`](https://github.com/IntelogNatanael/Qetara/blob/main/docs/RELEASE-CLOSURE-1.4.5.md).
-
 Este documento reúne el procedimiento, los criterios y el estado del cierre
-local. Los resultados, hashes y límites de cada comprobación se registran en
-el [informe público de la candidata](VALIDATION-1.4.5.md).
+de la entrega. Los resultados, hashes y límites de cada comprobación se
+registran en el [informe de validación](VALIDATION-1.4.5.md).
 El informe interno de la campaña anterior y sus originales se conservan
 como evidencia privada local; no forman parte de los archivos publicados.
-La publicación queda fuera de esta preparación.
+La release estable se publicó el 31 de octubre de 2026 a las 04:55:34 UTC.
+[Qetara v1.4.5 en GitHub](https://github.com/IntelogNatanael/Qetara/releases/tag/v1.4.5).
 
-## Fuentes fijadas y alcance del cierre
+## Estado actual y secuencia de cierre
 
-Las fuentes actuales son el commit **E**,
+Al 31 de octubre de 2026 UTC, la fuente final G es el commit
+`93cad15dc89d4a9ae4c9ac24a286e3dc3a4ae1a0`, árbol
+`e1f921a271dedea774888989e7d4a602541b7b6b`. La CI del push a la rama de
+validación de G aprobó sus cuatro trabajos en el primer intento. [CI de la rama G](https://github.com/IntelogNatanael/Qetara/actions/runs/41169629256).
+
+La build Windows de G terminó en 3 min 11 s, con R8 y las 50 tareas
+ejecutadas. La comparación de los APK sin firma de U y G encontró 390 entradas
+descomprimidas idénticas de 391. Sólo cambió la metadata del commit. El
+informe separa esta comparación de la comprobación directa de interfaz en G.
+Las builds limpias de Windows, Linux y F-Droid local produjeron APK sin firma
+idénticos en una comparación directa de sus 3 736 684 bytes. Los escáneres de
+fuentes y APK y el guard de cambios exactos de F-Droid aprobaron. La copia de
+firma sobre las reconstrucciones de Linux y F-Droid reprodujo en ambos casos
+los 3 778 967 bytes del firmado, con firmas v2/v3 y alineación de 16 KiB.
+
+U es el commit `5627d698701f817e28a759c1832c0c64204d4731`, árbol
+`20db65e8fde681d48508de79102d5988607bac60`. Su release Windows limpio aprobó
+con R8 y 50/50 tareas; el APK firmado U verificó certificado, v2/v3 y alineación.
+Los recorridos anteriores de T conservan su propia procedencia.
+Sus seis capturas aprobadas de Flash/Chat/lote, tres por idioma, se copiaron
+idénticas a Fastlane y forman parte de U. Las dos capturas de Descargas
+obtenidas en U también se revisaron y copiaron. El conjunto comprende cuatro
+imágenes por idioma.
+U aprobó 49 suites y 298 tests JVM, incluidos sus diez casos nuevos, con cero
+fallos/errores/omisiones; lint debug/release 0/46 y 0/47. F-01 tiene un
+recorrido positivo real en T, con 16 MiB
+recibidos íntegros, adjunto conservado y estado listo sin reconfirmación. E
+reprodujo la invalidación, pero su recepción usó otro PIN y no completó el
+handshake; no se declara comparación PSK simétrica.
+
+1. Se verificó el diff U→G. Sólo incorpora las dos capturas de Descargas.
+   Los XML y lint de U acreditan las mismas entradas de aplicación y pruebas.
+2. Los metadatos de tienda en `v1.4.5` incluyen ocho imágenes revisadas. Las dos de
+   Descargas muestran la biblioteca de U con cinco documentos en cada idioma.
+   El ensayo verificó sus bytes y los de dos mensajes por receptor, y comprobó
+   la biblioteca tras relanzar la app.
+3. G quedó fijada con la identidad de arriba y conserva los avisos de corte
+   histórico. El informe registra por separado el alcance real de F-01.
+4. Las tres reconstrucciones y las dos reproducciones de firma de G
+   aprobaron. El informe registra los hashes de cada artefacto.
+5. La CI remota de rama aprobó 4/4 antes de crear la etiqueta. En un
+   emulador se instaló el firmado G sobre U y se verificaron el arranque,
+   los cinco documentos recibidos y los mensajes anteriores.
+6. La etiqueta anotada, el APK, el archivo de sumas y el ZIP se comprobaron
+   por acceso anónimo. El ZIP corresponde al árbol G y apksigcopier aprobó
+   la comparación del APK descargado con las dos reconstrucciones.
+
+7. Sobre una copia aislada de la metadata oficial, `checkupdates --auto`
+   conservó la build 11, añadió 1.4.5/código 12 con las fuentes G y aprobó
+   lint. A las 04:56:30 UTC del 31 de octubre, fdroiddata y el catálogo
+   seguían en 1.4.4/código 11. [Ficha oficial](https://f-droid.org/packages/io.github.intelognatanael.qetara/).
+
+La actualización documental H conserva el tag en G y añade la receta que
+fija esas fuentes. La detección de F-Droid y su distribución oficial se
+registran por separado en el informe. Los comandos siguientes describen los
+controles reutilizables.
+
+## Antecedente E/F y alcance de las fuentes
+
+Las fuentes del cierre anterior son el commit **E**,
 `29f6874615b271aad6b5184d1dad5aa406a389fa`, árbol
 `009fd2154d0599ec8731cfcafcd74f89562233ee`, hijo de C
-`877eb96f2d71f827a95f3c8df80198879e60b738`. La versión sigue siendo
-1.4.5/código 12, sin publicar. E corrige la orden de detener descubrimiento;
+`877eb96f2d71f827a95f3c8df80198879e60b738`. E declaraba 1.4.5/código 12 y
+no se publicó. E corrige la orden de detener descubrimiento;
 C había corregido la actualización del estado P2P al iniciar y reanudar.
 Los 266 tests JVM Android aprobaron sobre el árbol de trabajo del contenido
 fijado en E; las builds release se hicieron desde clones nuevos. El análisis
@@ -41,15 +99,17 @@ el grupo Wi-Fi Direct, manteniendo OPPO como propietario y HONOR como cliente.
 No hubo PCAP ni aislamiento del router y hubo WLAN concurrente para control
 ADB. También aprobaron detener/reiniciar búsqueda, Home/reanudar, conservación
 de preparación y reconexión con sesión renovada. El informe delimita cada
-resultado. F-01 sigue abierto. Flash sobre P2P y la inversión de roles del
-grupo quedan fuera de esta ronda. El cierre dejó ambos teléfonos sin grupo
+resultado. En aquella ronda E, F-01 seguía pendiente. Flash sobre P2P y la
+inversión de roles del grupo quedaron fuera de esa ronda física. El cierre dejó ambos teléfonos sin grupo
 ni descubrimiento, con sesiones cerradas y las preferencias finales registradas.
 
-Esta actualización documental y de receta se incorpora por separado de E,
-en una revisión **F** limitada a esos archivos.
-Los APK, su metadata VCS y la futura etiqueta de la entrega deben identificar
-E. Construir desde F produciría otra identidad VCS aunque el código no
-cambiara, y exigiría nueva evidencia para esos APK.
+La actualización documental y de receta **F**, commit
+`ecf0854218145d9b095114282a0fec3971042c59`, se incorporó por separado de E.
+Los APK históricos y su metadata VCS identifican E. Esa regla de identidad
+también se aplica a esta entrega. La etiqueta estable resuelve a G. Compilar F o H produciría otra
+identidad VCS aunque sólo cambiasen documentos.
+
+## Criterios para revisar fuentes y evidencias
 
 El alcance del commit de fuentes incluye la implementación Android, escritorio y
 protocolo, sus recursos bilingües, las pruebas nuevas y modificadas,
@@ -88,9 +148,9 @@ puede cambiar `META-INF/version-control-info.textproto` y el hash del APK.
 | Linux limpio | Otro clon nuevo del mismo commit sobre sistema de archivos Linux; versiones y argumentos; APK sin firma y SHA-256 comparado con Windows. |
 | Ensayo F-Droid | Receta pinneada al commit, ajustes locales explícitos, lectura/formato/lint, escáneres y build con códigos de salida y artefacto identificado. |
 | Firma y reproducción | APK firmado del commit, certificado permitido, verificación de firma/alineación y copia de firma sobre cada reconstrucción que se declare reproducible. |
-| Recorrido físico final | Identidad del APK realmente instalado; alcance repetido y alcance heredado, separados. No deducir una nueva prueba GUI de la igualdad de recursos. |
+| Recorridos y capturas | Identidad del APK realmente instalado; separar teléfonos físicos, emuladores y arneses sintéticos, así como alcance repetido y heredado. Registrar la procedencia de cada captura; la igualdad de recursos no demuestra una nueva prueba GUI. |
 | Diseño | Revisión registrada contra el archivo y cuenta Figma autorizados, o limitación explícita con referencia local conservada. |
-| Entrega pública | Permanece pendiente: etiqueta, fuentes públicas, APK/sumas, descarga anónima y CI pertenecientes al commit final. |
+| Entrega pública | Etiqueta resuelta al commit final, fuentes, APK y sumas descargados sin credenciales, reproducciones del APK descargado y CI identificada por revisión. |
 
 Si una herramienta modifica el checkout durante su preparación normal, un
 guard estricto puede fallar después de una build correcta. Conservar ambos
@@ -165,7 +225,8 @@ cachés de dependencias reutilizadas». No son dos entornos aprovisionados
 independientemente desde cero. Dos ejecuciones sobre el mismo directorio o
 una tarea `UP-TO-DATE` no constituyen una segunda reconstrucción limpia.
 
-En la inspección quedaban unos 31,8 GB decimales libres en la unidad C:.
+En la inspección inicial del 30 de octubre quedaban unos 31,8 GB decimales
+libres en C:; esa cifra es histórica y no describe el espacio disponible ahora.
 WSL informó mucho más espacio lógico disponible en su disco virtual; esa
 cifra no acredita espacio físico libre adicional en el host. Ejecutar las
 builds secuencialmente y medir el espacio real antes de cada una. Conservar
@@ -175,9 +236,13 @@ absoluta y la conservación previa de la evidencia necesaria.
 
 ## Receta, firma y publicación posterior
 
-La receta almacenada dentro de E aún fijaba el commit A. La
-[receta pública preparada para la actualización posterior](../fdroid/metadata/io.github.intelognatanael.qetara.yml)
-fija el SHA completo de E y 1.4.5/12. Conserva el origen HTTPS, `Binaries`,
+La receta canónica de G se preparó para H y conserva `Repo` HTTPS y `Binaries`.
+Su SHA-256 es `570dd3051d1baf12d9911a60c78c947c079e360a069a51790c3414cdbff23cf2`.
+Se verificaron lectura, normalización, lint y segunda normalización estable.
+La copia de ensayo utiliza un origen local y conserva su evidencia por separado.
+
+Como antecedente, la receta almacenada dentro de E fijaba A. La receta
+preparada en F fijó el SHA completo de E y 1.4.5/12. Conserva el origen HTTPS, `Binaries`,
 el certificado permitido y la configuración de actualización por etiquetas.
 Su versión canónica validada ocupa 859 bytes, SHA-256
 `6e2c377e74d88343b13c526b561211f0928ac0d0dfb1987c10b742aa05447380`.
@@ -186,9 +251,8 @@ La lectura, normalización repetida y lint aprobaron con código 0. También
 aprobaron los comandos de escáner y build F-Droid y el guard exacto predeclarado.
 
 No se puede incluir en un commit una receta que contenga el SHA de ese mismo
-commit. Por eso se fijó primero E y se preparó después la receta que apunta
-a E. Si se elige otro commit como fuente definitiva, repetir las builds y
-la comparación con esa identidad. El guard
+commit. E/F siguió esa secuencia. Para G/H, las builds y la comparación de G
+figuran en el informe de validación. El guard
 `audit-release.ps1 -RequireCurrentRecipe` comprueba coherencia de fuentes y
 metadata; no demuestra que la URL declarada esté publicada.
 
@@ -204,7 +268,7 @@ y no requiere la clave privada. Registrar la comparación de apksigcopier,
 `fdroidserver.common.verify_apks`, la firma, alineación y SHA-256 resultante.
 Un hash de la candidata anterior no sustituye estas operaciones.
 
-La evidencia pública futura debe poder revisarse desde un clon ordinario.
+La evidencia pública se documenta para su revisión desde un clon ordinario.
 Los enlaces `../../` a una carpeta de trabajo y los enlaces a `build/` no son
 artefactos publicados. Mantener los originales privados; preparar un resumen
 sanitizado con commit, comandos, códigos de salida, conteos, hashes, tamaños
@@ -216,3 +280,9 @@ resuelve al commit elegido, que el APK y las sumas se descargan sin credenciales
 que su identidad y certificado coinciden y que se reproduce ese APK descargado.
 La CI remota y la inclusión en F-Droid se informan sólo cuando existan evidencias
 de esas ejecuciones; los resultados de 1.4.4 no acreditan 1.4.5.
+
+La receta oficial 1.4.4/11 configuraba `AutoUpdateMode: Version`, etiquetas
+estables y lectura de Gradle. La prueba del actualizador conservó su historial.
+La receta de una sola build incluida en este repositorio fija G y se validó
+por separado. La incorporación de 1.4.5 al repositorio y al catálogo F-Droid
+corresponde a su proceso oficial. [Estado de distribución](VALIDATION-1.4.5.md#publicación-y-f-droid-al-corte).

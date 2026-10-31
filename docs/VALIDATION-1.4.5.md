@@ -1,33 +1,277 @@
 # Validación de Qetara 1.4.5 / código 12
 
-> **Corte documental anterior al cierre.** Los resultados E/F y anteriores que siguen son históricos; «actual» y «pendiente» se refieren a esos ensayos. El cierre de la fuente que contiene esta copia se registrará después, con identidad y resultados propios, en [el informe de `main`](https://github.com/IntelogNatanael/Qetara/blob/main/docs/VALIDATION-1.4.5.md). Esta copia no acredita resultados de fuentes posteriores.
+**La fuente de Qetara 1.4.5/código 12 es G, commit
+`93cad15dc89d4a9ae4c9ac24a286e3dc3a4ae1a0`, árbol
+`e1f921a271dedea774888989e7d4a602541b7b6b`.** La release estable se publicó
+el 31 de octubre de 2026 a las 04:55:34 UTC. Windows, Linux y la build
+local F-Droid produjeron el mismo APK sin firma. La copia de firma sobre cada
+una de las dos reconstrucciones de Linux reprodujo el APK firmado byte a byte.
+La CI de GitHub de la rama G aprobó sus cuatro trabajos en el primer intento.
+La etiqueta resuelve a G y el APK descargado sin credenciales aprobó la
+comparación contra ambas reconstrucciones. [Release estable v1.4.5](https://github.com/IntelogNatanael/Qetara/releases/tag/v1.4.5).
 
-**Estado al 30 de octubre de 2026: candidata local, no publicada.** Las fuentes
-actuales 1.4.5/12 son el commit E
-`29f6874615b271aad6b5184d1dad5aa406a389fa`. Aprobaron 266 pruebas JVM Android
-y las reconstrucciones Windows, Linux y F-Droid; sus APK sin firma son
-idénticos byte a byte. Linux y F-Droid reprodujeron el APK firmado exacto.
-Ese APK se comprobó instalado en dos teléfonos y completó Chat bidireccional
-y dos lotes de cinco archivos, con los diez SHA-256 correctos y evidencia
-convergente de transporte por el grupo Wi-Fi Direct. También se verificaron
-la detención y el reinicio de búsqueda. El alcance físico y sus límites se
-detallan abajo. F-01 sigue abierto. A/B y C conservan sus propios resultados,
-incluido el fallo del guard de A y el defecto físico corregido después de C.
+Los metadatos de tienda en `v1.4.5` incluyen ocho capturas aprobadas, seis de T y
+dos de Descargas de U. U aprobó 298 pruebas JVM y lint debug/release con cero
+errores. El recorrido positivo de F-01 se completó en T. El control E
+reprodujo la invalidación con el límite de comparación documentado más abajo.
+Los XML y capturas de trabajo identifican en privado el APK de cada recorrido.
+[Procedimiento de cierre](RELEASE-CLOSURE-1.4.5.md).
 
-Este informe es un resumen público autocontenido. Los originales de los ensayos
-—manifiestos, registros, XML y capturas— se conservan como evidencia
-local privada y no se distribuyen con este documento. Los hashes permiten
-identificar los artefactos y registros conservados; no hacen que esos archivos
-estén disponibles públicamente. El [procedimiento de cierre](RELEASE-CLOSURE-1.4.5.md)
-define la evidencia que debe añadirse para cada nueva comprobación.
+## Reconstrucción de G
 
-## Cierre actual: fuentes E y actualización documental F
+Windows produjo el APK release sin firma desde un clon nuevo de G en
+3 min 11 s. Se ejecutaron las 50 tareas, incluido R8. El archivo ocupa
+3 736 684 bytes y su SHA-256 es
+`7db01245571da0d65b009695fd00b6552b8d26eb18c23e2b9ca7c438e90ff257`.
+
+Linux reconstruyó G desde otro clon nuevo con R8 y las 50 tareas ejecutadas.
+Gradle registró 2 min 27 s y el comando terminó con código 0 en 147,85 s.
+El APK sin firma tiene los mismos 3 736 684 bytes y SHA-256 que el de Windows,
+con versión 1.4.5/código 12 y metadata VCS de G.
+
+Los APK sin firma de U y G contienen las mismas 391 rutas. Se compararon los
+bytes descomprimidos de cada entrada. Coinciden las 390 entradas de código,
+recursos y demás contenido. Sólo cambia `META-INF/version-control-info.textproto`,
+que identifica el commit de cada build.
+
+Se actualizó de U a G un emulador API 36 en español, conservando los datos.
+Se comprobó el hash del APK instalado, el arranque de la actividad principal
+y la interfaz. Descargas mostró los cinco documentos anteriores, 11,5 KB, sin
+nombres de contenedores internos. En Chat se vieron los dos mensajes previos
+de U. El recorrido se limitó a esa actualización y a la persistencia local.
+Las transferencias y las capturas mantienen su atribución a T o U.
+
+La build local con fdroidserver 2.4.5, R8 y escaneo del APK terminó con código
+0 en 164,31 s. El escáner de fuentes con `--refresh` terminó con código 0 en
+10,14 s, con cero errores y advertencias. Sus tres mensajes informativos
+corresponden a la retirada de wrappers. El guard comprobó las tres retiradas
+y la limpieza de firma previstas antes de la build, incluidos bytes, rutas
+y modos Git, con el HEAD y el árbol de G. Las 16 comprobaciones aprobaron.
+
+| Artefacto final G | Bytes | SHA-256 |
+| --- | ---: | --- |
+| Sin firma, Windows, Linux y F-Droid local | 3 736 684 | `7db01245571da0d65b009695fd00b6552b8d26eb18c23e2b9ca7c438e90ff257` |
+| Firmado y reproducciones desde Linux y F-Droid local | 3 778 967 | `18c686472420e45f384b1a74d7b5c540abacd5d6b2f2609d38cb1de5fb767e8f` |
+
+Los tres APK sin firma coincidieron en una comparación directa de bytes.
+En cada reconstrucción, apksigcopier 1.1.1 copió la firma del APK local de
+referencia sin acceder a la clave privada. El resultado coincidió byte a
+byte con la referencia. Ambas rutas aprobaron `fdroidserver.common.verify_apks`,
+firmas v2/v3 y alineación de 16 KiB. El certificado SHA-256 de distribución es
+`5f5cdbfb03c1f62f7dc42aee12a5ea4a347b767ccfc268eb450ca69c98ba7a3b`.
+
+Las tres builds comparten el SHA-256 de `mapping.txt`. Entre los otros
+diagnósticos R8 comparados, `usage.txt` coincide entre Linux y F-Droid.
+Los tres `configuration.txt` y los tres `seeds.txt` tienen SHA-256 distintos.
+Estas comparaciones corresponden a archivos auxiliares externos al APK.
+
+La receta canónica que fija G ocupa 859 bytes, SHA-256
+`570dd3051d1baf12d9911a60c78c947c079e360a069a51790c3414cdbff23cf2`.
+fdroidserver 2.4.5 terminó con código 0 en lectura, normalización, lint y
+segunda normalización estable. Respecto de la receta archivada en G, que aún
+fijaba E, sólo cambia el SHA de `Builds[0].commit`.
+
+## Fuente final G y procedencia de los ensayos S, T y U
+
+Las letras identifican revisiones y etapas de esta campaña, no versiones
+Android distintas. Todas declaran 1.4.5/código 12. G incorpora sobre U sólo
+las dos imágenes de Descargas, una por idioma. Por ello el pase JVM y lint de
+U cubre las mismas entradas de aplicación y pruebas que G. Las builds y los
+APK de G identifican G en su metadata VCS. La actualización H documenta esos
+resultados y fija G en la receta.
+
+Los documentos archivados en G conservan el corte previo al cierre y llevan
+avisos que apuntan al informe actualizado en `main`.
+
+| Fuente provisional | Identidad y alcance comprobado |
+| --- | --- |
+| S | Commit `670e49da1e1de12e7d375dcc1e9fa62d0c274edf`, árbol `23d525d3844ee61c4684812655df3869a176fcc7`. 46 suites y 280 pruebas JVM Android aprobadas; lint debug: cero errores y 43 advertencias. Release Windows desde un clon nuevo, 50/50 tareas ejecutadas. |
+| T | Commit `57fc3c97cb6779c951ceba85d2a64b6190d057ba`, árbol `3c148440b5499ce81cfb23f1a9dd6eadc85b15d8`. 47 suites y 288 pruebas JVM Android aprobadas, sin fallos, errores ni omisiones; lint debug/release: cero errores y 43/44 advertencias. Release Windows desde un clon nuevo con R8 y 50/50 tareas ejecutadas. |
+| U | Commit `5627d698701f817e28a759c1832c0c64204d4731`, árbol `20db65e8fde681d48508de79102d5988607bac60`. 49 suites y 298 pruebas JVM Android, cero fallos, errores y omisiones; lint debug/release: cero errores y 46/47 advertencias. Integración en el HEAD U con entradas inalteradas, no clon limpio de tests. |
+
+Los tests y lint de S/T corresponden al contenido del árbol de integración
+fijado después en sus commits; no fueron pases JVM desde clones nuevos.
+El pase T compiló debug e instrumentación y terminó en 4 min 19 s, con 41
+tareas ejecutadas y 60 `UP-TO-DATE`. Su build release limpia terminó en
+3 min 44 s. No se declara una reconstrucción Linux/F-Droid de S o T ni una
+nueva ejecución de todas las pruebas históricas de PC y protocolo.
+
+| APK provisional | Bytes | SHA-256 |
+| --- | ---: | --- |
+| S, Windows sin firma | 3 735 556 | `bc3468215cb5250b45c35fde53bd187c2e94c9d49d0eee6cba27b4e2d39d1478` |
+| S, firmado para recorridos | 3 778 967 | `5690910731fed4577fad7bce767ecba5a36f61c13922de80c1f67ce3e55373ef` |
+| T, Windows sin firma | 3 736 684 | `28ccce7eb6a479acb490f9d275e7dc04a715fee8dd411cff4518c8624b7bf565` |
+| T, firmado para recorridos y capturas | 3 778 967 | `9064382532d03b71b504a69e52b24c347ed9696881c18d126a6bcd88b78f2a16` |
+| U, Windows sin firma | 3 736 684 | `f299db96afe7e6d118adf34e9dc1a494735dbd706b527e35c4aa3e3294261e49` |
+| U, firmado para recorridos y capturas | 3 778 967 | `6143d2e3ab7adf78d6ed392e7a11f978112ad768685a5f47e510ff85f823f099` |
+
+S incorpora una corrección de F-01 para conservar una confirmación manual
+cuando se obtiene evidencia autenticada y vigente del mismo destino; mantiene
+las invalidaciones por cambios reales de identidad, dirección, interfaz o
+transporte. Además de su cobertura JVM, el protocolo LAN real en dos emuladores
+API 36 acreditó el recorrido positivo del APK T. El preflight comprobó que la
+sesión y el PIN coincidían, y los sockets observados correspondían a la misma
+WLAN. El receptor recibió 16 MiB exactos, SHA-256
+`341aacac661ccb210720bedaa9ead5d668fe5ea41a73532fc147c71e34040df1`,
+conservó un adjunto preparado y volvió al estado listo sin pedir reconfirmación.
+No se preparó un borrador de texto ni se realizó otro envío saliente de T,
+un refresco posterior de descubrimiento o una prueba física en este recorrido.
+
+En E se reprodujo la pérdida de confirmación. Su intento de recepción PSK
+no superó el handshake porque el PIN preparado era distinto; no se transfirieron
+datos en ese control. Por ello el PASS positivo de T no constituye un A/B
+simétrico después de una recepción autenticada en ambos APK. El ensayo previo
+por localhost tampoco reprodujo la interfaz requerida y permanece inconcluso.
+Este recorrido es LAN normal compartida entre emuladores, distinto de Flash,
+Wi-Fi Direct, radio física o inversión de roles.
+
+T corrige el eco atrasado que podía sustituir una edición más reciente del
+borrador Flash y el tratamiento de metadata de texto rechazado. La
+instrumentación correspondiente aprobó 19 comprobaciones en español y 19
+en inglés: edición en ráfaga, eco atrasado, acuse de entrega, teclado a escala
+1,6 y transiciones de destinatario. Son estados y destinos sintéticos sobre
+debug/instrumentación, construidos antes de fijar T con el mismo contenido;
+no son transferencias release ni se suman a las 288 pruebas JVM.
+
+### Recorridos reales y capturas de T
+
+Dos emuladores API 36, versión 37.2.13, ejecutaron el APK firmado T, cuya
+identidad coincide antes y después de los recorridos. No se utilizaron
+teléfonos físicos en estas rondas. El Chat bidireccional y las escenas reales
+de Flash/Chat se documentaron en ambos idiomas.
+
+| Ronda Flash T | Resultado medido |
+| --- | --- |
+| Español | Cinco archivos por sentido, 11 776 bytes por lote y diez recibidos idénticos a los originales. Borradores de 38 y 24 bytes conservados al terminar los lotes. Rechazo controlado del texto de 38 bytes con borrador retenido y etiqueta genérica sin identificadores internos; reintento y segundo texto de 32 bytes recibidos exactamente, con los editores emisores vacíos tras confirmar. |
+| Inglés | Cinco archivos por sentido, 11 722 bytes por lote y diez recibidos idénticos. La colisión de Agenda se resolvió con un sufijo, conservando el original español. Borrador de vuelta de 31 bytes conservado y texto de 36 bytes recibido exactamente, con el editor emisor vacío tras confirmar. |
+
+Los diálogos de cada lote muestran códigos de comparación coincidentes y
+consentimiento limitado a sus cinco archivos; ambos emisores confirman cinco
+entregas. Los tamaños, SHA-256 y bytes recibidos coinciden con los originales.
+Los XML inmediatos de recepción muestran estados intermedios; los resultados
+terminales se sostienen con las confirmaciones posteriores y archivos recibidos.
+
+Los extremos de aprobación y las rutas coinciden con el grupo P2P emulado.
+Los contadores `ip -s link` aumentan, con WLAN concurrente. La ventana española
+abarca 938,31 s; la inglesa, 658,84 s desde el final de la anterior e incluye
+interacciones intermedias. No son medidas por transferencia, muestras atómicas
+ni captura PCAP; una comparación de paquetes inglesa conserva 101 frente a 99,
+sin atribuir causa. No se acredita aislamiento del router, radio física ni
+inversión de roles del grupo. Las lecturas sysfs fallaron por permisos y se
+mantienen como no disponibles. Los contadores T no subsanan los ausentes de S.
+El lote histórico S de cinco archivos y su defecto de texto observado conservan
+su evidencia propia.
+
+Se revisaron seis capturas reales de T, tres por idioma: Flash, Chat y lote
+completado. Sus PNG de 1080 × 2400 se copiaron sin cambios a la ficha Fastlane;
+el manifiesto de revisión permanece inmutable y el recibo posterior acredita
+la copia. Son capturas Android sin retoque de píxeles; la presentación de la
+barra del sistema utilizó el modo demo. No proceden de los arneses sintéticos.
+La captura de Descargas de T se descartó por mostrar contenedores internos de
+texto. Las dos imágenes aprobadas para esa escena proceden de U.
+
+### Descargas y mensajes en U
+
+U incorpora los cambios de presentación de mensajes de control de Chat y de
+recibidos de Flash, las seis PNG de T, los changelogs bilingües y los avisos de
+corte documental. En el pase U se ejecutaron las cuatro pruebas nuevas de
+presentación y las seis de recibidos dentro de las 298 registradas. Terminó
+en 3 min 18 s, con 19 tareas ejecutadas y 33 `UP-TO-DATE`. Las advertencias
+lint suben de 43/44 en T a 46/47 en U; no se declara cero advertencias.
+La build Windows limpia de U aprobó en 3 min 19 s, con R8 y 50 tareas
+ejecutadas de 50. Se comprobó el árbol limpio antes y después y la identidad
+VCS embebida de U. Su APK firmado conserva el certificado de distribución;
+se verificaron firmas v2/v3 y la alineación. El hash instalado coincidió
+con el APK U firmado en ambos emuladores antes y después de los recorridos
+de Descargas.
+
+Cada receptor recibió cinco documentos y dos mensajes Flash. Se compararon
+los bytes recibidos con los documentos originales y con el texto UTF-8 de cada
+mensaje. Después de relanzar la app, Descargas seguía mostrando los cinco
+documentos. Los mensajes se podían copiar desde Flash. La comprobación de
+Copiar/Pegar leyó el resultado del editor de la propia app.
+
+| Idioma del receptor | Documentos íntegros | Mensajes íntegros | Texto pegado exactamente en el editor |
+| --- | --- | --- | --- |
+| Español | 5, con 11 776 bytes en total | 32 y 38 bytes | 32 bytes |
+| Inglés | 5, con 11 722 bytes en total | 31 y 36 bytes | 36 bytes |
+
+En Chat normal, el mensaje de ida en español, de 44 bytes UTF-8, coincidió
+exactamente con el borrador y con el contenido recibido. La respuesta en
+inglés, de 43 bytes, apareció en los estados terminales de envío y recepción
+con el mismo texto. Ambos recorridos utilizaron el APK U. La rama que presenta
+un error real de envío tiene cobertura unitaria. Los recorridos de red reales
+documentan envíos correctos.
+
+### Ficha de tienda en español e inglés
+
+Las ocho imágenes revisadas miden 1080 × 2400 píxeles. Para cada idioma, Flash,
+Chat y el lote completado proceden de T. Descargas procede de U. Las copias en
+Fastlane coinciden byte a byte con los PNG aprobados.
+
+| Captura de Descargas U | Bytes | SHA-256 del PNG |
+| --- | ---: | --- |
+| Español | 152 372 | `4f7b5b43ae3d82e79bbe2814641560c00ab0de4cb0016e1545e9cb397641d9a9` |
+| Inglés | 149 568 | `f5be745c095b49d17dd5038f6ea6b57c73b90c74161b92abb89a6d05f1ff2954` |
+
+La revisión U→G identificó exactamente las dos rutas `04-downloads.png` de
+Fastlane. El manifiesto de las ocho imágenes se conserva como evidencia
+privada. La fecha y el commit de cada captura corresponden al APK que la generó.
+
+### Publicación y F-Droid al corte
+
+La etiqueta anotada `v1.4.5` resuelve a G. La release estable contiene
+`Qetara-1.4.5.apk` y `SHA256SUMS`. Se descargaron sin credenciales el registro
+del commit, ambos assets y el ZIP de fuentes. Las cuatro peticiones terminaron
+con HTTP 200. El manifiesto de sumas descargado ocupa 83 bytes, SHA-256
+`216774df8d7f8190866bb2a49fa8342037904b50df81c78848adddc44f69656f`.
+El hash del APK coincide con el firmado de G indicado arriba. Se verificaron
+su certificado, las firmas v2/v3 y la alineación de 16 KiB. La comparación
+de apksigcopier contra cada reconstrucción sin firma, Linux y F-Droid local,
+terminó con código 0 usando como referencia el APK descargado.
+[APK publicado](https://github.com/IntelogNatanael/Qetara/releases/download/v1.4.5/Qetara-1.4.5.apk) · [Sumas publicadas](https://github.com/IntelogNatanael/Qetara/releases/download/v1.4.5/SHA256SUMS).
+
+La revisión del ZIP identificó las 538 rutas de blobs del árbol G. En 532
+coincidieron los bytes originales. En seis scripts PowerShell o batch se
+verificó la única transformación permitida de exportación, los finales CRLF.
+[Fuentes etiquetadas](https://github.com/IntelogNatanael/Qetara/tree/v1.4.5).
+
+La CI de `codex/release-1.4.5` aprobó los cuatro trabajos del push de G en el
+primer intento. Android registró 106 tareas, con pruebas de protocolo y JVM
+Android, builds debug y release con R8, y lint de ambas variantes. Windows,
+Linux y macOS ejecutaron las pruebas de protocolo y escritorio, empaquetaron
+la aplicación y aprobaron los casos de envío y reanudación de la CLI con
+verificación de hash. [CI de la rama G](https://github.com/IntelogNatanael/Qetara/actions/runs/41169629256).
+
+La consulta de GitHub anterior a la etiqueta situaba `main` en
+`9436eddefa3eae607e59cc4266190700fbc4f332`. La receta oficial F-Droid tomada
+como base declara 1.4.4/código 11, commit
+`e379ccc9519514ef3f091821b333502c954cae54`. Configura `AutoUpdateMode: Version`,
+etiquetas estables y lectura de versión desde Gradle.
+
+Tras la publicación, `fdroid checkupdates --auto` de fdroidserver 2.4.5 detectó
+1.4.5/código 12 al primer intento en una copia aislada de esa receta oficial.
+Conservó la build 11 y añadió la 12 con el commit y el árbol de G resueltos.
+Los demás campos se conservaron salvo la versión actual y su código. El lint
+con `--force-yamllint` terminó con código 0. La receta generada con el
+historial oficial tiene SHA-256
+`1ce48bd84ff65ae404289b5c151e488c87399c0d89d6713ec03ba38899d3c53a`.
+La comprobación mantuvo intacta la receta de origen y se ejecutó sin cambios
+remotos.
+
+A las 04:56:30 UTC del 31 de octubre, la receta en `fdroiddata` master
+(`19d306d6815e424f80262be09d5e571401a12d29`) y el catálogo público seguían
+en 1.4.4/código 11. Quedan pendientes la incorporación de 1.4.5 en la metadata
+oficial, su build y su aparición en el índice.
+[Receta oficial en el corte](https://gitlab.com/fdroid/fdroiddata/-/blob/19d306d6815e424f80262be09d5e571401a12d29/metadata/io.github.intelognatanael.qetara.yml) · [Ficha F-Droid](https://f-droid.org/packages/io.github.intelognatanael.qetara/) · [API pública del catálogo](https://f-droid.org/api/v1/packages/io.github.intelognatanael.qetara).
+
+## Historial de las fuentes E y actualización documental F
 
 El commit de fuentes **E** es
 `29f6874615b271aad6b5184d1dad5aa406a389fa`, árbol
 `009fd2154d0599ec8731cfcafcd74f89562233ee`, hijo de C
 `877eb96f2d71f827a95f3c8df80198879e60b738`. Conserva la versión 1.4.5/código
-12, todavía sin publicar. E cambia `WifiDirectController.kt` y añade
+12. La entrega aún no se había publicado en el corte E. E cambia `WifiDirectController.kt` y añade
 `WifiDirectCancellationTest.kt`; la corrección envía la operación de detener
 descubrimiento cuando se pulsa «Detener búsqueda».
 
@@ -48,11 +292,12 @@ y ambas reproducciones coincidieron con su firmado, SHA-256
 `8a0da4baec18e50393e4c9bd9ba207cbf3797236418b75ef076ed409ec339881`.
 Esos resultados y el defecto físico de C se conservan como antecedentes.
 
-Esta actualización **F** de documentación y receta se incorpora por separado
-de E. Los APK y su metadata VCS identifican E; una futura etiqueta de entrega
-debe conservar esa identidad. La receta contenida dentro de E todavía fijaba
-A; la [receta actual](../fdroid/metadata/io.github.intelognatanael.qetara.yml)
-fija E desde esta actualización. Los resultados de A y C no se trasladan a E.
+La actualización **F** de documentación y receta se incorporó por separado
+de E, en el commit `ecf0854218145d9b095114282a0fec3971042c59`.
+Los APK y su metadata VCS identifican E. La receta contenida dentro de E
+todavía fijaba A; F preparó la receta que fija E. Esa identidad se conserva
+para los artefactos históricos de E. La etiqueta publicada identifica G.
+Los resultados de A y C se mantienen separados de E.
 
 ### Pruebas y reconstrucciones de E
 
@@ -107,8 +352,8 @@ Sólo cambia `Builds[0].commit` respecto de la receta incluida en E. Aprobaron
 lectura, normalización, lint y segunda normalización estable, todos con
 código 0. Conserva el origen Git HTTPS, `Binaries`, el certificado y las
 reglas de actualización. El overlay local de ensayo cambia únicamente `Repo`
-y omite `Binaries`; no forma parte del YAML público. La URL de 1.4.5 no se
-descargó y no se declara publicación, etiqueta, CI remota ni aceptación oficial.
+y omite `Binaries`. Durante el ensayo E aún no existía el APK público de G.
+Las comprobaciones de publicación correspondientes a G figuran arriba.
 
 ### Recorridos físicos de E entre dos Android
 
@@ -147,7 +392,8 @@ de los diez archivos de la atribución de ruta apoyada por esas observaciones.
 
 Esta ronda no cubre Flash sobre P2P, inversión de roles del grupo, otros
 fabricantes/versiones ni una nueva aprobación bilingüe del destinatario.
-F-01 de confirmación del receptor sigue pendiente; E no relaja esa guardia.
+En esa ronda E, F-01 de confirmación del receptor seguía pendiente; E no
+relajaba esa guardia. Su evolución posterior figura en el estado actual.
 Los resúmenes privados de ambas direcciones tienen SHA-256
 `cd56850fcad510b9eebf7d61816b6c1e7a676de4ebbf05cbaac171366886083d` y
 `e10eebf620315ec22016d02e284093d2809f1628b9ccaddc106579ea5482cbe8`.
@@ -165,7 +411,7 @@ quedó offline y no respondió a la comprobación TCP. La entrada seguía visibl
 como offline; no se registra como eliminada ni se infiere un estado final del
 daemon más allá de lo observado.
 
-## Historial: fuentes A y actualización B
+## Historial de las fuentes A y actualización B
 
 El commit de fuentes **A** es
 `baec571b7c82b799848368f5e42027677695ae2c`, árbol
@@ -180,7 +426,7 @@ La actualización **B**, commit
 `186928dba7744189283a790fbc4d235abf84cef2`, incorporó documentación y la receta
 que fijaba A. Los APK de aquel cierre se compilaron desde A y conservan A en
 su metadata VCS. La receta contenida dentro de A era la histórica 1.4.4/11.
-La receta actual que fija E se describe en el apartado de cierre actual.
+La receta posterior que fijó E se describe en el historial E/F.
 
 La campaña anterior partió del commit
 `9436eddefa3eae607e59cc4266190700fbc4f332` y declaró `qetaraVersion=1.4.5` y
@@ -207,7 +453,7 @@ hashes de la campaña anterior.
 | Reproducción de firma sobre Linux/F-Droid | Ambas aprobadas con apksigcopier y `fdroidserver.common.verify_apks`; copias idénticas al APK firmado de A. |
 | Recorridos físicos del release R8 de A | Flash: cinco archivos PC → Android con SHA-256 correctos, texto Unicode exacto en el XML receptor y texto de regreso confirmado visualmente. Compartir: un archivo Android → PC con SHA-256 correcto y estado terminal completado. Límites detallados abajo. |
 | Revisión contra Figma | Referencias autorizadas Flash 4:22 y Chat 22:24; revisión acotada de consentimiento y estructura de conversación, no de todas las pantallas. |
-| Publicación, descarga anónima y CI remota | No realizadas para esta candidata. |
+| Publicación, descarga anónima y CI remota | No se realizaron para el APK A. |
 
 ## Comprobaciones anteriores a la fijación de A
 
@@ -246,7 +492,7 @@ y PC → Android tienen SHA-256 respectivos
 `8f080f93eee8d64d7b7dca35ded43159387d526283eab222c366f2d649ecf49b` y
 `a2da2c8f6fb1d68b07af6fc4f55c4fe4c12139215282f4459c1feb36700566c6`.
 
-**F-01 sigue abierto.** Después del lote de cinco archivos PC → Android,
+**Observación histórica F-01, anterior a S.** Después del lote de cinco archivos PC → Android,
 la sesión seguía activa, pero Android volvió a pedir confirmar el PC. Los
 cinco adjuntos preparados y el borrador se conservaron. La observación es
 compatible con el [hallazgo preexistente F-01](VISUAL_FINDINGS-1.4.0.md#f-01-la-confirmación-manual-puede-perderse-al-conocer-la-identidad-del-mismo-destino):
@@ -257,11 +503,12 @@ registran las identidades antes y después y no demuestran esa causalidad
 para este ensayo.
 
 La recuperación es volver a **Conectar → Mostrar código/PIN → Usar esta
-sesión**. No se cambió la guardia de identidad en este cierre: una corrección
-requiere evidencia autenticada de la transición y debe conservar la
-invalidación cuando el destino realmente cambie. La nueva petición de
-confirmación no invalida los diez hashes coincidentes ni acredita pérdida
-de archivos; tampoco se presenta como un problema ya resuelto.
+sesión**. En aquella ronda no se cambió la guardia de identidad: una corrección
+requería evidencia autenticada de la transición y conservar la invalidación
+cuando el destino realmente cambiase. La nueva petición de confirmación no
+invalidó los diez hashes coincidentes ni acreditó pérdida de archivos.
+La corrección de S y su comprobación posterior se describen por separado;
+este ensayo histórico no las confirma ni las refuta.
 
 La entrega de archivos aprobada no ocultó un defecto de presentación:
 la actividad podía conservar «Enviando» después de terminar el lote.
@@ -481,8 +728,8 @@ dos cambios: `Repo` apunta al repositorio local y se omite `Binaries`. Su
 SHA-256 es `3c950ba2fc12545ea3d762e8f5be0d4e954ea55e09fbf6e43419f67e74dda670`.
 Esa copia no forma parte del YAML público. La lectura y el lint de metadata
 no equivalen a los escáneres de fuentes/APK, a la build F-Droid ni a una
-comparación con un APK público. No se descargó la URL de referencia de 1.4.5
-y no se declara su publicación, una etiqueta ni una CI remota.
+comparación con un APK público. En aquella ronda A todavía no había una
+publicación o una etiqueta 1.4.5 y no se comprobó una CI remota.
 
 ## Recorridos físicos del APK release de A
 
@@ -655,31 +902,27 @@ independientes.
 
 ## Límites y pendientes
 
-Los apartados históricos conservan los resultados y límites de sus propios
-artefactos. Las comprobaciones nuevas de Chat normal, Compartir, transiciones
-de receptor y corrección P3 se acreditan sólo con el alcance descrito en el
-apartado de cierre. La repetición Flash v6 y su revisión visual acreditan la
-corrección del solapamiento; no convierten las capturas anteriores en una
-aprobación visual. El estado de Chat corresponde a la ronda indicada arriba.
+Los apartados históricos conservan los resultados, fallos y límites de sus
+propios artefactos. Las reconstrucciones y reproducciones de E/A/C no prueban
+G. Los recorridos reales S/T y la instrumentación sintética tienen alcances
+separados, al igual que las pruebas JVM de cada revisión.
 
-El hallazgo preexistente F-01 de nueva confirmación después de recibir sigue
-pendiente, con la recuperación manual y el límite causal indicados arriba.
-No se considera corregido ni se reduce la verificación de identidad para
-evitar ese aviso.
+F-01 cuenta con corrección y cobertura JVM desde S y un recorrido positivo
+real de T: tras recibir 16 MiB autenticados se conservó un adjunto y volvió
+el estado listo sin reconfirmación. E reprodujo la invalidación, pero su PIN
+no coincidía en el control de recepción; no se declara A/B simétrico. El
+ensayo localhost inconcluso conserva su límite propio.
 
-En la campaña A no había un segundo teléfono. La ronda E posterior acredita
-los recorridos Wi-Fi Direct entre API 36 y API 33 descritos arriba, con OPPO
-como propietario del grupo y HONOR como cliente. Siguen fuera de ese alcance
-Flash sobre P2P, roles invertidos, otros equipos/versiones y todos los órdenes
-de activación. El escritorio se validó en español; no se extiende a él la
-cobertura bilingüe de Android.
+La ronda física E entre API 36 y API 33 mantuvo OPPO como propietario y HONOR
+como cliente. Los lotes Flash posteriores T corresponden a emuladores;
+no amplían la cobertura de radio física, roles invertidos ni fabricantes.
+El escritorio conserva sus recorridos en español; la cobertura bilingüe nueva
+pertenece a Android y no acredita todas las pantallas o escalas.
 
-La revisión Figma acreditada cubre el consentimiento Flash 4:22 y la estructura
-de Chat 22:24; no se afirma una revisión final completa de todas las pantallas.
-Las fuentes actuales quedaron fijadas en E. Sus tres builds, comparación,
-reproducción y recorridos físicos tienen identidad propia; los resultados
-de A y C mantienen la suya y no amplían automáticamente el alcance de E.
+La revisión Figma histórica cubre el consentimiento Flash 4:22 y la estructura
+de Chat 22:24. No se declara una nueva revisión final completa de Figma.
+Los metadatos de tienda de G contienen cuatro imágenes por idioma.
 
-Los resultados históricos de [1.4.4](VALIDATION-1.4.4.md) y sus pipelines
-no acreditan la nueva versión. No se declara una release, una etiqueta pública,
-un APK descargable, una CI remota ni una inclusión nueva en F-Droid para 1.4.5.
+El APK firmado de G aprobó el recorrido de actualización en un emulador,
+la descarga pública anónima y la comparación con ambas reconstrucciones.
+El estado de F-Droid se registra por separado en el apartado de publicación.
