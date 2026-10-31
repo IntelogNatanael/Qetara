@@ -252,6 +252,8 @@
     <string name="flash_text_ready_verification">Text ready. Compare the verification on both devices.</string>
     <string name="flash_text_start_failed">Could not start sending. The text is still in your draft.</string>
     <string name="flash_text_error_rejected">The request was rejected or the verification did not match. The text is still in your draft.</string>
+    <string name="flash_text_incoming_rejected">The request was rejected or the verification did not match. The text was not received.</string>
+    <string name="flash_text_incoming_failed">Could not receive the text. Request it again.</string>
     <string name="flash_text_error_invalid_file">Could not prepare the text. Your draft is kept so you can try again.</string>
     <string name="flash_text_error_integrity">The text failed verification. Request it again.</string>
     <string name="flash_text_error_unconfirmed">Could not confirm delivery. Check whether the text arrived on the other device before sending it again.</string>

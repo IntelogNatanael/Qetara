@@ -16,6 +16,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.rememberTextMeasurer
@@ -27,6 +28,7 @@ import com.example.wifidrop.protocol.flash.FLASH_TEXT_MAX_BYTES
 import com.example.wifidrop.protocol.flash.FlashPeer
 import com.example.wifidrop.protocol.flash.FlashState
 import java.io.File
+import java.util.concurrent.atomic.AtomicReference
 import org.json.JSONObject
 import org.json.JSONArray
 
@@ -157,6 +159,7 @@ internal class FlashTextUiScenario(private val instrumentation: Instrumentation)
                 }
                 ui.await("IME hidden") { !imeVisible(host) }
             }
+            assertDraftSynchronization(host, peer, directory, checks)
             result.putString("result", "PASS")
         } catch (failure: Throwable) {
             result.putString("result", "FAIL")
@@ -184,6 +187,81 @@ internal class FlashTextUiScenario(private val instrumentation: Instrumentation)
             result.putString("checks", checks.joinToString(","))
             result.putInt("checks_passed", checks.size)
             instrumentation.finish(if (result.getString("result") == "PASS") Activity.RESULT_OK else Activity.RESULT_CANCELED, result)
+        }
+    }
+
+    private fun assertDraftSynchronization(
+        host: FlashActivity, peer: FlashPeer, directory: File, checks: MutableList<String>
+    ) {
+        val saved = FlashAndroidRuntime.state.value
+        val observedDraft = mutableStateOf("")
+        val renderedEcho = AtomicReference<String?>(null)
+        fun editorText(): String? = ui.nodes().firstOrNull { it.isEditable && it.isVisibleToUser }?.let {
+            it.text?.toString().orEmpty()
+        }
+        fun assertDraft(expected: String, echo: String) {
+            var stable = 0
+            ui.await("current draft preserved after collected echo '$echo'") {
+                val matches = renderedEcho.get() == echo && editorText() == expected &&
+                    FlashAndroidRuntime.state.value.textDraft == expected
+                stable = if (matches) stable + 1 else 0
+                stable >= 3
+            }
+        }
+        try {
+            instrumentation.runOnMainSync {
+                FlashAndroidRuntime.update { it.copy(textDraft = "") }
+                host.setContent {
+                    QetaraTheme {
+                        val echo = observedDraft.value
+                        FlashTextComposer(
+                            draft = echo,
+                            readCurrentDraft = { FlashAndroidRuntime.state.value.textDraft },
+                            selectedPeer = peer, busy = false, sendingText = false,
+                            importing = false, selectedFileCount = 0, compact = false,
+                            onDraftChange = FlashForegroundService::updateTextDraft,
+                            onPaste = { null }, onChoosePeer = {}, onChooseFiles = {},
+                            onReviewFiles = {}, onCancelImport = {}, onSend = {}, onSendFiles = {}
+                        )
+                        SideEffect { renderedEcho.set(echo) }
+                    }
+                }
+            }
+            assertDraft("", "")
+            ui.edit("Ma")
+            ui.edit("Mat")
+            // The real edit callback has published Mat. Hold back the collected echo deliberately.
+            instrumentation.runOnMainSync { observedDraft.value = "Ma" }
+            assertDraft("Mat", "Ma")
+            checks += "delayed_collected_draft_echo_does_not_erase_newer_production_edit"
+
+            instrumentation.runOnMainSync {
+                FlashAndroidRuntime.update { it.copy(textDraft = "") }
+                observedDraft.value = ""
+            }
+            assertDraft("", "")
+            ui.click(checkNotNull(ui.nodes().firstOrNull { it.isEditable && it.isVisibleToUser }))
+            val burst = "Material listo para revisar en equipo."
+            instrumentation.sendStringSync(burst)
+            instrumentation.runOnMainSync { observedDraft.value = "Material" }
+            assertDraft(burst, "Material")
+            check(FlashAndroidRuntime.state.value.textDraft.toByteArray(Charsets.UTF_8).size == 38)
+            ui.capture(host, directory, "draft-key-burst-delayed-echo")
+            checks += "key_event_burst_preserves_all_38_utf8_bytes_despite_delayed_echo"
+
+            instrumentation.runOnMainSync {
+                FlashAndroidRuntime.update { it.completeTextDraft(burst) }
+                observedDraft.value = ""
+            }
+            assertDraft("", "")
+            checks += "current_delivery_ack_clears_the_unedited_production_editor"
+        } finally {
+            instrumentation.runOnMainSync {
+                WindowCompat.getInsetsController(host.window, host.window.decorView)
+                    .hide(WindowInsetsCompat.Type.ime())
+                FlashAndroidRuntime.update { saved }
+            }
+            render(host, 1f)
         }
     }
 

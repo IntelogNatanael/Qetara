@@ -86,6 +86,7 @@ internal fun FlashIntroduction(
 @Composable
 internal fun FlashTextComposer(
     draft: String,
+    readCurrentDraft: () -> String,
     selectedPeer: FlashPeer?,
     busy: Boolean,
     sendingText: Boolean,
@@ -104,8 +105,11 @@ internal fun FlashTextComposer(
     var editing by remember { mutableStateOf(TextFieldValue(draft, TextRange(draft.length))) }
     var inputError by remember { mutableStateOf<FlashText?>(null) }
     LaunchedEffect(draft) {
-        if (draft != editing.text) {
-            editing = TextFieldValue(draft, TextRange(draft.length))
+        // Edits publish synchronously, but their collected echo can lag behind the editor.
+        // Read and reconcile on Main without suspending between them.
+        val reconciled = reconcileFlashTextDraft(editing, draft, readCurrentDraft())
+        if (reconciled !== editing) {
+            editing = reconciled
             inputError = null
         }
     }
@@ -204,6 +208,14 @@ internal fun FlashTextComposer(
 internal data class FlashTextEdit(val value: TextFieldValue, val errorText: FlashText?) {
     val error: String? get() = errorText?.resolve()
 }
+
+/** Only the current model value may replace local text; its echoes preserve IME and selection. */
+internal fun reconcileFlashTextDraft(
+    editing: TextFieldValue,
+    observedDraft: String,
+    currentDraft: String
+): TextFieldValue = if (observedDraft != currentDraft || currentDraft == editing.text) editing
+    else TextFieldValue(currentDraft, TextRange(currentDraft.length))
 
 /** Keep validation copy unresolved so retained draft errors follow the current language. */
 internal fun flashTextValidationError(text: String, preserveDraft: Boolean = false): FlashText? =

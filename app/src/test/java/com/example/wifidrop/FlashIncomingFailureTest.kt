@@ -27,7 +27,8 @@ class FlashIncomingFailureTest : LocalizedResourcesTest() {
         val failure = corruptIncoming(textName, FLASH_TEXT_MAX_BYTES)
         val copy = flashOperationErrorText(failure.error.code, failure.operation, false, false)
         val result = recordFlashFailure(emptyList(), failure.error.operationId!!,
-            failure.operation!!.fileName, copy, false).single()
+            failure.operation!!.fileName, copy, false,
+            isTextMessage = isIncomingFlashTextOffer(failure.operation)).single()
 
         assertEquals("El texto no superó la verificación. Solicita un nuevo envío.", result.detail)
         assertEquals(FlashResultKind.FAILED, result.kind)
@@ -35,8 +36,10 @@ class FlashIncomingFailureTest : LocalizedResourcesTest() {
         assertNull(result.file)
         assertNull(result.downloadUri)
         assertFalse(result.confirmationIssue)
+        assertEquals("Mensaje de Flash", result.labelText.resolve())
         useAppLocale("en")
         assertEquals("The text failed verification. Request it again.", result.detail)
+        assertEquals("Flash message", result.labelText.resolve())
     }
 
     @Test fun ordinaryFilesAndOversizedReservedAttachmentsKeepTheFileIntegrityFailure() {
@@ -57,12 +60,63 @@ class FlashIncomingFailureTest : LocalizedResourcesTest() {
             useAppLocale(language)
             for (code in listOf("rejected", "invalid_file")) {
                 val incomingCopy = flashOperationErrorText(code, incoming, false, false)
-                assertEquals(flashErrorText(code), incomingCopy)
+                assertEquals(flashText(if (code == "rejected") R.string.flash_text_incoming_rejected
+                    else R.string.flash_text_incoming_failed), incomingCopy)
                 assertFalse(incomingCopy.resolve().contains(if (language == "es") "borrador" else "draft"))
                 val outgoingCopy = flashOperationErrorText(code, incoming.copy(outgoing = true), true, false)
                 assertEquals(flashTextErrorText(code), outgoingCopy)
                 assertTrue(outgoingCopy.resolve().contains(if (language == "es") "borrador" else "draft"))
             }
+        }
+    }
+
+    @Test fun rejectedCancelledAndFailedTextOffersKeepLocalizedIdentityWithoutAReceipt() {
+        val incoming = FlashOperation("incoming", null, textName, 32, outgoing = false)
+        val codes = listOf("rejected", "cancelled", "integrity_failed", "invalid_file",
+            "storage_unavailable", "unconfirmed", "approval_expired")
+        val results = codes.associateWith { code ->
+            recordFlashFailure(emptyList(), incoming.id, incoming.fileName,
+                flashOperationErrorText(code, incoming, false, false), code == "cancelled",
+                isTextMessage = isIncomingFlashTextOffer(incoming)).single()
+        }
+        for (language in listOf("es", "en")) {
+            useAppLocale(language)
+            results.forEach { (code, result) ->
+                assertEquals(if (code == "cancelled") FlashResultKind.CANCELLED else FlashResultKind.FAILED,
+                    result.kind)
+                assertEquals(if (language == "es") "Mensaje de Flash" else "Flash message", result.labelText.resolve())
+                assertFalse(result.labelText.resolve().contains(textName))
+                assertFalse(result.detail.contains(if (language == "es") "archivo" else "file"))
+                assertFalse(result.detail.contains(if (language == "es") "borrador" else "draft"))
+                assertNull(result.textBody)
+                assertNull(result.file)
+                assertNull(result.downloadUri)
+                assertFalse(result.confirmationIssue)
+            }
+            assertEquals(if (language == "es")
+                "La solicitud fue rechazada o la verificación no coincidió. No se recibió el texto."
+            else "The request was rejected or the verification did not match. The text was not received.",
+                results.getValue("rejected").detail)
+            assertEquals(flashErrorText("cancelled").resolve(), results.getValue("cancelled").detail)
+        }
+    }
+
+    @Test fun messageOfferIdentityRequiresIncomingMetadataAndValidBoundedTextName() {
+        val incoming = FlashOperation("incoming", null, textName, 32, outgoing = false)
+        listOf(0L, FLASH_TEXT_MAX_BYTES.toLong()).forEach { size ->
+            assertTrue(isIncomingFlashTextOffer(incoming.copy(totalBytes = size)))
+        }
+        listOf(null, incoming.copy(outgoing = true), incoming.copy(totalBytes = -1),
+            incoming.copy(totalBytes = FLASH_TEXT_MAX_BYTES + 1L),
+            incoming.copy(fileName = "ordinary.txt"),
+            incoming.copy(fileName = "qetara-flash-text-v1-invalid.txt")).forEach { operation ->
+            assertFalse(isIncomingFlashTextOffer(operation))
+            val result = recordFlashFailure(emptyList(), "failure", operation?.fileName.orEmpty(),
+                flashOperationErrorText("rejected", operation, false, false), false,
+                isTextMessage = isIncomingFlashTextOffer(operation)).single()
+            assertEquals(flashErrorText("rejected").resolve(), result.detail)
+            assertEquals(operation?.fileName?.takeIf { it.isNotEmpty() } ?: appString(R.string.flash_file),
+                result.labelText.resolve())
         }
     }
 

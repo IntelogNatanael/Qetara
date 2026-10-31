@@ -327,6 +327,7 @@ internal fun FlashScreen(activity: FlashActivity, onBack: () -> Unit) {
             if (state.active) {
                 FlashTextComposer(
                     draft = state.textDraft,
+                    readCurrentDraft = { FlashAndroidRuntime.state.value.textDraft },
                     importing = state.importing,
                     selectedPeer = selectedPeer,
                     selectedFileCount = state.selectedFiles.size,
@@ -490,7 +491,7 @@ internal fun FlashScreen(activity: FlashActivity, onBack: () -> Unit) {
                                 .onFailure { notice = R.string.flash_text_copy_failed }
                         }, modifier = Modifier.heightIn(min = 48.dp), shape = RoundedCornerShape(16.dp)) { Text(stringResource(R.string.flash_copy)) }
                     } else {
-                        Text(result.fileName.ifEmpty { stringResource(R.string.flash_file) }, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+                        Text(result.labelText.localized(), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
                     }
                     Text(result.detailText.localized(), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     result.file?.takeIf { textBody == null }?.let { file ->

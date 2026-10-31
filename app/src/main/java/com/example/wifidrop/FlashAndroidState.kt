@@ -48,14 +48,21 @@ internal data class FlashAndroidResult(
     val file: File? = null,
     val downloadUri: String? = null,
     val confirmationIssue: Boolean = false,
-    val textBody: String? = null
+    val textBody: String? = null,
+    // An offered text can fail before any verified body exists; this is not a receipt.
+    val isTextMessage: Boolean = textBody != null
 ) {
     val detail: String get() = detailText.resolve()
+    val labelText: FlashText get() = when {
+        isTextMessage -> flashText(R.string.flash_text_message)
+        fileName.isEmpty() -> flashText(R.string.flash_file)
+        else -> FlashText(literal = fileName)
+    }
 
     constructor(id: String, fileName: String, kind: FlashResultKind, detail: String,
                 file: File? = null, downloadUri: String? = null, confirmationIssue: Boolean = false,
-                textBody: String? = null) :
-        this(id, fileName, kind, FlashText(literal = detail), file, downloadUri, confirmationIssue, textBody)
+                textBody: String? = null, isTextMessage: Boolean = textBody != null) :
+        this(id, fileName, kind, FlashText(literal = detail), file, downloadUri, confirmationIssue, textBody, isTextMessage)
 }
 
 internal data class FlashAndroidState(
@@ -129,7 +136,7 @@ internal fun canAnswerFlashApproval(
 /** A later batch failure cannot undo a verified local receipt or a confirmed remote delivery. */
 internal fun recordFlashFailure(
     results: List<FlashAndroidResult>, operationId: String, fileName: String, message: FlashText, cancelled: Boolean,
-    textBody: String? = null
+    textBody: String? = null, isTextMessage: Boolean = textBody != null
 ): List<FlashAndroidResult> {
     if (results.any { it.id == operationId && it.kind == FlashResultKind.DELIVERED }) return results
     val received = results.firstOrNull { it.id == operationId && it.kind == FlashResultKind.RECEIVED }
@@ -139,14 +146,15 @@ internal fun recordFlashFailure(
                 else R.string.flash_received_unconfirmed)) else it
     }
     val result = FlashAndroidResult(operationId, fileName,
-        if (cancelled) FlashResultKind.CANCELLED else FlashResultKind.FAILED, message, textBody = textBody)
+        if (cancelled) FlashResultKind.CANCELLED else FlashResultKind.FAILED, message,
+        textBody = textBody, isTextMessage = isTextMessage)
     return (listOf(result) + results.filterNot { it.id == operationId }).take(20)
 }
 
 internal fun recordFlashFailure(
     results: List<FlashAndroidResult>, operationId: String, fileName: String, message: String, cancelled: Boolean,
-    textBody: String? = null
-): List<FlashAndroidResult> = recordFlashFailure(results, operationId, fileName, FlashText(literal = message), cancelled, textBody)
+    textBody: String? = null, isTextMessage: Boolean = textBody != null
+): List<FlashAndroidResult> = recordFlashFailure(results, operationId, fileName, FlashText(literal = message), cancelled, textBody, isTextMessage)
 
 /** A receipt may only consume the draft that was sent, never edits made while awaiting the ACK. */
 internal fun FlashAndroidState.completeTextDraft(sentBody: String): FlashAndroidState = copy(

@@ -265,6 +265,8 @@
     <string name="flash_text_ready_verification">Texto listo. Compara la verificación en ambos equipos.</string>
     <string name="flash_text_start_failed">No se pudo iniciar el envío. El texto sigue en el borrador.</string>
     <string name="flash_text_error_rejected">La solicitud fue rechazada o la verificación no coincidió. El texto sigue en el borrador.</string>
+    <string name="flash_text_incoming_rejected">La solicitud fue rechazada o la verificación no coincidió. No se recibió el texto.</string>
+    <string name="flash_text_incoming_failed">No se pudo recibir el texto. Solicita un nuevo envío.</string>
     <string name="flash_text_error_invalid_file">No se pudo preparar el texto. El borrador se conserva para volver a intentar.</string>
     <string name="flash_text_error_integrity">El texto no superó la verificación. Solicita un nuevo envío.</string>
     <string name="flash_text_error_unconfirmed">No se pudo confirmar la entrega. Comprueba en el otro equipo si el texto llegó antes de volver a enviarlo.</string>

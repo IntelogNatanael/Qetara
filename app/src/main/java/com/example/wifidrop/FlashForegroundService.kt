@@ -258,7 +258,8 @@ class FlashForegroundService : Service() {
                 error.operationId?.let { id ->
                     operationDetails.remove(id)
                     FlashAndroidRuntime.update { it.copy(results = recordFlashFailure(it.results, id, operation?.fileName.orEmpty(), copy,
-                        error.code == "cancelled", textBody = text?.body)) }
+                        error.code == "cancelled", textBody = text?.body,
+                        isTextMessage = text != null || isIncomingFlashTextOffer(operation))) }
                     outgoingBatch.fail(id)
                 }
                 if (text != null) {
@@ -699,8 +700,15 @@ internal fun flashOperationErrorText(
     receivedText -> flashText(R.string.flash_text_received_unconfirmed)
     // Before publication there is no verified body to read. This is presentation metadata only:
     // never read a partial file, manufacture a receipt, or promise an incoming sender's draft.
-    code == "integrity_failed" && operation?.outgoing == false &&
-        operation.totalBytes in 0..FLASH_TEXT_MAX_BYTES.toLong() &&
-        FlashTextAttachment.isTextFileName(operation.fileName) -> flashText(R.string.flash_text_error_integrity)
+    isIncomingFlashTextOffer(operation) -> when (code) {
+        "rejected" -> flashText(R.string.flash_text_incoming_rejected)
+        "integrity_failed" -> flashText(R.string.flash_text_error_integrity)
+        "invalid_file", "storage_unavailable", "unconfirmed" -> flashText(R.string.flash_text_incoming_failed)
+        else -> flashErrorText(code)
+    }
     else -> flashErrorText(code)
 }
+
+internal fun isIncomingFlashTextOffer(operation: FlashOperation?): Boolean =
+    operation?.outgoing == false && operation.totalBytes in 0..FLASH_TEXT_MAX_BYTES.toLong() &&
+        FlashTextAttachment.isTextFileName(operation.fileName)
