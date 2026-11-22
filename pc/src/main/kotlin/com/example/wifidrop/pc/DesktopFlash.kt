@@ -66,7 +66,8 @@ internal fun DesktopFlashPanel(
     onBack: () -> Unit,
     onChooseFile: () -> Unit,
     onChooseDirectory: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isFileDragActive: Boolean = false
 ) {
     val state = controller.state
     val now = flashClock(state.session.active)
@@ -93,6 +94,7 @@ internal fun DesktopFlashPanel(
     val canEdit = state.session.active && !state.busy
     val canSendText = canEdit && selected != null && state.textDraft.isNotBlank() && draftBytes <= FLASH_TEXT_MAX_BYTES
     val canSendFiles = canEdit && selected != null && state.selectedFiles.isNotEmpty()
+    val acceptingFileDrag = isFileDragActive && state.canAttachFiles
     val selectedBytes = remember(state.selectedFiles) { state.selectedFiles.sumOf { it.length() } }
     val minutes = ((state.session.expiresAtMs - now).coerceAtLeast(0) + 59_999) / 60_000
     val nextStep = when {
@@ -133,7 +135,7 @@ internal fun DesktopFlashPanel(
         val wide = maxWidth >= 800.dp
         val short = maxHeight < 600.dp
         val composer: @Composable () -> Unit = {
-            FlashCard {
+            FlashCard(highlighted = acceptingFileDrag) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
                     WorkspaceIcon(WorkspaceGlyph.DEVICES, color = qetaraMuted)
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -195,8 +197,8 @@ internal fun DesktopFlashPanel(
                         }
                 )
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    OutlinedButton(onChooseFile, enabled = !state.busy && !state.starting, shape = RoundedCornerShape(8.dp), modifier = Modifier.heightIn(min = 44.dp)) {
-                        WorkspaceIcon(WorkspaceGlyph.FILE, Modifier.size(18.dp), color = if (state.busy || state.starting) qetaraMuted else qetaraTeal)
+                    OutlinedButton(onChooseFile, enabled = state.canAttachFiles, shape = RoundedCornerShape(8.dp), modifier = Modifier.heightIn(min = 44.dp)) {
+                        WorkspaceIcon(WorkspaceGlyph.FILE, Modifier.size(18.dp), color = if (state.canAttachFiles) qetaraTeal else qetaraMuted)
                         Spacer(Modifier.width(6.dp))
                         Text("Adjuntar")
                     }
@@ -220,6 +222,10 @@ internal fun DesktopFlashPanel(
                 }
                 pasteFeedback?.let { feedback ->
                     Text(feedback, style = MaterialTheme.typography.caption, color = qetaraMuted,
+                        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
+                }
+                if (acceptingFileDrag) {
+                    Text("Suelta para adjuntar. Después podrás enviar.", style = MaterialTheme.typography.body2, color = qetaraTeal,
                         modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
                 }
                 if (state.selectedFiles.isNotEmpty()) {
@@ -251,7 +257,7 @@ internal fun DesktopFlashPanel(
                             if (state.selectedFiles.size > 3) Text("+${state.selectedFiles.size - 3} más · revisa la lista completa", style = MaterialTheme.typography.caption, color = qetaraMuted)
                         }
                     }
-                } else {
+                } else if (!acceptingFileDrag) {
                     Text("Adjunta uno o varios archivos, o arrástralos a esta ventana.", style = MaterialTheme.typography.body2, color = qetaraMuted)
                 }
                 Text("El texto y los archivos se envían por separado.", style = MaterialTheme.typography.caption, color = qetaraMuted)
@@ -355,8 +361,9 @@ internal fun DesktopFlashPanel(
 }
 
 @Composable
-private fun FlashCard(content: @Composable ColumnScope.() -> Unit) {
-    Surface(color = qetaraCanvasElevated, contentColor = qetaraInk, shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, qetaraLine)) {
+private fun FlashCard(highlighted: Boolean = false, content: @Composable ColumnScope.() -> Unit) {
+    Surface(color = qetaraCanvasElevated, contentColor = qetaraInk, shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(if (highlighted) 2.dp else 1.dp, if (highlighted) qetaraTeal else qetaraLine)) {
         Column(Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp), content = content)
     }
 }

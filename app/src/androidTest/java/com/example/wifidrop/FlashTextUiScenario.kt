@@ -6,6 +6,7 @@ import android.content.ClipData
 import android.content.ClipDescription
 import android.content.ClipboardManager
 import android.content.Intent
+import android.graphics.BitmapFactory
 import android.graphics.Rect
 import android.graphics.RectF
 import android.os.Bundle
@@ -17,6 +18,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.rememberTextMeasurer
@@ -36,8 +38,9 @@ import org.json.JSONArray
 internal class FlashTextUiScenario(private val instrumentation: Instrumentation) {
     private val ui = MobileUiScenarioSupport(instrumentation)
     private var actionCharacterBounds = emptyMap<String, List<RectF>>()
+    private var primaryActionColor = 0
 
-    fun run() {
+    fun run(fileSendOnly: Boolean = false) {
         val result = Bundle()
         val original = FlashAndroidRuntime.state.value
         val checks = mutableListOf<String>()
@@ -51,9 +54,11 @@ internal class FlashTextUiScenario(private val instrumentation: Instrumentation)
                 "Close Flash and finish imports before this isolated fixture"
             }
             val context = instrumentation.targetContext
+            val scenario = if (fileSendOnly) "flash-file-send-ui" else "flash-text-ui"
             directory = File(context.getExternalFilesDir(null) ?: context.cacheDir,
-                "qa/flash-text-ui-${System.currentTimeMillis()}").apply { check(mkdirs()) }
+                "qa/$scenario-${System.currentTimeMillis()}").apply { check(mkdirs()) }
             result.putString("output_directory", directory.absolutePath)
+            result.putString("scenario", scenario)
             result.putString("effective_language", context.resources.configuration.locales.toLanguageTags())
             val now = System.currentTimeMillis()
             val peer = FlashPeer("qa-peer", "Equipo QA", "192.0.2.20", 8989, now + 600_000)
@@ -65,6 +70,12 @@ internal class FlashTextUiScenario(private val instrumentation: Instrumentation)
             val host = instrumentation.startActivitySync(Intent(context, FlashActivity::class.java)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) as FlashActivity
             activity = host
+            if (fileSendOnly) {
+                val attachment = File(directory, "archivo-qa.txt").apply { writeText("Adjunto sintético de interfaz.") }
+                assertFileSendReadiness(host, peer, attachment, directory, checks)
+                result.putString("result", "PASS")
+                return
+            }
             assertActionVisible(appString(R.string.flash_attach_files), ui.visibleAppFrame(host), host, enabled = true)
             ui.assertInside(appString(R.string.flash_choose_receiver), ui.visibleAppFrame(host))
             checks += "attach_visible_and_enabled_before_choosing_receiver_without_scroll"
@@ -125,6 +136,7 @@ internal class FlashTextUiScenario(private val instrumentation: Instrumentation)
 
             val attachment = File(directory, "archivo-qa.txt").apply { writeText("Adjunto sintético de interfaz.") }
             assertRecipientTransitions(host, peer, attachment, directory, checks)
+            assertFileSendReadiness(host, peer, attachment, directory, checks)
             for (scale in listOf(1f, 1.6f)) {
                 instrumentation.runOnMainSync {
                     FlashAndroidRuntime.update { it.copy(selectedFiles = listOf(attachment), textDraft = SENT_TEXT,
@@ -169,8 +181,10 @@ internal class FlashTextUiScenario(private val instrumentation: Instrumentation)
             directory?.let { File(it, "manifest.json").writeText(JSONObject()
                 .put("source", "Production FlashActivity with process-only synthetic state")
                 .put("network", "none; transfer success is tested separately")
+                .put("scenario", result.getString("scenario"))
                 .put("effective_language", result.getString("effective_language"))
-                .put("font_scales", listOf(1f, 1.6f)).put("persistent_preferences_changed", false)
+                .put("font_scales", if (fileSendOnly) listOf(1f) else listOf(1f, 1.6f))
+                .put("persistent_preferences_changed", false)
                 .put("result", result.getString("result")).put("checks", checks)
                 .put("assertions", ui.assertions).put("captures", ui.captures).toString(2)) }
             instrumentation.runOnMainSync {
@@ -273,6 +287,85 @@ internal class FlashTextUiScenario(private val instrumentation: Instrumentation)
         }
     }
 
+    private fun assertFileSendReadiness(
+        host: FlashActivity, peer: FlashPeer, attachment: File, directory: File, checks: MutableList<String>
+    ) {
+        val saved = FlashAndroidRuntime.state.value
+        val files = listOf(attachment) + (2..5).map { number ->
+            File(directory, "adjunto-$number.txt").apply { writeText("Adjunto sintético $number.") }
+        }
+        val label = appQuantityString(R.plurals.flash_send_files, files.size, files.size)
+        fun fixture(draft: String = "", receiver: FlashPeer? = peer, attached: List<File> = files,
+                    sending: Boolean = false, importing: Boolean = false) {
+            instrumentation.runOnMainSync {
+                FlashAndroidRuntime.update { saved.copy(selectedPeer = receiver, selectedFiles = attached,
+                    textDraft = draft, sendingText = sending, importing = importing, results = emptyList()) }
+            }
+            render(host, 1f)
+        }
+        fun assertState(name: String, enabled: Boolean, textEnabled: Boolean, sending: Boolean = false) {
+            val textLabel = appString(if (sending) R.string.flash_sending_text else R.string.flash_send_text)
+            var previous = ""
+            var stable = 0
+            ui.await("file/text send readiness: $name") {
+                val filesAction = actionFor(label)
+                val textAction = actionFor(textLabel)
+                val current = if (filesAction != null && textAction != null &&
+                    filesAction.isEnabled == enabled && textAction.isEnabled == textEnabled)
+                    ui.bounds(filesAction).flattenToString() + ":" + ui.bounds(textAction).flattenToString() else ""
+                stable = if (current.isNotEmpty() && current == previous) stable + 1 else 0
+                previous = current
+                stable >= 2
+            }
+            val frame = ui.visibleAppFrame(host)
+            assertActionVisible(label, frame, host, enabled)
+            assertActionVisible(textLabel, frame, host, textEnabled)
+            val bounds = ui.bounds(checkNotNull(actionFor(label)))
+            ui.capture(host, directory, name)
+            val capture = checkNotNull(BitmapFactory.decodeFile(File(directory, "$name.png").absolutePath))
+            try {
+                // Sample the solid interior beside the centered label, away from rounded corners.
+                val actual = capture.getPixel(bounds.left - frame.left + bounds.width() / 10,
+                    bounds.centerY() - frame.top)
+                check((actual == primaryActionColor) == enabled) {
+                    "File send '$name' must use the theme primary fill only when enabled: " +
+                        "actual=${Integer.toHexString(actual)}, primary=${Integer.toHexString(primaryActionColor)}"
+                }
+                ui.assertions.put(JSONObject().put("check", "file_send_enabled_theme_fill")
+                    .put("state", name).put("enabled", enabled).put("text_enabled", textEnabled)
+                    .put("file_count", files.size).put("actual_argb", Integer.toHexString(actual))
+                    .put("primary_argb", Integer.toHexString(primaryActionColor)))
+            } finally { capture.recycle() }
+            checks += name
+        }
+        try {
+            fixture(attached = emptyList())
+            ui.await("no file send action without attachments") {
+                ui.matching(label) == null && ui.matching(appQuantityString(R.plurals.flash_send_files, 0, 0)) == null &&
+                    actionFor(appString(R.string.flash_send_text))?.isEnabled == false
+            }
+            checks += "file_send_absent_without_attachments"
+
+            fixture()
+            assertState("file-send-five-ready-empty-draft", enabled = true, textEnabled = false)
+            fixture(draft = SENT_TEXT)
+            assertState("file-send-five-ready-with-draft", enabled = true, textEnabled = true)
+            fixture(receiver = null)
+            assertState("file-send-disabled-without-receiver", enabled = false, textEnabled = false)
+            fixture(draft = SENT_TEXT, sending = true)
+            assertState("file-send-disabled-while-busy", enabled = false, textEnabled = false, sending = true)
+            fixture(importing = true)
+            ui.await("file send hidden until import finishes") {
+                ui.matching(label) == null && ui.matching(appString(R.string.flash_preparing_files)) != null &&
+                    actionFor(appString(R.string.flash_send_text))?.isEnabled == false
+            }
+            checks += "file_send_hidden_while_importing"
+        } finally {
+            instrumentation.runOnMainSync { FlashAndroidRuntime.update { saved } }
+            render(host, 1f)
+        }
+    }
+
     private fun assertRecipientTransitions(
         host: FlashActivity, first: FlashPeer, attachment: File, directory: File, checks: MutableList<String>
     ) {
@@ -366,9 +459,8 @@ internal class FlashTextUiScenario(private val instrumentation: Instrumentation)
     }
 
     private fun assertActionVisible(text: String, frame: Rect, activity: Activity, enabled: Boolean? = null) {
-        var node: AccessibilityNodeInfo? = ui.assertInside(text, frame)
-        while (node != null && !node.isClickable) node = node.parent
-        val action = checkNotNull(node) { "Missing action for '$text'" }
+        ui.assertInside(text, frame)
+        val action = checkNotNull(actionFor(text)) { "Missing action for '$text'" }
         val bounds = ui.bounds(action)
         val minTouch = (48 * activity.resources.displayMetrics.density).toInt()
         check(frame.contains(bounds) && bounds.height() >= minTouch && bounds.width() >= minTouch) {
@@ -377,14 +469,30 @@ internal class FlashTextUiScenario(private val instrumentation: Instrumentation)
         if (enabled != null) check(action.isEnabled == enabled) { "Unexpected enabled state for '$text'" }
     }
 
+    private fun actionFor(text: String): AccessibilityNodeInfo? {
+        var node = ui.matching(text)
+        while (node != null && node.refresh()) {
+            // Disabled Compose buttons retain their Button role but need not expose CLICK.
+            if (node.isClickable || node.className?.toString() == "android.widget.Button") return node
+            node = node.parent
+        }
+        return null
+    }
+
     private fun assertComposerVisible(activity: Activity) {
         // A remount and an IME transition both update Compose layout and accessibility separately.
         // Require repeated identical bounds before checking glyphs; a frame being idle is not enough.
         var previous = ""
         var stableSamples = 0
-        ui.await("composer layout stable") {
-            val bounds = listOf(appString(R.string.flash_attach_files), appString(R.string.flash_paste), appString(R.string.flash_send_text), appQuantityString(R.plurals.flash_send_files, 1, 1)).map { text ->
-                ui.matching(text)?.let { ui.bounds(it).flattenToString() }
+        val actions = listOf(appString(R.string.flash_attach_files), appString(R.string.flash_paste),
+            appString(R.string.flash_send_text), appQuantityString(R.plurals.flash_send_files, 1, 1))
+        ui.await("composer layout stable", timeoutMs = 8_000) {
+            // Read one tree per observation: four independent Binder walks consumed most of
+            // the old timeout and could mix geometry from opposite sides of an IME transition.
+            val nodes = ui.nodes()
+            val bounds = actions.map { text ->
+                nodes.firstOrNull { (it.text?.toString() == text || it.contentDescription?.toString() == text) &&
+                    it.isVisibleToUser && !ui.bounds(it).isEmpty }?.let { ui.bounds(it).flattenToString() }
             }
             val current = ui.visibleAppFrame(activity).flattenToString() + bounds.joinToString()
             stableSamples = if (bounds.none { it == null } && current == previous) stableSamples + 1 else 0
@@ -392,7 +500,7 @@ internal class FlashTextUiScenario(private val instrumentation: Instrumentation)
             stableSamples >= 3
         }
         val frame = ui.visibleAppFrame(activity)
-        for (action in listOf(appString(R.string.flash_attach_files), appString(R.string.flash_paste), appString(R.string.flash_send_text), appQuantityString(R.plurals.flash_send_files, 1, 1))) {
+        for (action in actions) {
             assertActionVisible(action, frame, activity, enabled = true)
         }
         for ((text, glyphs) in actionCharacterBounds) {
@@ -408,7 +516,10 @@ internal class FlashTextUiScenario(private val instrumentation: Instrumentation)
                 if (validSamples >= 2) break
                 SystemClock.sleep(100)
                 instrumentation.waitForIdleSync()
-            } while (SystemClock.uptimeMillis() < deadline)
+                // A successful accessibility read may itself consume the retry window on a
+                // loaded emulator. Always allow its confirming sample; a failed confirmation
+                // still fails after the deadline, with the same per-glyph visibility checks.
+            } while (validSamples == 1 || SystemClock.uptimeMillis() < deadline)
             recordCharacterGeometry(text, glyphs)
             if (validSamples < 2) throw checkNotNull(lastFailure) { "Text layout did not settle: '$text'" }
         }
@@ -453,6 +564,7 @@ internal class FlashTextUiScenario(private val instrumentation: Instrumentation)
                 val density = LocalDensity.current
                 CompositionLocalProvider(LocalDensity provides Density(density.density, scale)) {
                     QetaraTheme {
+                        val primaryColor = MaterialTheme.colorScheme.primary.toArgb()
                         val measurer = rememberTextMeasurer()
                         val glyphs = listOf(appString(R.string.flash_send_text), appQuantityString(R.plurals.flash_send_files, 1, 1)).associateWith { label ->
                             val layout = measurer.measure(AnnotatedString(label),
@@ -461,7 +573,7 @@ internal class FlashTextUiScenario(private val instrumentation: Instrumentation)
                                 layout.getBoundingBox(index).let { RectF(it.left, it.top, it.right, it.bottom) }
                             }
                         }
-                        SideEffect { actionCharacterBounds = glyphs }
+                        SideEffect { actionCharacterBounds = glyphs; primaryActionColor = primaryColor }
                         ProvidePrivateClipboard {
                             key(scale) { FlashScreen(activity, onBack = activity::finish) }
                         }

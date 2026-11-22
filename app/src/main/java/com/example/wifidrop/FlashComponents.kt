@@ -191,7 +191,7 @@ internal fun FlashTextComposer(
             }
         }
         if (selectedFileCount > 0 && !importing) {
-            OutlinedButton(onClick = onSendFiles, enabled = !busy && selectedPeer != null,
+            Button(onClick = onSendFiles, enabled = !busy && selectedPeer != null,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp), shape = RoundedCornerShape(16.dp)) {
                 Text(pluralStringResource(R.plurals.flash_send_files, selectedFileCount, selectedFileCount),
                     modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)

@@ -136,15 +136,8 @@ import kr.jclab.noise.protocol.CipherState
 import kr.jclab.noise.protocol.HandshakeState
 import kr.jclab.noise.protocol.Noise
 import java.awt.Desktop
-import java.awt.datatransfer.DataFlavor
 import java.awt.Toolkit
 import java.awt.datatransfer.StringSelection
-import java.awt.dnd.DnDConstants
-import java.awt.dnd.DropTarget
-import java.awt.dnd.DropTargetAdapter
-import java.awt.dnd.DropTargetDragEvent
-import java.awt.dnd.DropTargetDropEvent
-import java.awt.dnd.DropTargetEvent
 import java.io.BufferedInputStream
 import java.io.BufferedOutputStream
 import java.io.ByteArrayInputStream
@@ -1781,17 +1774,18 @@ private fun runDesktopGui(cli: CliArgs) {
 
         fun selectSendFile(file: File, source: String) = selectSendFiles(listOf(file), source)
 
-        fun handleDroppedFiles(files: List<File>) {
+        fun handleDroppedFiles(files: List<File>): Boolean {
             if (showFlash) {
-                flashController.chooseDroppedFiles(files)
-                return
+                return flashController.chooseDroppedFiles(files)
             }
+            if (activeSendCancellation != null) return false
             if (files.none { it.exists() && it.isFile && it.canRead() }) {
                 notice = "No se encontró un archivo. Para enviar una carpeta, comprímela primero."
                 appendLog(notice!!, isError = true)
-                return
+                return false
             }
             selectSendFiles(files, "Archivos soltados")
+            return true
         }
 
         fun selectChatAttachment(file: File, source: String) {
@@ -2810,63 +2804,7 @@ private fun runDesktopGui(cli: CliArgs) {
                     minOf(800, (availableWindowBounds.width - 32).coerceAtLeast(640)),
                     minOf(620, (availableWindowBounds.height - 32).coerceAtLeast(480))
                 )
-                val previousDropTarget = window.dropTarget
-                val fileDropTarget = DropTarget(
-                    window,
-                    object : DropTargetAdapter() {
-                        override fun dragEnter(event: DropTargetDragEvent) {
-                            if (event.isDataFlavorSupported(DataFlavor.javaFileListFlavor)) {
-                                isFileDragActive = true
-                                event.acceptDrag(DnDConstants.ACTION_COPY)
-                            } else {
-                                event.rejectDrag()
-                            }
-                        }
-
-                        override fun dragOver(event: DropTargetDragEvent) {
-                            if (event.isDataFlavorSupported(DataFlavor.javaFileListFlavor)) {
-                                isFileDragActive = true
-                                event.acceptDrag(DnDConstants.ACTION_COPY)
-                            } else {
-                                event.rejectDrag()
-                            }
-                        }
-
-                        override fun dragExit(event: DropTargetEvent) {
-                            isFileDragActive = false
-                        }
-
-                        override fun drop(event: DropTargetDropEvent) {
-                            isFileDragActive = false
-                            if (!event.isDataFlavorSupported(DataFlavor.javaFileListFlavor)) {
-                                event.rejectDrop()
-                                return
-                            }
-
-                            try {
-                                event.acceptDrop(DnDConstants.ACTION_COPY)
-                                val droppedFiles = (
-                                    event.transferable
-                                        .getTransferData(DataFlavor.javaFileListFlavor) as? List<*>
-                                    ).orEmpty().filterIsInstance<File>()
-                                handleDroppedFiles(droppedFiles)
-                                event.dropComplete(droppedFiles.isNotEmpty())
-                            } catch (error: Exception) {
-                                appendLog(
-                                    "No se pudo leer el archivo soltado: ${error.message ?: error::class.java.simpleName}",
-                                    isError = true
-                                )
-                                event.dropComplete(false)
-                            }
-                        }
-                    }
-                )
-                onDispose {
-                    isFileDragActive = false
-                    if (window.dropTarget === fileDropTarget) {
-                        window.dropTarget = previousDropTarget
-                    }
-                }
+                onDispose { isFileDragActive = false }
             }
             MaterialTheme(colors = qetaraDesktopColors, typography = qetaraTypography, shapes = qetaraShapes) {
                 val actions = DesktopWorkspaceActions(
@@ -2960,6 +2898,16 @@ private fun runDesktopGui(cli: CliArgs) {
                     onOpenSource = { runCatching { openDeveloperGithub() }.onFailure { notice = "No se pudo abrir GitHub en el navegador." } }
                 )
                 DesktopWorkspace(
+                    modifier = Modifier.desktopFileDropTarget(
+                        enabled = if (showFlash) flashController.state.canAttachFiles else activeSendCancellation == null,
+                        onDragActiveChange = { isFileDragActive = it },
+                        onFilesDropped = ::handleDroppedFiles,
+                        onFailure = { error ->
+                            if (showFlash) flashController.fileDropFailed()
+                            else notice = "No se pudieron leer los archivos soltados. Vuelve a arrastrarlos o usa Elegir archivo."
+                            appendLog("No se pudieron leer los archivos soltados: ${error.message ?: error::class.java.simpleName}", isError = true)
+                        }
+                    ),
                     state = DesktopWorkspaceState(
                         token = tokenText, pin = pinText, deviceName = deviceLabelText,
                         outputDirectory = outputDirText, host = hostText,
@@ -3046,6 +2994,7 @@ private fun runDesktopGui(cli: CliArgs) {
                     flashContent = {
                         DesktopFlashPanel(
                             controller = flashController,
+                            isFileDragActive = isFileDragActive,
                             deviceName = deviceLabelText,
                             localAddresses = localNetworkEndpoints.map { it.address },
                             onBack = {

@@ -19,6 +19,119 @@ class DesktopFlashControllerTest {
     @get:Rule val temporary = TemporaryFolder()
 
     @Test
+    fun droppedFileCanBePreparedWithoutAReceiverAndIsSentOnlyByExplicitAction() {
+        Fixture(autoSelectPeer = false).use { fixture ->
+            val file = temporary.newFile("arrastrado ñ.txt").apply { writeText("Original intacto") }
+            onEdt {
+                fixture.controller.updateTextDraft(PREPARED_DRAFT)
+                assertTrue(fixture.controller.chooseDroppedFiles(listOf(file)))
+                fixture.controller.send()
+            }
+            assertNull(fixture.state().selectedPeer)
+            assertEquals(listOf(file), fixture.state().selectedFiles)
+            assertEquals(PREPARED_DRAFT, fixture.state().textDraft)
+            assertTrue(fixture.transport.batches.isEmpty())
+            onEdt { fixture.controller.choosePeer(fixture.transport.peer) }
+            assertTrue(fixture.transport.batches.isEmpty())
+            onEdt { fixture.controller.send() }
+            fixture.await { !sendPending && transfers.isNotEmpty() }
+            assertEquals(listOf(listOf(file)), fixture.transport.batches.toList())
+            assertEquals(PREPARED_DRAFT, fixture.state().textDraft)
+            assertEquals("Original intacto", file.readText())
+        }
+    }
+
+    @Test
+    fun droppedFilesAppendAndDeduplicateWhilePreservingTheDraftAndOriginalFiles() {
+        Fixture(autoSelectPeer = false).use { fixture ->
+            val existing = fixture.prepareDraftAndFile()
+            val first = temporary.newFile("uno.txt").apply { writeText("Uno") }
+            val second = temporary.newFile("dos.txt").apply { writeText("Dos") }
+            val directory = temporary.newFolder("carpeta-no-enviable")
+            onEdt {
+                assertTrue(fixture.controller.chooseDroppedFiles(listOf(first, directory, second, existing, first)))
+            }
+            assertEquals(listOf(existing, first, second), fixture.state().selectedFiles)
+            assertEquals(PREPARED_DRAFT, fixture.state().textDraft)
+            assertEquals("Uno", first.readText())
+            assertEquals("Dos", second.readText())
+            assertTrue(fixture.state().status.contains("se omitieron 1"))
+            assertTrue(fixture.transport.batches.isEmpty())
+        }
+    }
+
+    @Test
+    fun droppingBeforeActivationRetainsFilesWhenFlashStarts() {
+        Fixture(autoStart = false).use { fixture ->
+            val file = temporary.newFile()
+            onEdt {
+                assertTrue(fixture.controller.state.canAttachFiles)
+                assertTrue(fixture.controller.chooseDroppedFiles(listOf(file)))
+                fixture.controller.start("Test")
+            }
+            fixture.await { session.active && session.peers.isNotEmpty() }
+            assertEquals(listOf(file), fixture.state().selectedFiles)
+            assertNull(fixture.state().selectedPeer)
+            assertTrue(fixture.transport.batches.isEmpty())
+        }
+    }
+
+    @Test
+    fun invalidOrUnreadableDropsKeepPreparedContentAndReportFailure() {
+        Fixture().use { fixture ->
+            val existing = fixture.prepareDraftAndFile()
+            val directory = temporary.newFolder()
+            val missing = File(temporary.root, "missing.txt")
+            for (files in listOf(emptyList(), listOf(directory), listOf(missing))) {
+                onEdt { assertFalse(fixture.controller.chooseDroppedFiles(files)) }
+                assertTrue(fixture.state().error)
+                fixture.assertPreparedContent(existing)
+            }
+            onEdt { fixture.controller.fileDropFailed() }
+            assertTrue(fixture.state().error)
+            assertTrue(fixture.state().status.contains("usa Adjuntar"))
+            fixture.assertPreparedContent(existing)
+        }
+    }
+
+    @Test
+    fun busyTransferRejectsDropsWithoutChangingPreparedContentOrSubmittingAgain() {
+        Fixture().use { fixture ->
+            val existing = fixture.prepareDraftAndFile()
+            val extra = temporary.newFile("no-reemplazar.txt")
+            onEdt { fixture.controller.send() }
+            fixture.await { !sendPending && transfers.isNotEmpty() }
+            val before = fixture.state()
+            onEdt {
+                assertFalse(fixture.controller.state.canAttachFiles)
+                assertFalse(fixture.controller.chooseDroppedFiles(listOf(extra)))
+            }
+            assertEquals(before, fixture.state())
+            assertEquals(listOf(existing), fixture.state().selectedFiles)
+            assertEquals(PREPARED_DRAFT, fixture.state().textDraft)
+            assertEquals(listOf(listOf(existing)), fixture.transport.batches.toList())
+        }
+    }
+
+    @Test
+    fun aDroppedFileRemovedBeforeSendingDoesNotDiscardTheDraftOrStartATransfer() {
+        Fixture().use { fixture ->
+            val file = temporary.newFile("removed.txt")
+            onEdt {
+                fixture.controller.updateTextDraft(PREPARED_DRAFT)
+                assertTrue(fixture.controller.chooseDroppedFiles(listOf(file)))
+            }
+            assertTrue(file.delete())
+            onEdt { fixture.controller.send() }
+            assertEquals(listOf(file), fixture.state().selectedFiles)
+            assertEquals(PREPARED_DRAFT, fixture.state().textDraft)
+            assertTrue(fixture.state().error)
+            assertFalse(fixture.state().busy)
+            assertTrue(fixture.transport.batches.isEmpty())
+        }
+    }
+
+    @Test
     fun activationFindsReceiversWithoutAManualSearch() {
         Fixture().use { fixture ->
             assertEquals(1, fixture.transport.discoverCalls.get())
@@ -491,6 +604,7 @@ class DesktopFlashControllerTest {
 
     private inner class Fixture(
         autoStart: Boolean = true,
+        autoSelectPeer: Boolean = true,
         clipboard: DesktopFlashClipboard = RecordingClipboard(),
         configureTransport: (FakeTransport) -> Unit = {}
     ) : AutoCloseable {
@@ -505,7 +619,7 @@ class DesktopFlashControllerTest {
             if (autoStart) {
                 onEdt { controller.start("Test") }
                 await { session.active && session.peers.isNotEmpty() }
-                onEdt { controller.choosePeer(transport.peer) }
+                if (autoSelectPeer) onEdt { controller.choosePeer(transport.peer) }
             }
         }
 

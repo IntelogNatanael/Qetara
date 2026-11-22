@@ -47,6 +47,7 @@ internal data class DesktopFlashUiState(
     val error: Boolean = false
 ) {
     val busy: Boolean get() = sendPending || batchSending || session.operations.isNotEmpty() || transfers.any { it.busy }
+    val canAttachFiles: Boolean get() = !starting && !busy
     val selectedFile: File? get() = selectedFiles.firstOrNull()
     // A discovery refresh may update the label or expiry, but must not silently change the destination.
     val selectedPeer: FlashPeer? get() = receiverSelection?.let { selected ->
@@ -167,7 +168,7 @@ internal class DesktopFlashController(
     fun chooseFile(file: File) = chooseFiles(listOf(file))
 
     fun chooseFiles(files: List<File>) {
-        if (state.busy) return
+        if (!state.canAttachFiles) return
         if (files.isEmpty()) return
         val readable = files.filter { it.isFile && it.canRead() }
         if (readable.isEmpty()) {
@@ -249,13 +250,18 @@ internal class DesktopFlashController(
         beginOutgoing(emptyList(), peer, OutgoingText(current.textDraft))
     }
 
-    fun chooseDroppedFiles(files: List<File>) {
-        if (state.busy) return
+    fun chooseDroppedFiles(files: List<File>): Boolean {
+        if (!state.canAttachFiles) return false
         if (files.none { it.isFile && it.canRead() }) {
             state = state.copy(status = "Suelta un archivo. Para compartir una carpeta, comprímela primero.", error = true)
-            return
+            return false
         }
         chooseFiles(files)
+        return true
+    }
+
+    fun fileDropFailed() {
+        state = state.copy(status = "No se pudieron leer los archivos soltados. Vuelve a arrastrarlos o usa Adjuntar.", error = true)
     }
 
     fun choosePeer(peer: FlashPeer) {

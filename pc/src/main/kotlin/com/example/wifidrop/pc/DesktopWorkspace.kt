@@ -116,7 +116,8 @@ internal fun DesktopWorkspace(
     activityContent: @Composable (Modifier) -> Unit,
     flashVisible: Boolean = false,
     flashContent: @Composable () -> Unit = {},
-    initialTab: WorkspaceTab = WorkspaceTab.SHARE
+    initialTab: WorkspaceTab = WorkspaceTab.SHARE,
+    modifier: Modifier = Modifier
 ) {
     var selectedTab by remember { mutableStateOf(initialTab) }
     var showLicenses by remember { mutableStateOf(false) }
@@ -126,7 +127,7 @@ internal fun DesktopWorkspace(
         actions.onChatVisibilityChange(selectedTab == WorkspaceTab.CHAT)
         pageScroll.scrollTo(0)
     }
-    Surface(color = qetaraCanvas, modifier = Modifier.fillMaxSize()) {
+    Surface(color = qetaraCanvas, modifier = modifier.fillMaxSize()) {
         BoxWithConstraints(Modifier.fillMaxSize()) {
             val expandedNavigation = maxWidth >= 1040.dp
             Row(Modifier.fillMaxSize()) {
