@@ -76,8 +76,11 @@ tasks.register<JavaExec>("designPreview") {
     mainClass.set("com.example.wifidrop.pc.DesktopDesignPreview")
     workingDir(rootProject.projectDir)
     args(
-        rootProject.layout.projectDirectory.dir(".local/design-review").asFile.absolutePath,
-        providers.gradleProperty("previewScenario").getOrElse("all")
+        providers.gradleProperty("previewOutput").getOrElse(rootProject.layout.projectDirectory.dir(".local/design-review").asFile.absolutePath),
+        providers.gradleProperty("previewScenario").getOrElse("all"),
+        providers.gradleProperty("previewLocale").getOrElse(""),
+        providers.gradleProperty("previewFontScale").getOrElse("1"),
+        providers.gradleProperty("previewStandalone").getOrElse("false")
     )
     systemProperty("java.awt.headless", "true")
 }

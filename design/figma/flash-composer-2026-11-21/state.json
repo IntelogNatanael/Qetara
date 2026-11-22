@@ -1,0 +1,156 @@
+{
+  "pageId": "27:63",
+  "reviewId": "28:505",
+  "screens": [
+    {
+      "id": "28:511",
+      "name": "PC · ES · Message and files",
+      "width": 1040,
+      "height": 844
+    },
+    {
+      "id": "28:586",
+      "name": "Android · ES · Message and files",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "28:658",
+      "name": "PC · EN · Message and files",
+      "width": 1040,
+      "height": 844
+    },
+    {
+      "id": "28:733",
+      "name": "Android · EN · Message and files",
+      "width": 390,
+      "height": 844
+    }
+  ],
+  "components": [
+    {
+      "id": "28:460",
+      "name": "Flash/Button/PC/Primary"
+    },
+    {
+      "id": "28:462",
+      "name": "Flash/Button/PC/Secondary"
+    },
+    {
+      "id": "28:464",
+      "name": "Flash/Button/PC/Text"
+    },
+    {
+      "id": "28:466",
+      "name": "Flash/Button/Android/Primary"
+    },
+    {
+      "id": "28:468",
+      "name": "Flash/Button/Android/Secondary"
+    },
+    {
+      "id": "28:470",
+      "name": "Flash/Button/Android/Text"
+    },
+    {
+      "id": "28:472",
+      "name": "Flash/Receiver"
+    },
+    {
+      "id": "28:480",
+      "name": "Flash/File row"
+    },
+    {
+      "id": "28:488",
+      "name": "Flash/Editor"
+    },
+    {
+      "id": "28:491",
+      "name": "Flash/Session summary"
+    },
+    {
+      "id": "28:497",
+      "name": "Flash/Activity text"
+    }
+  ],
+  "icons": [
+    {
+      "id": "28:447",
+      "name": "Flash/Icon/Flash"
+    },
+    {
+      "id": "28:450",
+      "name": "Flash/Icon/File"
+    },
+    {
+      "id": "28:453",
+      "name": "Flash/Icon/Devices"
+    },
+    {
+      "id": "28:456",
+      "name": "Flash/Icon/Copy"
+    },
+    {
+      "id": "28:459",
+      "name": "Flash/Icon/Close"
+    }
+  ],
+  "counts": {
+    "TEXT": 136,
+    "FRAME": 98,
+    "INSTANCE": 80,
+    "VECTOR": 24,
+    "RECTANGLE": 2
+  },
+  "totalDescendants": 340,
+  "textCount": 136,
+  "fontMismatches": [],
+  "imageFilledNodes": [],
+  "wrapper": {
+    "width": 1518,
+    "height": 2338
+  },
+  "fileKey": "KRV4r4m1p1fSOFZOHOMV0B",
+  "sessionId": "a1557784-71df-45bd-98c2-7c373b22b85b",
+  "account": "cchoquenairat@unsa.edu.pe",
+  "team": "dev-UNSA",
+  "teamKey": "team::1687252646982958302",
+  "date": "2026-11-21",
+  "reference": "reference.png",
+  "reviewUrl": "https://www.figma.com/design/KRV4r4m1p1fSOFZOHOMV0B?node-id=28-505",
+  "validation": {
+    "finalCompositionReviewed": true,
+    "pcChildrenWithinBounds": true,
+    "receiverHeight": 64,
+    "fonts": "Inter",
+    "fontMismatches": [],
+    "imageFilledNodes": [],
+    "applicationRun": false,
+    "imeShown": false
+  },
+  "theme": {
+    "reference": "Cool light",
+    "primary": "VariableID:4:11",
+    "ink": "VariableID:4:9",
+    "muted": "VariableID:4:10",
+    "surface": "VariableID:4:7",
+    "mobileSurface": "VariableID:4:8",
+    "canvas": "VariableID:4:14",
+    "soft": "VariableID:4:12"
+  },
+  "limits": [
+    "Reference contains synthetic message, file, time and device data.",
+    "Keyboard behavior is specified, not demonstrated by a keyboard frame or application run.",
+    "No dark/warm theme screens; implementation must preserve current appearance selection.",
+    "Existing bilateral batch dialogs 4:43 and 4:76 remain unchanged; not reproduced in this page."
+  ],
+  "neutralExampleDevices": [
+    "Android 02",
+    "Laptop 1"
+  ],
+  "expandedReference": true,
+  "implementationAdaptations": {
+    "android": "Compact count/size with Review; per-file removal in full-list dialog, keeping composer usable above IME.",
+    "desktop": "Activity collapsed by default; side column only at >=1040 width; composer has an in-place status slot."
+  }
+}

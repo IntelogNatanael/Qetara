@@ -26,6 +26,7 @@ class ReceivedFileOpenInstrumentation : Instrumentation() {
     private var mobileMessagesFontScale: String? = null
     private var flashTextUi = false
     private var flashFileSendUi = false
+    private var flashComposerUi = false
     private var flashBilingualUi = false
     private var shareUi = false
     private var flashTextServiceSockets = false
@@ -43,6 +44,7 @@ class ReceivedFileOpenInstrumentation : Instrumentation() {
         mobileMessagesFontScale = arguments?.getString("font-scale")
         flashTextUi = arguments?.getString("scenario") == "flash-text-ui"
         flashFileSendUi = arguments?.getString("scenario") == "flash-file-send-ui"
+        flashComposerUi = arguments?.getString("scenario") == "flash-composer-ui"
         flashBilingualUi = arguments?.getString("scenario") == "flash-bilingual-ui"
         shareUi = arguments?.getString("scenario") == "share_ui"
         flashTextServiceSockets = arguments?.getString("scenario") == "flash-text-service-sockets"
@@ -75,8 +77,9 @@ class ReceivedFileOpenInstrumentation : Instrumentation() {
             FlashBilingualUiScenario(this, localizationExpectedLanguage).run()
             return
         }
-        if (flashTextUi || flashFileSendUi) {
-            FlashTextUiScenario(this).run(fileSendOnly = flashFileSendUi)
+        if (flashTextUi || flashFileSendUi || flashComposerUi) {
+            FlashTextUiScenario(this).run(fileSendOnly = flashFileSendUi, composerOnly = flashComposerUi,
+                expectedLanguage = localizationExpectedLanguage)
             return
         }
         if (flashApprovalPreview) {

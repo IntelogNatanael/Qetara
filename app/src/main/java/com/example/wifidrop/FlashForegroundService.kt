@@ -659,6 +659,21 @@ class FlashForegroundService : Service() {
                 state.selectedFiles.forEach { file -> file.delete(); file.parentFile?.delete() }
             }
         }
+        internal fun removeFile(file: File) {
+            val state = FlashAndroidRuntime.state.value
+            if (!state.active || current?.outgoingBatch?.active == true || state.sendingText || state.importing ||
+                state.engine?.operations?.isNotEmpty() == true || state.engine?.approvals?.isNotEmpty() == true ||
+                file !in state.selectedFiles) return
+            val remaining = state.selectedFiles.filterNot { it == file }
+            FlashAndroidRuntime.update { it.copy(selectedFiles = remaining,
+                statusText = if (remaining.isEmpty()) flashText(R.string.flash_selection_empty)
+                    else flashPlural(R.plurals.flash_files_ready_to_send, remaining.size, remaining.size)) }
+            // pending() releases only this removed URI on the next selection. Each import gets
+            // a new UUID directory, so delayed deletion cannot touch a reattached copy.
+            current?.let { service -> service.scope.launch(Dispatchers.IO) {
+                deletePreparedFlashFile(file, service.cacheDir)
+            } }
+        }
     }
 }
 

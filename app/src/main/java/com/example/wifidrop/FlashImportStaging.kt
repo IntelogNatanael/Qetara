@@ -15,3 +15,12 @@ internal suspend fun prepareFlashImportFile(
         staged += prepare()
     }
 }
+
+/** Never remove a provider original or anything outside one private outgoing import directory. */
+internal fun deletePreparedFlashFile(file: File, cacheDir: File): Boolean = runCatching {
+    val root = File(cacheDir, "flash-outgoing").canonicalFile
+    val prepared = file.canonicalFile
+    val directory = prepared.parentFile ?: return@runCatching false
+    if (directory.parentFile != root || !prepared.isFile) return@runCatching false
+    prepared.delete().also { deleted -> if (deleted) directory.delete() }
+}.getOrDefault(false)

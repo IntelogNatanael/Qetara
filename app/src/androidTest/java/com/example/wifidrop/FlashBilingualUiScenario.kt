@@ -150,6 +150,9 @@ internal class FlashBilingualUiScenario(
                 render(activity, scale, "long-$scale", mapOf(LONG_TEXT to TextStyle.BODY, copyAction to TextStyle.ACTION))
                 ui.scrollTo(LONG_TEXT)
                 ui.capture(activity, output, "long-text-${scale}x-start")
+                ui.scrollTo(appString(R.string.flash_view_text))
+                ui.click(appString(R.string.flash_view_text))
+                ui.visible(appString(R.string.flash_text_message))
                 scrollInnerToEnd(LONG_TEXT, LONG_TEXT)
                 scrollUntilActionFullyVisible(activity, copyAction)
                 ui.click(copyAction)
@@ -159,6 +162,7 @@ internal class FlashBilingualUiScenario(
                     actual == LONG_TEXT
                 }
                 ui.capture(activity, output, "long-text-${scale}x-end-copy")
+                ui.click(appString(R.string.flash_close))
                 checks += "long_text_${scale}x_scroll_endpoint_and_exact_unicode_copy"
             }
             result.putString("result", "PASS")

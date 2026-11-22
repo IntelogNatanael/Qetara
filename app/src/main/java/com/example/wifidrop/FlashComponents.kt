@@ -9,6 +9,7 @@ import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.Description
 import androidx.compose.material.icons.rounded.AttachFile
 import androidx.compose.material.icons.rounded.ContentPaste
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Devices
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -19,6 +20,8 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.TextRange
@@ -100,7 +103,8 @@ internal fun FlashTextComposer(
     onReviewFiles: () -> Unit,
     onCancelImport: () -> Unit,
     onSend: () -> Unit,
-    onSendFiles: () -> Unit
+    onSendFiles: () -> Unit,
+    selectedFileSize: String = ""
 ) {
     var editing by remember { mutableStateOf(TextFieldValue(draft, TextRange(draft.length))) }
     var inputError by remember { mutableStateOf<FlashText?>(null) }
@@ -115,6 +119,9 @@ internal fun FlashTextComposer(
     }
     val draftValidation = flashTextValidationError(draft)
     val validation = inputError ?: draftValidation
+    val hasText = draft.isNotBlank()
+    val hasFiles = selectedFileCount > 0 && !importing
+    val canSend = !busy && selectedPeer != null
     Surface(color = MaterialTheme.colorScheme.surface, contentColor = MaterialTheme.colorScheme.onSurface,
         shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
@@ -160,8 +167,12 @@ internal fun FlashTextComposer(
                 contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp)) {
                 Icon(Icons.Rounded.Description, contentDescription = null, modifier = Modifier.size(20.dp))
                 Spacer(Modifier.width(8.dp))
-                Text(pluralStringResource(R.plurals.flash_files_attached, selectedFileCount, selectedFileCount),
-                    modifier = Modifier.weight(1f), textAlign = TextAlign.Start)
+                Column(Modifier.weight(1f), horizontalAlignment = Alignment.Start) {
+                    Text(pluralStringResource(R.plurals.flash_files_attached, selectedFileCount, selectedFileCount),
+                        textAlign = TextAlign.Start)
+                    if (selectedFileSize.isNotEmpty()) Text(selectedFileSize,
+                        style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
                 Text(stringResource(R.string.flash_review), style = MaterialTheme.typography.labelMedium)
             }
         }
@@ -183,22 +194,32 @@ internal fun FlashTextComposer(
             }, modifier = Modifier.size(48.dp)) {
                 Icon(Icons.Rounded.ContentPaste, contentDescription = stringResource(R.string.flash_paste))
             }
-            Button(onClick = { inputError = null; onSend() },
-                enabled = !busy && selectedPeer != null && draft.isNotBlank() && draftValidation == null,
-                modifier = Modifier.weight(1f).heightIn(min = 48.dp), shape = RoundedCornerShape(16.dp)) {
+            if (hasFiles) {
+                Button(onClick = onSendFiles, enabled = canSend,
+                    modifier = Modifier.weight(1f).heightIn(min = 48.dp), shape = RoundedCornerShape(16.dp)) {
+                    Text(pluralStringResource(R.plurals.flash_send_files, selectedFileCount, selectedFileCount),
+                        modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
+                }
+            } else if (hasText || sendingText) {
+                Button(onClick = { inputError = null; onSend() },
+                    enabled = canSend && hasText && draftValidation == null,
+                    modifier = Modifier.weight(1f).heightIn(min = 48.dp), shape = RoundedCornerShape(16.dp)) {
+                    Text(if (sendingText) stringResource(R.string.flash_sending_text) else stringResource(R.string.flash_send_text),
+                        modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
+                }
+            }
+        }
+        if (hasFiles && (hasText || sendingText)) {
+            OutlinedButton(onClick = { inputError = null; onSend() },
+                enabled = canSend && hasText && draftValidation == null,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp), shape = RoundedCornerShape(16.dp)) {
                 Text(if (sendingText) stringResource(R.string.flash_sending_text) else stringResource(R.string.flash_send_text),
                     modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
             }
         }
-        if (selectedFileCount > 0 && !importing) {
-            Button(onClick = onSendFiles, enabled = !busy && selectedPeer != null,
-                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp), shape = RoundedCornerShape(16.dp)) {
-                Text(pluralStringResource(R.plurals.flash_send_files, selectedFileCount, selectedFileCount),
-                    modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
-            }
-        }
-        if (!compact) {
-            Text(stringResource(R.string.flash_each_send_confirmation), style = MaterialTheme.typography.bodySmall,
+        if (!compact && (hasText || hasFiles)) {
+            Text(stringResource(if (hasText && hasFiles) R.string.flash_text_files_separate
+                else R.string.flash_each_send_confirmation), style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
       }
@@ -264,46 +285,55 @@ internal fun FlashSessionSummary(
     showAddress: Boolean,
     addresses: List<String>,
     onToggleAddress: () -> Unit,
-    onStop: () -> Unit
+    onStop: () -> Unit,
+    status: String,
+    notice: String?,
+    onDismissNotice: () -> Unit,
+    notificationsAllowed: Boolean,
+    onAllowNotifications: () -> Unit
 ) {
-    FlashCard {
-        FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(stringResource(R.string.flash_active_title), style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.semantics { heading() })
-            Surface(color = MaterialTheme.colorScheme.primaryContainer,
-                contentColor = MaterialTheme.colorScheme.onPrimaryContainer, shape = RoundedCornerShape(12.dp)) {
-                Text(stringResource(R.string.flash_time_remaining, remaining), Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                    style = MaterialTheme.typography.labelMedium)
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(stringResource(R.string.flash_active_title), style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.primary, modifier = Modifier.semantics { heading() })
+                Text(stringResource(R.string.flash_time_remaining, remaining), style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-        }
-        if (awaitingApproval || transferring || showAddress) Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            if (awaitingApproval) {
-                Surface(color = MaterialTheme.colorScheme.tertiaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onTertiaryContainer, shape = RoundedCornerShape(10.dp)) {
-                    Text(stringResource(R.string.flash_verification_pending), modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                        style = MaterialTheme.typography.bodyMedium)
-                }
-            } else {
-                Text(if (transferring) stringResource(R.string.flash_transfer_in_progress) else stringResource(R.string.flash_available_to_receive),
-                    style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
-            }
-            if (showAddress) Text(deviceLabel, style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             TextButton(onClick = onToggleAddress, modifier = Modifier.heightIn(min = 48.dp)) {
-                Text(if (showAddress) stringResource(R.string.flash_hide_address) else stringResource(R.string.flash_my_address))
+                Text(stringResource(if (showAddress) R.string.flash_hide_details else R.string.flash_details))
             }
-            TextButton(onClick = onStop, modifier = Modifier.heightIn(min = 48.dp)) { Text(stringResource(R.string.flash_stop)) }
+        }
+        // A permanent status slot keeps transient progress and errors at the same location.
+        Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(notice ?: status.ifBlank {
+                stringResource(when {
+                    awaitingApproval -> R.string.flash_verification_pending
+                    transferring -> R.string.flash_transfer_in_progress
+                    else -> R.string.flash_available_to_receive
+                })
+            }, modifier = Modifier.weight(1f).semantics { liveRegion = LiveRegionMode.Polite },
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (notice != null) IconButton(onClick = onDismissNotice, modifier = Modifier.size(48.dp)) {
+                Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.flash_got_it))
+            }
         }
         if (showAddress) {
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            Text(deviceLabel, style = MaterialTheme.typography.bodyMedium)
             Text(stringResource(R.string.flash_this_device_address), style = MaterialTheme.typography.labelLarge)
             Text(addresses.ifEmpty { listOf(stringResource(R.string.flash_unavailable)) }.joinToString(" · "),
                 style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text(stringResource(R.string.flash_session_help),
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (!notificationsAllowed) {
+                Text(stringResource(R.string.flash_notifications_description), style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                TextButton(onClick = onAllowNotifications, modifier = Modifier.heightIn(min = 48.dp)) {
+                    Text(stringResource(R.string.flash_allow_notifications))
+                }
+            }
+            TextButton(onClick = onStop, modifier = Modifier.heightIn(min = 48.dp)) { Text(stringResource(R.string.flash_stop)) }
         }
     }
 }
@@ -340,8 +370,8 @@ internal fun FlashCard(content: @Composable ColumnScope.() -> Unit) {
 }
 
 @Composable
-internal fun FlashFileSummary(name: String, size: String, showFullName: Boolean = false) {
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Top) {
+internal fun FlashFileSummary(name: String, size: String, showFullName: Boolean = false, modifier: Modifier = Modifier) {
+    Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Top) {
         Surface(color = MaterialTheme.colorScheme.surfaceContainer,
             contentColor = MaterialTheme.colorScheme.onSurface, shape = RoundedCornerShape(12.dp)) {
             Icon(Icons.Rounded.Description, contentDescription = null, tint = MaterialTheme.colorScheme.primary,

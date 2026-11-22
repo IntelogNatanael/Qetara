@@ -3,6 +3,12 @@ package com.example.wifidrop.pc
 import androidx.compose.material.MaterialTheme
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material.Text
+import androidx.compose.material.Surface
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import java.util.Locale
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.ImageComposeScene
@@ -41,19 +47,26 @@ object DesktopDesignPreview {
         val output = File(args.getOrElse(0) { ".local/design-review" }).absoluteFile
         check(output.isDirectory || output.mkdirs()) { "Cannot create design preview output" }
         val requested = args.getOrElse(1) { "all" }
+        val requestedLocale = args.getOrElse(2) { "" }
+        require(requestedLocale in listOf("", "es", "en"))
+        if (requestedLocale.isNotBlank()) Locale.setDefault(Locale.forLanguageTag(requestedLocale))
+        val fontScale = args.getOrNull(3)?.toFloatOrNull() ?: 1f
+        require(fontScale in 1f..2f)
+        val standalone = args.getOrNull(4)?.toBooleanStrictOrNull() ?: false
+        val choices = requested.split(',')
         val scenarios = listOf(
             "empty", "selected", "selected-many", "send-needs-input",
             "receive-starting", "receive-stopping", "receive-expired", "flash-off", "flash-empty", "flash-no-receiver",
-            "flash-ready", "flash-text", "flash-transfer", "flash-error", "flash-expired",
+            "flash-ready", "flash-text", "flash-message", "flash-details", "flash-transfer", "flash-error", "flash-expired",
             "flash-approval-single", "flash-approval-send", "flash-approval-receive", "flash-approval-many",
             "channel-receiver-off", "channel-text-only", "channel-ready", "channel-queued", "channel-close"
         )
-        require(requested in listOf("all", "files-dialog", "flash", "flash-approvals", "channel") || requested in scenarios) { "Unknown preview scenario: $requested" }
+        require(choices.all { it in listOf("all", "files-dialog", "flash", "flash-approvals", "channel") || it in scenarios }) { "Unknown preview scenario: $requested" }
         val fixtures = createFixtures(output)
         val artifacts = mutableListOf<String>()
 
         val requestedScenarios = if (requested == "files-dialog") listOf(requested) else scenarios.filter {
-            requested == "all" || requested == it || (requested == "flash-approvals" && it.startsWith("flash-approval-")) ||
+            requested == "all" || it in choices || (requested == "flash-approvals" && it.startsWith("flash-approval-")) ||
                 (requested == "flash" && it.startsWith("flash-")) ||
                 (requested == "channel" && it.startsWith("channel-"))
         }
@@ -67,7 +80,7 @@ object DesktopDesignPreview {
             }
             try {
                 if (scenario.startsWith("flash-") && scenario != "flash-off") {
-                    onEdt { controller.start("Qetara de ejemplo") }
+                    onEdt { controller.start("Laptop 1") }
                     awaitState(controller, "activation") { session.active }
                     onEdt {
                         if (scenario in listOf("flash-ready", "flash-text", "flash-transfer", "flash-error")) controller.chooseFiles(fixtures)
@@ -75,17 +88,17 @@ object DesktopDesignPreview {
                         controller.state.session.peers.singleOrNull()?.let(controller::choosePeer)
                     }
                 }
-                if (scenario in listOf("flash-text", "flash-no-receiver", "flash-expired")) {
+                if (scenario in listOf("flash-text", "flash-message", "flash-no-receiver", "flash-expired")) {
                     onEdt {
-                        controller.updateTextDraft("Revisemos la propuesta a las 10:00.\nLleva tus comentarios 🙂")
+                        controller.updateTextDraft(flashCopy("Revisemos la propuesta a las 10:00.\nLleva tus comentarios 🙂", "Let’s review the proposal at 10:00.\nBring your comments 🙂"))
                     }
                 }
                 if (scenario == "flash-text") {
                     fixtures.forEach { checkNotNull(flashTransport).showReceivedFile(it) }
                     listOf(
-                        "De acuerdo. Ya tengo las notas.\nNos vemos a las 10:00 🙂",
-                        "Texto completo para revisar la expansión y el copiado.\n" +
-                            (1..8).joinToString("\n") { "Punto $it: coordinar la revisión del proyecto y conservar los comentarios de todo el equipo." }
+                        flashCopy("De acuerdo. Ya tengo las notas.\nNos vemos a las 10:00 🙂", "Agreed. I have the notes.\nSee you at 10:00 🙂"),
+                        flashCopy("Texto completo para revisar la expansión y el copiado.\n", "Complete text to review expansion and copying.\n") +
+                            (1..8).joinToString("\n") { flashCopy("Punto $it: coordinar la revisión del proyecto y conservar los comentarios de todo el equipo.", "Item $it: coordinate the project review and keep the entire team’s comments.") }
                     ).forEach { body ->
                         checkNotNull(flashTransport).showReceivedFile(FlashText.createFile(File(output, "fixtures"), body))
                     }
@@ -109,8 +122,10 @@ object DesktopDesignPreview {
                     else listOf(1160 to 800, 800 to 620)
                 for ((width, height) in sizes) {
                     val state = workspaceFixture(fixtures, scenario)
-                    val png = onEdt { render(width, height, scenario, state, controller) }
-                    val stem = "desktop-$scenario-${width}x$height"
+                    val png = onEdt { render(width, height, scenario, state, controller, fontScale, standalone) }
+                    val stem = "desktop-$scenario-${width}x$height" +
+                        (if (requestedLocale.isNotBlank()) "-$requestedLocale" else "") +
+                        (if (fontScale != 1f) "-font$fontScale" else "") + (if (standalone) "-standalone" else "")
                     File(output, "$stem.png").writeBytes(png)
                     val encoded = Base64.getEncoder().encodeToString(png)
                     File(output, "$stem.svg").writeText(
@@ -125,7 +140,7 @@ object DesktopDesignPreview {
             }
         }
         File(output, "design-preview-manifest.json").writeText(
-            """{"renderer":"ImageComposeScene 1.8.2 / Skia","density":1,"source":"current working tree","data":"synthetic","network":"none","svg_kind":"embedded PNG","artifacts":[${artifacts.joinToString(",")}]}""" + "\n"
+            """{"renderer":"ImageComposeScene 1.8.2 / Skia","density":1,"font_scale":$fontScale,"locale":"${Locale.getDefault().toLanguageTag()}","standalone":$standalone,"source":"current working tree","data":"synthetic","network":"none","svg_kind":"embedded PNG","artifacts":[${artifacts.joinToString(",")}]}""" + "\n"
         )
         File(output, "README-preview.md").writeText(
             """
@@ -153,7 +168,12 @@ object DesktopDesignPreview {
             The flash filter exports all Flash scenarios, including the four approval dialogs.
             The production desktop palette is currently fixed to its light colors; this tool does
             not invent a dark theme or modify the user's appearance preference.
-            A filtered run exports only its selected scenarios.
+            A filtered run exports only its selected scenarios. Comma-separated scenario names are supported.
+            This run uses locale ${Locale.getDefault().toLanguageTag()}, font scale $fontScale,
+            and standalone Flash mode $standalone. Standalone mode omits the legacy desktop shell
+            whose copy remains outside the Flash localization scope. Sample Flash drafts, received text,
+            filenames and the destination path are authored in the requested locale for these fixtures.
+            Device names are neutral. Production never translates user content or filenames.
             The empty workspace has missing-code/PIN/file/destination issues, so sending and receiving
             are disabled as in production. The selected fixture has valid synthetic credentials, a
             destination and two readable files; its issue lists are empty. Both provide nonempty
@@ -173,11 +193,18 @@ object DesktopDesignPreview {
         height: Int,
         scenario: String,
         state: DesktopWorkspaceState,
-        controller: DesktopFlashController
+        controller: DesktopFlashController,
+        fontScale: Float = 1f,
+        standalone: Boolean = false
     ): ByteArray {
-        val scene = ImageComposeScene(width, height, density = Density(1f)) {
+        val scene = ImageComposeScene(width, height, density = Density(1f, fontScale)) {
             MaterialTheme(colors = qetaraDesktopColors, typography = qetaraTypography, shapes = qetaraShapes) {
-                DesktopWorkspace(
+                if (standalone && scenario.startsWith("flash-")) {
+                    Surface(color = qetaraCanvas, modifier = Modifier.fillMaxSize()) {
+                        DesktopFlashPanel(controller, "Laptop 1", listOf("192.0.2.10"), {}, {}, {},
+                            modifier = Modifier.padding(24.dp))
+                    }
+                } else DesktopWorkspace(
                     state = state.copy(flashActive = controller.state.session.active),
                     actions = previewActions(),
                     chatContent = { openReceive ->
@@ -193,12 +220,13 @@ object DesktopDesignPreview {
                     flashContent = {
                         DesktopFlashPanel(
                             controller = controller,
-                            deviceName = "Qetara de ejemplo",
+                            deviceName = "Laptop 1",
                             localAddresses = listOf("192.0.2.10"),
                             onBack = {}, onChooseFile = {}, onChooseDirectory = {}
                         )
                     }
                 )
+                if (scenario == "flash-details") FlashSessionDialog(controller.state, "Laptop 1", listOf("192.0.2.10"), {}, {})
                 if (scenario == "files-dialog") DesktopSelectedFilesDialog(state.filePaths.map(::File), onDismiss = {})
                 if (scenario.startsWith("flash-approval-")) {
                     DesktopFlashApprovalDialog(approvalFixture(scenario), count = 1, now = 1_000L, decide = {})
@@ -227,8 +255,8 @@ object DesktopDesignPreview {
         val offerMessages = if (queued) listOf("first", "second").mapIndexed { index, id ->
             DesktopChatEntry(
                 timestamp = "10:00", scope = DesktopChatScope.GLOBAL_LAN, direction = DesktopChatDirection.INCOMING,
-                peerLabel = "Equipo de ejemplo", peerAddress = "192.0.2.20",
-                message = "\u2063QCT\u2063{\"kind\":\"file_offer\",\"scope\":\"GLOBAL_LAN\",\"offer_id\":\"$id\",\"file_name\":\"Documento ${index + 1}.txt\",\"file_size_bytes\":1024,\"sender_id\":\"preview-peer\",\"sender_label\":\"Equipo de ejemplo\",\"sender_ip\":\"192.0.2.20\",\"created_at_ms\":1000}"
+                peerLabel = "Android 02", peerAddress = "192.0.2.20",
+                message = "\u2063QCT\u2063{\"kind\":\"file_offer\",\"scope\":\"GLOBAL_LAN\",\"offer_id\":\"$id\",\"file_name\":\"Documento ${index + 1}.txt\",\"file_size_bytes\":1024,\"sender_id\":\"preview-peer\",\"sender_label\":\"Android 02\",\"sender_ip\":\"192.0.2.20\",\"created_at_ms\":1000}"
             )
         } else emptyList()
         Column {
@@ -261,13 +289,13 @@ object DesktopDesignPreview {
         val base = DesktopWorkspaceState(
             token = if (selected) "DEMO1234" else "",
             pin = if (selected) "123456" else "",
-            deviceName = "Qetara de ejemplo",
+            deviceName = "Laptop 1",
             outputDirectory = PREVIEW_RECEIVED_DIRECTORY,
             host = if (selected) "192.0.2.20" else "",
             filePaths = if (selected) selectedFiles.map { it.absolutePath } else emptyList(),
             port = "8988", retries = "3", sessionMinutes = "30",
-            localEndpoints = listOf(LocalNetworkEndpoint("Red de ejemplo", "192.0.2.10", 0)),
-            peers = if (selected) listOf(DesktopLanPeer("preview-peer", "Equipo de ejemplo", "192.0.2.20", true, true, false, 0L)) else emptyList(),
+            localEndpoints = listOf(LocalNetworkEndpoint("LAN", "192.0.2.10", 0)),
+            peers = if (selected) listOf(DesktopLanPeer("preview-peer", "Android 02", "192.0.2.20", true, true, false, 0L)) else emptyList(),
             discoveryPhase = DesktopTaskPhase.IDLE,
             discoveryStatus = if (selected) "Equipos detectados: 1."
                 else "Busca los equipos Qetara cercanos para elegir un destino.",
@@ -300,7 +328,7 @@ object DesktopDesignPreview {
             "selected-many" -> base.copy(
                 host = "192.0.2.30",
                 peers = (21..30).map { address ->
-                    DesktopLanPeer("preview-$address", "Equipo de ejemplo $address", "192.0.2.$address", true, true, false, 0L)
+                    DesktopLanPeer("preview-$address", "Android $address", "192.0.2.$address", true, true, false, 0L)
                 }
             )
             "send-needs-input" -> base.copy(
@@ -317,22 +345,22 @@ object DesktopDesignPreview {
 
     private fun approvalFixture(scenario: String): FlashApproval {
         val files = when (scenario) {
-            "flash-approval-single" -> listOf(FlashOfferedFile("Notas de reunión.txt", 1024L * 1024))
+            "flash-approval-single" -> listOf(FlashOfferedFile(flashCopy("Notas de reunión.txt", "Meeting notes.txt"), 1024L * 1024))
             "flash-approval-many" -> List(128) { index ->
                 FlashOfferedFile(
-                    if (index == 0) "Notas-de-la-reunión-del-proyecto-con-un-nombre-largo-para-comprobar-que-se-puede-identificar-completo-sin-recortes.txt"
-                    else "Documento ${index + 1} de la selección.pdf", (index + 1L) * 1024 * 1024
+                    if (index == 0) flashCopy("Notas-de-la-reunión-del-proyecto-con-un-nombre-largo-para-comprobar-que-se-puede-identificar-completo-sin-recortes.txt", "Project-meeting-notes-with-a-long-name-to-check-that-the-complete-name-can-be-identified-without-clipping.txt")
+                    else flashCopy("Documento ${index + 1} de la selección.pdf", "Document ${index + 1} from the selection.pdf"), (index + 1L) * 1024 * 1024
                 )
             }
             else -> listOf(
-                FlashOfferedFile("Notas de reunión.txt", 1024L * 1024),
-                FlashOfferedFile("Esquema del proyecto.pdf", 2L * 1024 * 1024),
-                FlashOfferedFile("Imagen de muestra.png", 3L * 1024 * 1024)
+                FlashOfferedFile(flashCopy("Notas de reunión.txt", "Meeting notes.txt"), 1024L * 1024),
+                FlashOfferedFile(flashCopy("Esquema del proyecto.pdf", "Project outline.pdf"), 2L * 1024 * 1024),
+                FlashOfferedFile(flashCopy("Imagen de muestra.png", "Sample image.png"), 3L * 1024 * 1024)
             )
         }
         return FlashApproval(
             requestId = "preview-approval", operationId = "preview-batch",
-            peer = FlashPeer("preview-peer", "Equipo de ejemplo", "192.0.2.20", 8989, 1_800_000L),
+            peer = FlashPeer("preview-peer", "Android 02", "192.0.2.20", 8989, 1_800_000L),
             fileName = files.first().fileName, totalBytes = files.sumOf { it.totalBytes },
             outgoing = scenario != "flash-approval-receive", verificationCode = "ABCD 2345 EF67 89AB",
             expiresAtMs = 91_000L, files = files
@@ -352,21 +380,21 @@ object DesktopDesignPreview {
     private fun createFixtures(output: File): List<File> {
         val directory = File(output, "fixtures").apply { check(isDirectory || mkdirs()) }
         return listOf(
-            File(directory, "Notas-del-proyecto.txt").apply {
-                writeText("Documento sintetico para revisar la seleccion de archivos.\n".repeat(300))
+            File(directory, flashCopy("Notas-del-proyecto.txt", "Project-notes.txt")).apply {
+                writeText(flashCopy("Documento sintetico para revisar la seleccion de archivos.\n", "Synthetic document for reviewing the file selection.\n").repeat(300))
             },
-            File(directory, "Mediciones.csv").apply {
-                writeText("muestra,valor\n" + (1..150).joinToString("\n") { "$it,${it * 3}" } + "\n")
+            File(directory, flashCopy("Mediciones.csv", "Measurements.csv")).apply {
+                writeText(flashCopy("muestra,valor\n", "sample,value\n") + (1..150).joinToString("\n") { "$it,${it * 3}" } + "\n")
             },
-            File(directory, "Notas-de-la-reunion-con-un-nombre-largo-para-verificar-la-seleccion.txt").apply { writeText("Vista de ejemplo.\n") },
-            File(directory, "Resumen.txt").apply { writeText("Resumen de ejemplo.\n") },
-            File(directory, "Copia/Resumen.txt").apply { parentFile.mkdirs(); writeText("Otro resumen de ejemplo.\n") }
+            File(directory, flashCopy("Notas-de-la-reunion-con-un-nombre-largo-para-verificar-la-seleccion.txt", "Meeting-notes-with-a-long-name-to-review-the-selection.txt")).apply { writeText(flashCopy("Vista de ejemplo.\n", "Example preview.\n")) },
+            File(directory, flashCopy("Resumen.txt", "Summary.txt")).apply { writeText(flashCopy("Resumen de ejemplo.\n", "Example summary.\n")) },
+            File(directory, flashCopy("Copia/Resumen.txt", "Copy/Summary.txt")).apply { parentFile.mkdirs(); writeText(flashCopy("Otro resumen de ejemplo.\n", "Another example summary.\n")) }
         )
     }
 
     private class PreviewFlashTransport(private val listener: FlashListener, hasReceiver: Boolean) : DesktopFlashTransport {
         private val expiry = System.currentTimeMillis() + TimeUnit.MINUTES.toMillis(30)
-        private val peer = FlashPeer("00000000-0000-4000-8000-000000000002", "Equipo de ejemplo", "192.0.2.20", 8989, expiry)
+        private val peer = FlashPeer("00000000-0000-4000-8000-000000000002", "Android 02", "192.0.2.20", 8989, expiry)
         private val active = FlashState(true, expiry, "00000000-0000-4000-8000-000000000001", 8989,
             peers = if (hasReceiver) listOf(peer) else emptyList())
         private var currentOperation: FlashOperation? = null
@@ -418,5 +446,6 @@ object DesktopDesignPreview {
         return checkNotNull(result).getOrThrow()
     }
 
-    private const val PREVIEW_RECEIVED_DIRECTORY = "/Qetara-demo/Recibidos"
+    private val PREVIEW_RECEIVED_DIRECTORY: String
+        get() = flashCopy("/Qetara-demo/Recibidos", "/Qetara-demo/Received")
 }

@@ -77,7 +77,7 @@
     <string name="flash_intro_title">Comparte en un momento</string>
     <string name="flash_keep_device">Conservar equipo</string>
     <string name="flash_keep_running">Seguir en Flash</string>
-    <string name="flash_manual_address_help">En Flash del otro equipo, abre «Mi dirección». Debe seguir activo.</string>
+    <string name="flash_manual_address_help">En Flash del otro equipo, abre «Detalles» para ver su dirección. Debe seguir activo.</string>
     <string name="flash_matches_receive">Coincide: recibir archivo</string>
     <string name="flash_matches_send">Coincide: enviar</string>
     <string name="flash_my_address">Mi dirección</string>
@@ -231,7 +231,7 @@
     <string name="flash_attach_files">Adjuntar archivos</string>
     <string name="flash_paste">Pegar</string>
     <string name="flash_sending_text">Enviando texto…</string>
-    <string name="flash_send_text">Enviar texto</string>
+    <string name="flash_send_text">Enviar mensaje</string>
     <string name="flash_each_send_confirmation">Cada envío requiere confirmación en ambos equipos.</string>
     <string name="flash_text_error_too_large">El texto no puede superar 16 KiB (16 384 bytes).</string>
     <string name="flash_text_error_invalid_unicode">El texto contiene caracteres Unicode no válidos.</string>
@@ -250,6 +250,10 @@
     <string name="flash_text_copied">Texto copiado.</string>
     <string name="flash_text_copy_failed">No se pudo copiar el texto. Puedes seleccionarlo para copiarlo.</string>
     <string name="flash_copy">Copiar</string>
+    <string name="flash_view_text">Ver texto</string>
+    <string name="flash_details">Detalles</string>
+    <string name="flash_hide_details">Ocultar detalles</string>
+    <string name="flash_remove_file">Quitar %1$s</string>
     <string name="flash_text_with_size">Texto · %1$s</string>
     <string name="flash_text_message">Mensaje de Flash</string>
     <string name="flash_text_confirm_each_send">Cada envío se confirma con la otra persona.</string>

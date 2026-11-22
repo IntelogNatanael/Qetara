@@ -40,7 +40,7 @@ internal class FlashTextUiScenario(private val instrumentation: Instrumentation)
     private var actionCharacterBounds = emptyMap<String, List<RectF>>()
     private var primaryActionColor = 0
 
-    fun run(fileSendOnly: Boolean = false) {
+    fun run(fileSendOnly: Boolean = false, composerOnly: Boolean = false, expectedLanguage: String? = null) {
         val result = Bundle()
         val original = FlashAndroidRuntime.state.value
         val checks = mutableListOf<String>()
@@ -54,22 +54,39 @@ internal class FlashTextUiScenario(private val instrumentation: Instrumentation)
                 "Close Flash and finish imports before this isolated fixture"
             }
             val context = instrumentation.targetContext
-            val scenario = if (fileSendOnly) "flash-file-send-ui" else "flash-text-ui"
+            val scenario = when {
+                fileSendOnly -> "flash-file-send-ui"
+                composerOnly -> "flash-composer-ui"
+                else -> "flash-text-ui"
+            }
             directory = File(context.getExternalFilesDir(null) ?: context.cacheDir,
                 "qa/$scenario-${System.currentTimeMillis()}").apply { check(mkdirs()) }
             result.putString("output_directory", directory.absolutePath)
             result.putString("scenario", scenario)
             result.putString("effective_language", context.resources.configuration.locales.toLanguageTags())
+            check(expectedLanguage == null || context.resources.configuration.locales[0].language == expectedLanguage) {
+                "Expected $expectedLanguage; effective ${context.resources.configuration.locales.toLanguageTags()}"
+            }
             val now = System.currentTimeMillis()
-            val peer = FlashPeer("qa-peer", "Equipo QA", "192.0.2.20", 8989, now + 600_000)
+            val peer = FlashPeer("qa-peer", "Laptop 1", "192.0.2.20", 8989, now + 600_000)
             instrumentation.runOnMainSync {
                 FlashAndroidRuntime.update { FlashAndroidState(phase = FlashAndroidPhase.ACTIVE,
                     engine = FlashState(active = true, expiresAtMs = now + 600_000, localId = "qa-local", peers = listOf(peer)),
-                    deviceLabel = "Android QA", statusText = flashText(R.string.flash_active)) }
+                    deviceLabel = "Android 01", statusText = flashText(R.string.flash_active)) }
             }
             val host = instrumentation.startActivitySync(Intent(context, FlashActivity::class.java)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) as FlashActivity
             activity = host
+            if (composerOnly) {
+                instrumentation.runOnMainSync {
+                    originalClipboard = clipboard.primaryClip
+                    clipboardSaved = true
+                }
+                val attachment = File(directory, "archivo-qa.txt").apply { writeText("Adjunto sintético de interfaz.") }
+                assertFocusedComposer(host, peer, attachment, directory, checks, clipboard)
+                result.putString("result", "PASS")
+                return
+            }
             if (fileSendOnly) {
                 val attachment = File(directory, "archivo-qa.txt").apply { writeText("Adjunto sintético de interfaz.") }
                 assertFileSendReadiness(host, peer, attachment, directory, checks)
@@ -185,7 +202,7 @@ internal class FlashTextUiScenario(private val instrumentation: Instrumentation)
                 .put("effective_language", result.getString("effective_language"))
                 .put("font_scales", if (fileSendOnly) listOf(1f) else listOf(1f, 1.6f))
                 .put("persistent_preferences_changed", false)
-                .put("result", result.getString("result")).put("checks", checks)
+                .put("result", result.getString("result")).put("failure", result.getString("failure")).put("checks", checks)
                 .put("assertions", ui.assertions).put("captures", ui.captures).toString(2)) }
             instrumentation.runOnMainSync {
                 if (clipboardSaved) {
@@ -202,6 +219,106 @@ internal class FlashTextUiScenario(private val instrumentation: Instrumentation)
             result.putInt("checks_passed", checks.size)
             instrumentation.finish(if (result.getString("result") == "PASS") Activity.RESULT_OK else Activity.RESULT_CANCELED, result)
         }
+    }
+
+    /** Focused layout/behavior check: two IME scales and one complete long-text view/copy. */
+    private fun assertFocusedComposer(
+        host: FlashActivity, peer: FlashPeer, attachment: File, directory: File,
+        checks: MutableList<String>, clipboard: ClipboardManager
+    ) {
+        for (scale in listOf(1f, 1.6f)) {
+            instrumentation.runOnMainSync {
+                FlashAndroidRuntime.update { it.copy(selectedPeer = peer, selectedFiles = listOf(attachment),
+                    textDraft = LONG_TEXT, results = emptyList(), statusText = flashText(R.string.flash_active)) }
+            }
+            render(host, scale)
+            assertComposerVisible(host)
+            ui.capture(host, directory, "composer-mixed-${scale}x")
+            ui.click(checkNotNull(ui.nodes().firstOrNull { it.isEditable && it.isVisibleToUser }))
+            ui.await("real IME visible", 7_000) { imeVisible(host) }
+            assertComposerVisible(host)
+            check(FlashAndroidRuntime.state.value.textDraft == LONG_TEXT &&
+                FlashAndroidRuntime.state.value.selectedFiles == listOf(attachment))
+            ui.capture(host, directory, "composer-keyboard-${scale}x")
+            checks += "mixed_composer_${scale}x_real_ime_editor_attach_paste_and_separate_sends_visible"
+            instrumentation.runOnMainSync {
+                WindowCompat.getInsetsController(host.window, host.window.decorView).hide(WindowInsetsCompat.Type.ime())
+            }
+            ui.await("IME hidden") { !imeVisible(host) }
+        }
+        instrumentation.runOnMainSync {
+            FlashAndroidRuntime.update { it.copy(textDraft = "", selectedFiles = emptyList(), results = listOf(
+                FlashAndroidResult("qa-long-text", "synthetic-text.txt", FlashResultKind.RECEIVED,
+                    flashText(R.string.flash_text_received_verified), textBody = LONG_TEXT))) }
+            clipboard.setPrimaryClip(ClipData.newPlainText("QA sentinel", "must change"))
+        }
+        render(host, 1f)
+        val view = appString(R.string.flash_view_text)
+        ui.scrollTo(view)
+        val preview = ui.visible(LONG_TEXT)
+        check(ui.bounds(preview).height() <= (80 * host.resources.displayMetrics.density).toInt()) {
+            "History text did not stay within its three-line preview"
+        }
+        ui.capture(host, directory, "history-long-text-preview")
+        ui.click(view)
+        ui.visible(appString(R.string.flash_text_message))
+        ui.visible(LONG_TEXT)
+        var endpoint = false
+        repeat(16) {
+            if (!endpoint) {
+                var scroll: AccessibilityNodeInfo? = ui.visible(LONG_TEXT)
+                while (scroll != null && !scroll.isScrollable) scroll = scroll.parent
+                checkNotNull(scroll) { "Full text view has no scrollable content" }
+                endpoint = !scroll.performAction(AccessibilityNodeInfo.ACTION_SCROLL_FORWARD)
+                SystemClock.sleep(120)
+                instrumentation.waitForIdleSync()
+            }
+        }
+        check(endpoint) { "Full text did not reach its scroll endpoint" }
+        ui.click(appString(R.string.flash_copy))
+        ui.await("full text copy preserves exact Unicode, newlines and trailing spaces") {
+            var exact = false
+            instrumentation.runOnMainSync {
+                val clip = clipboard.primaryClip
+                exact = clip?.getItemAt(0)?.text?.toString() == LONG_TEXT &&
+                    clip?.description?.extras?.getBoolean(ClipDescription.EXTRA_IS_SENSITIVE) == true
+            }
+            exact
+        }
+        ui.capture(host, directory, "history-full-text-end-copy")
+        ui.click(appString(R.string.flash_close))
+        checks += "long_text_three_line_preview_full_view_scroll_and_exact_private_copy"
+
+        // Copy acknowledgement must not hide a later asynchronous transfer error.
+        instrumentation.runOnMainSync {
+            FlashAndroidRuntime.update { it.copy(statusText = flashText(R.string.flash_text_error_rejected), textDraft = SENT_TEXT) }
+        }
+        val failure = appString(R.string.flash_text_error_rejected)
+        // Android's clipboard preview can temporarily own the accessibility root after the
+        // dialog closes. Wait for our visible header; never operate that SystemUI overlay.
+        ui.await("new transfer error visible after clipboard overlay", timeoutMs = 10_000) {
+            ui.matching(failure) != null && ui.matching(appString(R.string.flash_text_copied)) == null
+        }
+        check(FlashAndroidRuntime.state.value.textDraft == SENT_TEXT)
+        ui.capture(host, directory, "error-after-copy-draft-kept")
+        checks += "transfer_error_after_copy_remains_visible_and_preserves_draft"
+
+        instrumentation.runOnMainSync { FlashAndroidRuntime.update { it.copy(selectedFiles = listOf(attachment)) } }
+        ui.scrollTo(appString(R.string.flash_copy))
+        ui.click(appString(R.string.flash_copy))
+        ui.await("own-app accessibility restored after clipboard copy", timeoutMs = 10_000) {
+            ui.nodes().any { it.isEditable && it.isVisibleToUser }
+        }
+        ui.scrollTo(appString(R.string.flash_text_copied))
+        // This process-only fixture has no service: clicking the production send callback leaves
+        // the same error value in place, exercising notice clearing even without a new status echo.
+        ui.click(appQuantityString(R.plurals.flash_send_files, 1, 1))
+        ui.await("retry cannot leave copy notice covering an identical error") {
+            ui.matching(failure) != null && ui.matching(appString(R.string.flash_text_copied)) == null
+        }
+        check(FlashAndroidRuntime.state.value.textDraft == SENT_TEXT &&
+            FlashAndroidRuntime.state.value.selectedFiles == listOf(attachment))
+        checks += "file_retry_clears_copy_notice_without_requiring_a_changed_status"
     }
 
     private fun assertDraftSynchronization(
@@ -303,23 +420,25 @@ internal class FlashTextUiScenario(private val instrumentation: Instrumentation)
             }
             render(host, 1f)
         }
-        fun assertState(name: String, enabled: Boolean, textEnabled: Boolean, sending: Boolean = false) {
+        fun assertState(name: String, enabled: Boolean, textEnabled: Boolean?, sending: Boolean = false) {
             val textLabel = appString(if (sending) R.string.flash_sending_text else R.string.flash_send_text)
             var previous = ""
             var stable = 0
             ui.await("file/text send readiness: $name") {
                 val filesAction = actionFor(label)
                 val textAction = actionFor(textLabel)
-                val current = if (filesAction != null && textAction != null &&
-                    filesAction.isEnabled == enabled && textAction.isEnabled == textEnabled)
-                    ui.bounds(filesAction).flattenToString() + ":" + ui.bounds(textAction).flattenToString() else ""
+                val textMatches = if (textEnabled == null) textAction == null else textAction?.isEnabled == textEnabled
+                val current = if (filesAction != null && filesAction.isEnabled == enabled &&
+                    textMatches)
+                    ui.bounds(filesAction).flattenToString() + ":" + textAction?.let { ui.bounds(it).flattenToString() } else ""
                 stable = if (current.isNotEmpty() && current == previous) stable + 1 else 0
                 previous = current
                 stable >= 2
             }
             val frame = ui.visibleAppFrame(host)
             assertActionVisible(label, frame, host, enabled)
-            assertActionVisible(textLabel, frame, host, textEnabled)
+            if (textEnabled != null) assertActionVisible(textLabel, frame, host, textEnabled)
+            else check(ui.matching(textLabel) == null) { "Unexpected empty-draft send action" }
             val bounds = ui.bounds(checkNotNull(actionFor(label)))
             ui.capture(host, directory, name)
             val capture = checkNotNull(BitmapFactory.decodeFile(File(directory, "$name.png").absolutePath))
@@ -332,7 +451,7 @@ internal class FlashTextUiScenario(private val instrumentation: Instrumentation)
                         "actual=${Integer.toHexString(actual)}, primary=${Integer.toHexString(primaryActionColor)}"
                 }
                 ui.assertions.put(JSONObject().put("check", "file_send_enabled_theme_fill")
-                    .put("state", name).put("enabled", enabled).put("text_enabled", textEnabled)
+                    .put("state", name).put("enabled", enabled).put("text_enabled", textEnabled ?: JSONObject.NULL)
                     .put("file_count", files.size).put("actual_argb", Integer.toHexString(actual))
                     .put("primary_argb", Integer.toHexString(primaryActionColor)))
             } finally { capture.recycle() }
@@ -342,23 +461,50 @@ internal class FlashTextUiScenario(private val instrumentation: Instrumentation)
             fixture(attached = emptyList())
             ui.await("no file send action without attachments") {
                 ui.matching(label) == null && ui.matching(appQuantityString(R.plurals.flash_send_files, 0, 0)) == null &&
-                    actionFor(appString(R.string.flash_send_text))?.isEnabled == false
+                    ui.matching(appString(R.string.flash_send_text)) == null
             }
-            checks += "file_send_absent_without_attachments"
+            checks += "empty_composer_has_no_send_actions"
+
+            fixture(draft = SENT_TEXT, attached = emptyList())
+            ui.await("text-only primary send") { actionFor(appString(R.string.flash_send_text))?.isEnabled == true }
+            assertActionVisible(appString(R.string.flash_send_text), ui.visibleAppFrame(host), host, true)
+            check(ui.matching(label) == null)
+            ui.capture(host, directory, "text-only-ready")
+            checks += "text_only_has_only_message_send"
 
             fixture()
-            assertState("file-send-five-ready-empty-draft", enabled = true, textEnabled = false)
+            assertState("file-send-five-ready-empty-draft", enabled = true, textEnabled = null)
             fixture(draft = SENT_TEXT)
             assertState("file-send-five-ready-with-draft", enabled = true, textEnabled = true)
+            clickContaining(appQuantityString(R.plurals.flash_files_attached, files.size, files.size))
+            ui.visible(appString(R.string.flash_attached_files_title, files.size))
+            val removed = files.first()
+            ui.click(appString(R.string.flash_remove_file, removed.name))
+            ui.await("only chosen attachment removed") {
+                FlashAndroidRuntime.state.value.selectedFiles == files.drop(1) &&
+                    ui.matching(appString(R.string.flash_attached_files_title, files.size - 1)) != null
+            }
+            check(FlashAndroidRuntime.state.value.textDraft == SENT_TEXT && FlashAndroidRuntime.state.value.selectedPeer == peer)
+            check(files.all { it.isFile }) { "A process-only review fixture deleted a file" }
+            ui.capture(host, directory, "review-removed-one")
+            ui.click(appString(R.string.flash_close))
+            assertActionVisible(appQuantityString(R.plurals.flash_send_files, files.size - 1, files.size - 1),
+                ui.visibleAppFrame(host), host, true)
+            checks += "review_remove_one_preserves_other_files_draft_and_receiver"
             fixture(receiver = null)
-            assertState("file-send-disabled-without-receiver", enabled = false, textEnabled = false)
+            assertState("file-send-disabled-without-receiver", enabled = false, textEnabled = null)
             fixture(draft = SENT_TEXT, sending = true)
             assertState("file-send-disabled-while-busy", enabled = false, textEnabled = false, sending = true)
+            instrumentation.runOnMainSync { FlashForegroundService.removeFile(files.first()) }
+            check(FlashAndroidRuntime.state.value.selectedFiles == files)
+            checks += "busy_guard_rejects_individual_removal"
             fixture(importing = true)
             ui.await("file send hidden until import finishes") {
                 ui.matching(label) == null && ui.matching(appString(R.string.flash_preparing_files)) != null &&
-                    actionFor(appString(R.string.flash_send_text))?.isEnabled == false
+                    ui.matching(appString(R.string.flash_send_text)) == null
             }
+            instrumentation.runOnMainSync { FlashForegroundService.removeFile(files.first()) }
+            check(FlashAndroidRuntime.state.value.selectedFiles == files)
             checks += "file_send_hidden_while_importing"
         } finally {
             instrumentation.runOnMainSync { FlashAndroidRuntime.update { saved } }
@@ -369,7 +515,7 @@ internal class FlashTextUiScenario(private val instrumentation: Instrumentation)
     private fun assertRecipientTransitions(
         host: FlashActivity, first: FlashPeer, attachment: File, directory: File, checks: MutableList<String>
     ) {
-        val other = first.copy(id = "qa-other-peer", label = "Otro equipo QA", address = "192.0.2.21")
+        val other = first.copy(id = "qa-other-peer", label = "Laptop 2", address = "192.0.2.21")
         fun publishPeers(vararg peers: FlashPeer) = instrumentation.runOnMainSync {
             FlashAndroidRuntime.update { it.copy(engine = checkNotNull(it.engine).copy(peers = peers.toList())) }
         }
@@ -431,7 +577,7 @@ internal class FlashTextUiScenario(private val instrumentation: Instrumentation)
         assertPreparedContent(attachment)
         checks += "receiver_disappearance_keeps_preparation_without_fallback"
 
-        val refreshed = other.copy(label = "Otro equipo QA actualizado", expiresAtMs = other.expiresAtMs + 60_000)
+        val refreshed = other.copy(label = "Laptop 2", expiresAtMs = other.expiresAtMs + 60_000)
         publishPeers(first, refreshed)
         check(currentReceiver() == refreshed) { "Same receiver refresh did not update its visible metadata" }
         openSelector()
@@ -584,8 +730,13 @@ internal class FlashTextUiScenario(private val instrumentation: Instrumentation)
         ui.await("production Flash screen at ${scale}x") { actionCharacterBounds.size == 2 }
     }
 
-    companion object {
-        private const val SENT_TEXT = "  Hola, Perú 👋\nSegunda línea: ñ, 漢字.\n"
-        private const val RECEIVED_TEXT = "Recibido: 日本語 🚀\r\nLínea dos\n  final  "
-    }
+    private val spanish get() = instrumentation.targetContext.resources.configuration.locales[0].language == "es"
+    private val SENT_TEXT get() = if (spanish) "  Hola, Perú 👋\nSegunda línea: ñ, 漢字.\n"
+        else "  Hello, Perú 👋\nSecond line: ñ, 漢字.\n"
+    private val RECEIVED_TEXT get() = if (spanish) "Recibido: 日本語 🚀\r\nLínea dos\n  final  "
+        else "Received: 日本語 🚀\r\nSecond line\n  end  "
+    private val LONG_TEXT get() = (1..24).joinToString("\n") {
+        if (spanish) "$it. Notas de la reunión — Perú, 日本語, 👋. Espacios conservados.  "
+        else "$it. Meeting notes — Perú, 日本語, 👋. Spaces preserved.  "
+    } + if (spanish) "\nFIN — exacto.  " else "\nEND — exact.  "
 }

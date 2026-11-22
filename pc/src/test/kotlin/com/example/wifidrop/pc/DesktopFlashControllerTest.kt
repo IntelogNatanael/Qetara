@@ -55,7 +55,7 @@ class DesktopFlashControllerTest {
             assertEquals(PREPARED_DRAFT, fixture.state().textDraft)
             assertEquals("Uno", first.readText())
             assertEquals("Dos", second.readText())
-            assertTrue(fixture.state().status.contains("se omitieron 1"))
+            assertTrue(fixture.state().statusText.resolve(java.util.Locale.forLanguageTag("es")).contains("se omitieron 1"))
             assertTrue(fixture.transport.batches.isEmpty())
         }
     }
@@ -89,7 +89,7 @@ class DesktopFlashControllerTest {
             }
             onEdt { fixture.controller.fileDropFailed() }
             assertTrue(fixture.state().error)
-            assertTrue(fixture.state().status.contains("usa Adjuntar"))
+            assertTrue(fixture.state().statusText.resolve(java.util.Locale.forLanguageTag("es")).contains("usa Adjuntar"))
             fixture.assertPreparedContent(existing)
         }
     }
@@ -136,6 +136,38 @@ class DesktopFlashControllerTest {
         Fixture().use { fixture ->
             assertEquals(1, fixture.transport.discoverCalls.get())
             assertEquals(listOf(fixture.transport.peer), fixture.state().session.peers)
+        }
+    }
+
+    @Test
+    fun removingOneAttachmentKeepsDraftReceiverOtherAttachmentsAndOriginalFiles() {
+        Fixture().use { fixture ->
+            val first = fixture.prepareDraftAndFile()
+            val other = temporary.newFile("keep.txt").apply { writeText("Keep this file") }
+            onEdt {
+                fixture.controller.chooseFile(other)
+                fixture.controller.removeFile(first)
+                fixture.controller.removeFile(first) // A stale row must not remove a different file.
+            }
+            assertEquals(listOf(other), fixture.state().selectedFiles)
+            assertEquals(PREPARED_DRAFT, fixture.state().textDraft)
+            assertEquals(fixture.transport.peer, fixture.state().selectedPeer)
+            assertTrue(first.isFile)
+            assertEquals("Keep this file", other.readText())
+            assertTrue(fixture.transport.batches.isEmpty())
+        }
+    }
+
+    @Test
+    fun removingAnAttachmentDuringTransferCannotMutateTheApprovedSelection() {
+        Fixture().use { fixture ->
+            val file = fixture.prepareDraftAndFile()
+            onEdt { fixture.controller.send() }
+            fixture.await { !sendPending && transfers.isNotEmpty() }
+            val before = fixture.state()
+            onEdt { fixture.controller.removeFile(file) }
+            assertEquals(before, fixture.state())
+            assertTrue(file.isFile)
         }
     }
 
@@ -585,6 +617,11 @@ class DesktopFlashControllerTest {
             assertEquals(0, clipboard.reads)
             onEdt { fixture.controller.copyText("incoming-text") }
             assertEquals(listOf(body), clipboard.writes)
+            val firstCopy = fixture.state()
+            onEdt { fixture.controller.copyText("incoming-text") }
+            assertEquals(listOf(body, body), clipboard.writes)
+            assertEquals(firstCopy.statusText, fixture.state().statusText)
+            assertEquals(firstCopy.statusRevision + 1, fixture.state().statusRevision)
             assertTrue(received.isFile)
             assertFalse(fixture.state().status.contains(body))
         }

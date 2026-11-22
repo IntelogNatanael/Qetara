@@ -43,4 +43,24 @@ class FlashImportStagingTest {
         assertEquals("first", first.readText())
         assertEquals("second", second.readText())
     }
+
+    @Test fun removingPreparedCopyCannotDeleteProviderOriginalOrReattachedCopy() {
+        val cache = temporary.newFolder("cache")
+        val original = temporary.newFile("provider-original.txt").apply { writeText("original") }
+        val removed = File(cache, "flash-outgoing/old-import/photo.txt").apply {
+            parentFile!!.mkdirs(); writeText("old prepared copy")
+        }
+        val reattached = File(cache, "flash-outgoing/new-import/photo.txt").apply {
+            parentFile!!.mkdirs(); writeText("new prepared copy")
+        }
+        val unrelated = File(cache, "other/photo.txt").apply { parentFile!!.mkdirs(); writeText("keep") }
+        assertFalse(deletePreparedFlashFile(original, cache))
+        assertFalse(deletePreparedFlashFile(unrelated, cache))
+        assertTrue(deletePreparedFlashFile(removed, cache))
+        assertFalse(removed.exists())
+        assertFalse(removed.parentFile!!.exists())
+        assertEquals("original", original.readText())
+        assertEquals("new prepared copy", reattached.readText())
+        assertEquals("keep", unrelated.readText())
+    }
 }

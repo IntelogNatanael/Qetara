@@ -77,7 +77,7 @@
     <string name="flash_intro_title">Share in a moment</string>
     <string name="flash_keep_device">Keep device</string>
     <string name="flash_keep_running">Keep Flash on</string>
-    <string name="flash_manual_address_help">In Flash on the other device, open “My address”. Keep Flash active there.</string>
+    <string name="flash_manual_address_help">In Flash on the other device, open “Details” to see its address. Keep Flash active there.</string>
     <string name="flash_matches_receive">Matches: receive file</string>
     <string name="flash_matches_send">Matches: send</string>
     <string name="flash_my_address">My address</string>
@@ -218,7 +218,7 @@
     <string name="flash_attach_files">Attach files</string>
     <string name="flash_paste">Paste</string>
     <string name="flash_sending_text">Sending text…</string>
-    <string name="flash_send_text">Send text</string>
+    <string name="flash_send_text">Send message</string>
     <string name="flash_each_send_confirmation">Each send requires confirmation on both devices.</string>
     <string name="flash_text_error_too_large">Text cannot exceed 16 KiB (16,384 bytes).</string>
     <string name="flash_text_error_invalid_unicode">The text contains invalid Unicode characters.</string>
@@ -237,6 +237,10 @@
     <string name="flash_text_copied">Text copied.</string>
     <string name="flash_text_copy_failed">Could not copy the text. You can select it to copy it.</string>
     <string name="flash_copy">Copy</string>
+    <string name="flash_view_text">View text</string>
+    <string name="flash_details">Details</string>
+    <string name="flash_hide_details">Hide details</string>
+    <string name="flash_remove_file">Remove %1$s</string>
     <string name="flash_text_with_size">Text · %1$s</string>
     <string name="flash_text_message">Flash message</string>
     <string name="flash_text_confirm_each_send">Each send is confirmed with the other person.</string>

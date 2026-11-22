@@ -3004,10 +3004,14 @@ private fun runDesktopGui(cli: CliArgs) {
                             },
                             onChooseFile = {
                                 val current = flashController.state.selectedFile?.absolutePath.orEmpty()
-                                flashController.chooseFiles(chooseFilePaths(current, window).map(::File))
+                                flashController.chooseFiles(chooseFilePaths(current, window,
+                                    title = flashCopy("Elige archivos para compartir", "Choose files to share"),
+                                    approveLabel = flashCopy("Agregar archivos", "Add files")).map(::File))
                             },
                             onChooseDirectory = {
-                                chooseDirectoryPath(flashController.state.directory.absolutePath, window)?.let { flashController.chooseDirectory(File(it)) }
+                                chooseDirectoryPath(flashController.state.directory.absolutePath, window,
+                                    title = flashCopy("Dónde guardar lo recibido", "Where to save received items"),
+                                    approveLabel = flashCopy("Usar esta carpeta", "Use this folder"))?.let { flashController.chooseDirectory(File(it)) }
                             }
                         )
                     }
@@ -4501,10 +4505,11 @@ private fun chooseFilePath(current: String, owner: java.awt.Component): String? 
     }
 }
 
-private fun chooseFilePaths(current: String, owner: java.awt.Component): List<String> {
+private fun chooseFilePaths(current: String, owner: java.awt.Component,
+    title: String = "Elige archivos para compartir", approveLabel: String = "Agregar archivos"): List<String> {
     val chooser = JFileChooser().apply {
-        dialogTitle = "Elige archivos para compartir"
-        approveButtonText = "Agregar archivos"
+        dialogTitle = title
+        approveButtonText = approveLabel
         isMultiSelectionEnabled = true
     }
     val base = File(current)
@@ -4522,8 +4527,9 @@ private fun chooseFilePaths(current: String, owner: java.awt.Component): List<St
     }
 }
 
-private fun chooseDirectoryPath(current: String, owner: java.awt.Component): String? {
-    val chooser = JFileChooser().apply { dialogTitle = "Dónde guardar lo recibido"; approveButtonText = "Usar esta carpeta" }
+private fun chooseDirectoryPath(current: String, owner: java.awt.Component,
+    title: String = "Dónde guardar lo recibido", approveLabel: String = "Usar esta carpeta"): String? {
+    val chooser = JFileChooser().apply { dialogTitle = title; approveButtonText = approveLabel }
     val base = File(current)
     chooser.currentDirectory = when {
         base.exists() && base.isDirectory -> base

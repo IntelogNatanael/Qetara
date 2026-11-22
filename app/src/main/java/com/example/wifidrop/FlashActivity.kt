@@ -24,6 +24,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Devices
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -44,6 +45,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import com.example.wifidrop.protocol.flash.FlashApproval
@@ -95,6 +97,7 @@ internal fun FlashScreen(activity: FlashActivity, onBack: () -> Unit) {
     var manualExpanded by rememberSaveable { mutableStateOf(false) }
     var historyExpanded by rememberSaveable { mutableStateOf(false) }
     var reviewingFiles by rememberSaveable { mutableStateOf(false) }
+    var viewingTextId by rememberSaveable { mutableStateOf<String?>(null) }
     var editName by rememberSaveable { mutableStateOf(false) }
     var choosingPeer by rememberSaveable { mutableStateOf(false) }
     var showStopConfirmation by rememberSaveable { mutableStateOf(false) }
@@ -148,8 +151,13 @@ internal fun FlashScreen(activity: FlashActivity, onBack: () -> Unit) {
     val selectedPeer = resolveSelectedFlashPeer(state.selectedPeer, state.engine?.peers.orEmpty(), now)
     val operations = state.engine?.operations.orEmpty()
     val busy = state.importing || state.sendingText || operations.isNotEmpty()
+    val selectedBytes = remember(state.selectedFiles) { state.selectedFiles.sumOf { it.length() } }
     val imeVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
     val status = state.statusText.localized()
+    LaunchedEffect(state.statusText) {
+        // A clipboard/save acknowledgement must never cover a newer transfer status or error.
+        notice = null
+    }
     val showStatus = status.isNotBlank() &&
         !(state.phase == FlashAndroidPhase.OFF && state.statusText.resourceId == R.string.flash_off)
     val approval = state.engine?.approvals.orEmpty().firstOrNull { it.expiresAtMs > now }
@@ -281,8 +289,14 @@ internal fun FlashScreen(activity: FlashActivity, onBack: () -> Unit) {
                     if (state.selectedFiles.isEmpty()) Text(stringResource(R.string.flash_no_attached_files))
                     state.selectedFiles.forEachIndexed { index, file ->
                         if (index > 0) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                        FlashFileSummary(file.name, android.text.format.Formatter.formatFileSize(activity, file.length()),
-                            showFullName = true)
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
+                            FlashFileSummary(file.name, android.text.format.Formatter.formatFileSize(activity, file.length()),
+                                showFullName = true, modifier = Modifier.weight(1f))
+                            IconButton(onClick = { FlashForegroundService.removeFile(file) }, enabled = !busy,
+                                modifier = Modifier.size(48.dp)) {
+                                Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.flash_remove_file, file.name))
+                            }
+                        }
                     }
                     Text(stringResource(R.string.flash_text_files_separate),
                         style = MaterialTheme.typography.bodySmall)
@@ -303,6 +317,33 @@ internal fun FlashScreen(activity: FlashActivity, onBack: () -> Unit) {
                     notice = null
                     chooseFiles.launch(arrayOf("*/*"))
                 }, enabled = !busy, modifier = Modifier.heightIn(min = 48.dp)) { Text(stringResource(R.string.flash_add_files)) }
+            }
+        )
+    }
+
+    val viewingText = state.results.firstOrNull { it.id == viewingTextId }?.textBody
+    if (viewingText != null && approval == null) {
+        AlertDialog(
+            onDismissRequest = { viewingTextId = null },
+            containerColor = MaterialTheme.colorScheme.surface,
+            title = { Text(stringResource(R.string.flash_text_message)) },
+            text = {
+                SelectionContainer {
+                    Text(viewingText, modifier = Modifier.fillMaxWidth().heightIn(max = 420.dp)
+                        .verticalScroll(rememberScrollState()), style = MaterialTheme.typography.bodyMedium)
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { viewingTextId = null }, modifier = Modifier.heightIn(min = 48.dp)) {
+                    Text(stringResource(R.string.flash_close))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    runCatching { copySensitiveText(activity, activity.getString(R.string.flash_text_clipboard_label), viewingText) }
+                        .onSuccess { notice = R.string.flash_text_copied }
+                        .onFailure { notice = R.string.flash_text_copy_failed }
+                }, modifier = Modifier.heightIn(min = 48.dp)) { Text(stringResource(R.string.flash_copy)) }
             }
         )
     }
@@ -331,6 +372,7 @@ internal fun FlashScreen(activity: FlashActivity, onBack: () -> Unit) {
                     importing = state.importing,
                     selectedPeer = selectedPeer,
                     selectedFileCount = state.selectedFiles.size,
+                    selectedFileSize = android.text.format.Formatter.formatFileSize(activity, selectedBytes),
                     busy = busy || approval != null,
                     sendingText = state.sendingText,
                     compact = imeVisible || LocalDensity.current.fontScale >= 1.5f,
@@ -362,6 +404,7 @@ internal fun FlashScreen(activity: FlashActivity, onBack: () -> Unit) {
                     onSend = { notice = null; FlashForegroundService.sendText() },
                     onSendFiles = {
                         if (!busy && approval == null && selectedPeer != null && state.selectedFiles.isNotEmpty()) {
+                            notice = null
                             FlashForegroundService.send()
                         }
                     }
@@ -387,6 +430,13 @@ internal fun FlashScreen(activity: FlashActivity, onBack: () -> Unit) {
                     onStop = {
                         if (confirmBeforeStopping) showStopConfirmation = true
                         else FlashForegroundService.deactivate()
+                    },
+                    status = if (state.statusText.resourceId == R.string.flash_active) "" else status,
+                    notice = notice?.let { stringResource(it) },
+                    onDismissNotice = { notice = null },
+                    notificationsAllowed = notificationsAllowed,
+                    onAllowNotifications = {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) notifications.launch(Manifest.permission.POST_NOTIFICATIONS)
                     }
                 )
             }
@@ -422,7 +472,7 @@ internal fun FlashScreen(activity: FlashActivity, onBack: () -> Unit) {
             }
             // Omit only the initial, redundant OFF label. Errors, expiry and service
             // notices keep their original wording and remain visible in every phase.
-            if (showStatus) {
+            if (showStatus && !state.active) {
                 item("status") {
                     Surface(color = MaterialTheme.colorScheme.surfaceContainerLow,
                         contentColor = MaterialTheme.colorScheme.onSurface, shape = RoundedCornerShape(12.dp)) {
@@ -431,7 +481,7 @@ internal fun FlashScreen(activity: FlashActivity, onBack: () -> Unit) {
                     }
                 }
             }
-            if (notice != null) item("notice") {
+            if (notice != null && !state.active) item("notice") {
                 FlashCard {
                     notice?.let { message ->
                         Text(stringResource(message), modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
@@ -480,16 +530,19 @@ internal fun FlashScreen(activity: FlashActivity, onBack: () -> Unit) {
                         })
                     val textBody = result.textBody
                     if (textBody != null) {
-                        SelectionContainer {
-                            Text(textBody, modifier = Modifier.fillMaxWidth().heightIn(max = 320.dp)
-                                .verticalScroll(rememberScrollState()), style = MaterialTheme.typography.bodyMedium)
+                        Text(textBody, modifier = Modifier.fillMaxWidth(), maxLines = 3,
+                            overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium)
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            TextButton(onClick = { viewingTextId = result.id }, modifier = Modifier.heightIn(min = 48.dp)) {
+                                Text(stringResource(R.string.flash_view_text))
+                            }
+                            TextButton(onClick = {
+                                runCatching {
+                                    copySensitiveText(activity, activity.getString(R.string.flash_text_clipboard_label), textBody)
+                                }.onSuccess { notice = R.string.flash_text_copied }
+                                    .onFailure { notice = R.string.flash_text_copy_failed }
+                            }, modifier = Modifier.heightIn(min = 48.dp)) { Text(stringResource(R.string.flash_copy)) }
                         }
-                        OutlinedButton(onClick = {
-                            runCatching {
-                                copySensitiveText(activity, activity.getString(R.string.flash_text_clipboard_label), textBody)
-                            }.onSuccess { notice = R.string.flash_text_copied }
-                                .onFailure { notice = R.string.flash_text_copy_failed }
-                        }, modifier = Modifier.heightIn(min = 48.dp), shape = RoundedCornerShape(16.dp)) { Text(stringResource(R.string.flash_copy)) }
                     } else {
                         Text(result.labelText.localized(), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
                     }
@@ -511,16 +564,6 @@ internal fun FlashScreen(activity: FlashActivity, onBack: () -> Unit) {
             if (state.results.size > 3) item("history-toggle") {
                 TextButton(onClick = { historyExpanded = !historyExpanded }, modifier = Modifier.heightIn(min = 48.dp)) {
                     Text(if (historyExpanded) stringResource(R.string.flash_show_less) else stringResource(R.string.flash_view_history, state.results.size))
-                }
-            }
-            if (state.active && !notificationsAllowed) item("notifications") {
-                FlashCard {
-                    Text(stringResource(R.string.flash_notifications_title), style = MaterialTheme.typography.titleSmall)
-                    Text(stringResource(R.string.flash_notifications_description),
-                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    TextButton(onClick = {
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) notifications.launch(Manifest.permission.POST_NOTIFICATIONS)
-                    }, modifier = Modifier.heightIn(min = 48.dp)) { Text(stringResource(R.string.flash_allow_notifications)) }
                 }
             }
         }

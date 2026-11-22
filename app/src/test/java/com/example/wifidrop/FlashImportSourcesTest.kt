@@ -39,6 +39,18 @@ class FlashImportSourcesTest {
         assertEquals(listOf("content://first"), sources.pending(listOf("content://first"), emptyList()))
     }
 
+    @Test fun removingOneSelectionReleasesOnlyItsSourceAndRetainsTheOtherCopy() {
+        val sources = FlashImportSources()
+        val first = File(temporary.newFolder("removed"), "photo.jpg").apply { writeText("first") }
+        val other = File(temporary.newFolder("retained"), "photo.jpg").apply { writeText("other") }
+        sources.commit(listOf("content://first" to first, "content://other" to other), emptyList())
+        val remaining = listOf(other)
+        assertEquals(listOf("content://first"), sources.pending(listOf("content://first", "content://other"), remaining))
+        val reattached = File(temporary.newFolder("reattached"), "photo.jpg").apply { writeText("new copy") }
+        assertEquals(listOf(other, reattached), sources.commit(listOf("content://first" to reattached), remaining))
+        assertEquals("other", other.readText())
+    }
+
     @Test fun selectingASourceAgainCanReplaceItsMissingCacheCopy() {
         val sources = FlashImportSources()
         val missing = temporary.newFile("missing.txt")
