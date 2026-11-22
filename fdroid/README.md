@@ -1,5 +1,21 @@
 # Preparación de F-Droid
 
+## Estado verificado el 21 de noviembre de 2026
+
+F-Droid ya publica **1.4.5 / código 12** y la recomienda en su
+[API del catálogo](https://f-droid.org/api/v1/packages/io.github.intelognatanael.qetara).
+La [receta oficial](https://gitlab.com/fdroid/fdroiddata/-/blob/e3f4aa59283370000f5657dc513eb361804504ab/metadata/io.github.intelognatanael.qetara.yml)
+incluye la build 12 con el commit `93cad15dc89d4a9ae4c9ac24a286e3dc3a4ae1a0`.
+La [MR inicial !51433](https://gitlab.com/fdroid/fdroiddata/-/merge_requests/51433)
+fue integrada el 22 de octubre. Los cortes históricos de los apartados siguientes
+describen el estado de sus fechas; la actualización y publicación de 1.4.5 allí
+pendientes ya se completaron.
+
+Las mejoras posteriores de Flash se prueban como candidata de escritorio y
+fuentes de desarrollo. No cambian la etiqueta estable, el APK firmado ni la
+receta de F-Droid. Una futura versión Android requiere su propio cierre,
+compilación limpia, firma y verificación reproducible.
+
 ## 1.4.5 / código 12
 
 La fuente final G de 1.4.5 es el commit

@@ -6,6 +6,13 @@ Qetara conecta Android y PC por tu red local. Entre dispositivos Android tambié
 
 Descarga Android desde [F-Droid](https://f-droid.org/packages/io.github.intelognatanael.qetara/) o desde [la última entrega en GitHub](https://github.com/IntelogNatanael/Qetara/releases/latest). Las entregas incluyen el APK firmado y sus sumas SHA-256; cada etiqueta identifica sus fuentes. El [informe de validación](https://github.com/IntelogNatanael/Qetara/blob/main/docs/VALIDATION-1.4.5.md) distingue las pruebas de cada candidata y el cierre de publicación. Consulta también [la receta y el estado de F-Droid](https://github.com/IntelogNatanael/Qetara/blob/main/fdroid/README.md).
 
+Las fuentes de desarrollo incluyen la [candidata de Flash en inglés y español](docs/FLASH_UX_BILINGUAL-2026-11-21.md),
+identificada por el commit `2f8d114584ea005d0ef29b111bb268f1fd9a2856`:
+arrastre de archivos en PC, acciones de envío según el contenido, eliminación
+individual de adjuntos y compositor compacto. Esta candidata conserva la versión
+interna 1.4.5; se distingue por su commit y los hashes de sus artefactos. No sustituye
+la entrega Android estable `v1.4.5` ni su APK en F-Droid.
+
 ## Empezar
 
 1. Abre Qetara en ambos dispositivos y conéctalos a la misma red Wi-Fi.
